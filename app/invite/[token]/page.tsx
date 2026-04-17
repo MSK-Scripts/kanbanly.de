@@ -35,10 +35,7 @@ export default async function InvitePage({
     <div className="flex-1 flex flex-col">
       <div className="flex-1 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="flex items-center gap-3 mb-6 justify-center">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-violet-500 to-emerald-400 grid place-items-center font-bold text-white text-sm shadow-lg shadow-violet-500/20">
-            k
-          </div>
+        <div className="mb-6 text-center">
           <h1 className="text-lg font-semibold text-slate-100">kanbanly</h1>
         </div>
 

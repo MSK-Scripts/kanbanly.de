@@ -5,12 +5,14 @@ import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { useBoard } from '@/store/boardStore';
 import { Card } from './Card';
 import { PlusIcon } from './Icons';
+import { InlineEditableText } from './InlineEditableText';
 
 type Props = { listId: string };
 
 function ListInner({ listId }: Props) {
   const list = useBoard((s) => s.lists[listId]);
   const addCard = useBoard((s) => s.addCard);
+  const renameList = useBoard((s) => s.renameList);
   const [newTitle, setNewTitle] = useState('');
   const [adding, setAdding] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -21,21 +23,34 @@ function ListInner({ listId }: Props) {
 
   if (!list) return null;
 
-  const dotColor =
-    list.id === 'done'
-      ? 'bg-emerald-400'
-      : list.id === 'doing'
-      ? 'bg-violet-400'
-      : 'bg-slate-400';
+  const titleLower = list.title.trim().toLowerCase();
+  const isDone =
+    titleLower === 'done' ||
+    titleLower === 'erledigt' ||
+    titleLower === 'fertig' ||
+    titleLower === 'abgeschlossen';
+  const isDoing =
+    titleLower === 'in progress' ||
+    titleLower === 'doing' ||
+    titleLower === 'in arbeit';
+  const dotColor = isDone
+    ? 'bg-emerald-400'
+    : isDoing
+    ? 'bg-violet-400'
+    : 'bg-slate-400';
 
   return (
     <div className="w-[320px] shrink-0 flex flex-col rounded-2xl bg-slate-900/70 border border-slate-800/80 max-h-[calc(100vh-8rem)]">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/80">
         <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${dotColor}`} />
-          <h2 className="text-sm font-semibold tracking-wide text-slate-100">
-            {list.title}
-          </h2>
+          <InlineEditableText
+            value={list.title}
+            onSave={(v) => renameList(list.id, v)}
+            ariaLabel="Spalte umbenennen"
+            viewClassName="text-sm font-semibold tracking-wide text-slate-100 hover:text-violet-200 transition-colors"
+            inputClassName="text-sm font-semibold tracking-wide text-slate-100 bg-slate-800 border border-slate-600 rounded px-1 -mx-1 focus:outline-none focus:ring-1 focus:ring-violet-400/60 min-w-0"
+          />
           <span className="text-[11px] text-slate-500 tabular-nums">
             {list.cardIds.length}
           </span>

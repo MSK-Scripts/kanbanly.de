@@ -3,6 +3,24 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
+export async function renameWorkspace(id: string, name: string) {
+  const trimmed = name.trim();
+  if (!id || !trimmed) return;
+  const supabase = await createClient();
+  await supabase.from('workspaces').update({ name: trimmed }).eq('id', id);
+  revalidatePath('/');
+  revalidatePath(`/workspaces/${id}`);
+}
+
+export async function renameBoard(id: string, name: string) {
+  const trimmed = name.trim();
+  if (!id || !trimmed) return;
+  const supabase = await createClient();
+  await supabase.from('boards').update({ name: trimmed }).eq('id', id);
+  revalidatePath(`/boards/${id}`);
+  revalidatePath('/');
+}
+
 export async function createWorkspace(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim();
   if (!name) redirect('/?error=Name%20fehlt');

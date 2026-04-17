@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { useBoard } from '@/store/boardStore';
 import { List } from './List';
+import { AddListInline } from './AddListInline';
 
 export default function Board() {
   const listOrder = useBoard((s) => s.listOrder);
@@ -13,7 +14,7 @@ export default function Board() {
     setMounted(true);
   }, []);
 
-  const onDragEnd = async (result: DropResult) => {
+  const onDragEnd = (result: DropResult) => {
     const { source, destination } = result;
     if (!destination) return;
     if (
@@ -27,17 +28,6 @@ export default function Board() {
       { listId: source.droppableId, index: source.index },
       { listId: destination.droppableId, index: destination.index }
     );
-
-    if (destination.droppableId === 'done' && source.droppableId !== 'done') {
-      const confetti = (await import('canvas-confetti')).default;
-      confetti({
-        particleCount: 90,
-        spread: 75,
-        startVelocity: 45,
-        origin: { y: 0.65 },
-        colors: ['#a78bfa', '#34d399', '#60a5fa', '#f472b6', '#fbbf24'],
-      });
-    }
   };
 
   return (
@@ -48,6 +38,7 @@ export default function Board() {
             {listOrder.map((id) => (
               <List key={id} listId={id} />
             ))}
+            <AddListInline />
           </div>
         </DragDropContext>
       ) : (

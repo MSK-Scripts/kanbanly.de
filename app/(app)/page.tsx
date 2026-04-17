@@ -41,9 +41,6 @@ export default async function Dashboard({
 
         {!workspaces || workspaces.length === 0 ? (
           <div className="rounded-2xl bg-slate-900/60 border border-slate-800/80 p-10 text-center">
-            <div className="mx-auto h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-emerald-400 grid place-items-center font-bold text-white text-lg mb-4">
-              k
-            </div>
             <h2 className="text-lg font-semibold text-slate-100 mb-1">
               Keine Workspaces
             </h2>
@@ -59,9 +56,12 @@ export default async function Dashboard({
             {workspaces.map((ws) => (
               <section key={ws.id}>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold text-slate-100 tracking-wide uppercase">
+                  <Link
+                    href={`/workspaces/${ws.id}`}
+                    className="text-sm font-semibold text-slate-100 tracking-wide uppercase hover:text-violet-200 transition-colors"
+                  >
                     {ws.name}
-                  </h2>
+                  </Link>
                   <span className="text-[11px] text-slate-500">
                     {ws.boards?.length ?? 0} Boards
                   </span>
@@ -71,13 +71,10 @@ export default async function Dashboard({
                     <Link
                       key={b.id}
                       href={`/boards/${b.id}`}
-                      className="group rounded-xl bg-slate-900/60 border border-slate-800/80 p-4 hover:border-violet-400/60 hover:bg-slate-900/80 transition-colors min-h-[84px] flex flex-col justify-between"
+                      className="rounded-xl bg-slate-900/60 border border-slate-800/80 p-4 hover:border-violet-400/60 hover:bg-slate-900/80 transition-colors min-h-[84px] flex items-center"
                     >
                       <div className="font-medium text-slate-100 text-sm leading-snug break-words">
                         {b.name}
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-2 group-hover:text-slate-400">
-                        Öffnen →
                       </div>
                     </Link>
                   ))}
