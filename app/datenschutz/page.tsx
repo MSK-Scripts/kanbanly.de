@@ -6,17 +6,9 @@ export default function DatenschutzPage() {
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <Link
-            href="/"
-            className="h-9 w-9 rounded-lg bg-gradient-to-br from-violet-500 to-emerald-400 grid place-items-center font-bold text-white text-sm shadow-lg shadow-violet-500/20"
-          >
-            k
-          </Link>
-          <h1 className="text-2xl font-semibold text-slate-100">
-            Datenschutzerklärung
-          </h1>
-        </div>
+        <h1 className="text-2xl font-semibold text-slate-100 mb-8">
+          Datenschutzerklärung
+        </h1>
 
         <div className="rounded-2xl bg-slate-900/60 border border-slate-800/80 p-6 space-y-6 text-sm text-slate-300 leading-relaxed">
           <section>
