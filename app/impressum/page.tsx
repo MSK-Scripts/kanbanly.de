@@ -22,11 +22,11 @@ export default function ImpressumPage() {
               Angaben gemäß § 5 TMG
             </h2>
             <p className="leading-relaxed">
-              [Felix Franzen]
+              Felix Franzen
               <br />
-              [Am Süllberg 6]
+              Am Süllberg 6
               <br />
-              [29633 Munster]
+              29633 Munster
               <br />
               Deutschland
             </p>
@@ -37,9 +37,9 @@ export default function ImpressumPage() {
               Kontakt
             </h2>
             <p className="leading-relaxed">
-              E-Mail: [felixfranzen2026@gmail.com]
+              E-Mail: felixfranzen2026@gmail.com
               <br />
-              Telefon: [auf Anfrage]
+              Telefon: auf Anfrage
             </p>
           </section>
 
@@ -48,11 +48,11 @@ export default function ImpressumPage() {
               Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV
             </h2>
             <p className="leading-relaxed">
-              [Felix Franzen]
+              Felix Franzen
               <br />
-              [Am Süllberg 6]
+              Am Süllberg 6
               <br />
-              [29633 Munster]
+              29633 Munster
             </p>
           </section>
 
@@ -84,23 +84,6 @@ export default function ImpressumPage() {
             </p>
           </section>
 
-          <section className="pt-4 border-t border-slate-800">
-            <p className="text-xs text-slate-500 leading-relaxed">
-              <strong className="text-slate-400">Hinweis:</strong> Dieser Text
-              enthält Platzhalter in [ECKIGEN KLAMMERN]. Bitte ersetze sie
-              durch deine echten Daten. Für einen vollständig rechtssicheren
-              Impressum-Text empfehlen wir den kostenlosen Generator von{' '}
-              <a
-                href="https://www.e-recht24.de/impressum-generator.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-violet-300 hover:text-violet-200 underline"
-              >
-                e-recht24.de
-              </a>
-              .
-            </p>
-          </section>
         </div>
 
         <div className="mt-6">
