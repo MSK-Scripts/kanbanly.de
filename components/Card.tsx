@@ -87,7 +87,7 @@ function CardInner({ id, isDragging }: Props) {
       {dueMeta && (
         <div className="mt-2">
           <span
-            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium ${TONE_CLASSES[dueMeta.tone]}`}
+            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium font-mono tabular-nums ${TONE_CLASSES[dueMeta.tone]}`}
           >
             <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden>
               <path d="M7 3v2H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2h-2V3h-2v2H9V3H7zm12 6v10H5V9h14z" />
@@ -102,7 +102,7 @@ function CardInner({ id, isDragging }: Props) {
           <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
             <div className="flex items-center gap-2">
               {totalTasks > 0 && (
-                <span>
+                <span className="font-mono tabular-nums">
                   {doneTasks}/{totalTasks} Tasks
                 </span>
               )}

@@ -216,7 +216,7 @@ export function CardModal() {
               Checkliste
             </h3>
             {total > 0 && (
-              <span className="text-[11px] text-slate-500 tabular-nums">
+              <span className="text-[11px] text-slate-500 tabular-nums font-mono">
                 {doneCount}/{total}
               </span>
             )}

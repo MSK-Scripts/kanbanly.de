@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { LegalFooter } from '@/components/LegalFooter';
 import { HelpMenu } from '@/components/HelpMenu';
+import { BoardPreview } from '@/components/BoardPreview';
 
 export default async function LandingPage() {
   const supabase = await createClient();
@@ -81,6 +82,10 @@ export default async function LandingPage() {
                 </Link>
               )}
             </div>
+          </div>
+
+          <div className="mt-12 sm:mt-16 max-w-5xl mx-auto">
+            <BoardPreview />
           </div>
         </section>
 

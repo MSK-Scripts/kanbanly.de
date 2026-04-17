@@ -52,7 +52,7 @@ function ListInner({ listId }: Props) {
             viewClassName="text-sm font-semibold tracking-wide text-slate-100 hover:text-violet-200 transition-colors"
             inputClassName="text-sm font-semibold tracking-wide text-slate-100 bg-slate-800 border border-slate-600 rounded px-1 -mx-1 focus:outline-none focus:ring-1 focus:ring-violet-400/60 min-w-0"
           />
-          <span className="text-[11px] text-slate-500 tabular-nums">
+          <span className="text-[11px] text-slate-500 tabular-nums font-mono">
             {list.cardIds.length}
           </span>
         </div>
