@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useBoard } from '@/store/boardStore';
+import { confirm } from '@/store/confirmStore';
 import { Avatar } from './Avatar';
+import { LabelsPicker } from './LabelsPicker';
 
 export function CardModal() {
   const openCardId = useBoard((s) => s.openCardId);
@@ -13,6 +15,7 @@ export function CardModal() {
   const memberOrder = useBoard((s) => s.memberOrder);
   const updateCardTitle = useBoard((s) => s.updateCardTitle);
   const updateCardDescription = useBoard((s) => s.updateCardDescription);
+  const updateCardDueDate = useBoard((s) => s.updateCardDueDate);
   const deleteCard = useBoard((s) => s.deleteCard);
   const addTask = useBoard((s) => s.addTask);
   const toggleTask = useBoard((s) => s.toggleTask);
@@ -163,6 +166,38 @@ export function CardModal() {
 
         <section className="p-5 border-b border-slate-800">
           <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
+            Labels
+          </h3>
+          <LabelsPicker cardId={openCardId} />
+        </section>
+
+        <section className="p-5 border-b border-slate-800">
+          <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
+            Fällig am
+          </h3>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={card.due_date ?? ''}
+              onChange={(e) =>
+                updateCardDueDate(openCardId, e.target.value || null)
+              }
+              className="rounded-lg bg-slate-800/80 border border-slate-700 px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-400/60 [color-scheme:dark]"
+            />
+            {card.due_date && (
+              <button
+                type="button"
+                onClick={() => updateCardDueDate(openCardId, null)}
+                className="text-xs text-slate-400 hover:text-rose-400 transition-colors"
+              >
+                Entfernen
+              </button>
+            )}
+          </div>
+        </section>
+
+        <section className="p-5 border-b border-slate-800">
+          <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
             Beschreibung
           </h3>
           <textarea
@@ -260,10 +295,14 @@ export function CardModal() {
         <div className="p-5 flex justify-end">
           <button
             type="button"
-            onClick={() => {
-              if (confirm('Diese Karte wirklich löschen?')) {
-                deleteCard(openCardId);
-              }
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Karte löschen?',
+                description: `"${card.title}" wird inkl. aller Tasks und Zuweisungen gelöscht.`,
+                confirmLabel: 'Löschen',
+                danger: true,
+              });
+              if (ok) deleteCard(openCardId);
             }}
             className="text-xs text-slate-400 hover:text-rose-400 transition-colors"
           >

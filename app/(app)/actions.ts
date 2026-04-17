@@ -21,6 +21,20 @@ export async function renameBoard(id: string, name: string) {
   revalidatePath('/');
 }
 
+export async function deleteBoard(id: string) {
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from('boards').delete().eq('id', id);
+  revalidatePath('/');
+}
+
+export async function deleteWorkspace(id: string) {
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from('workspaces').delete().eq('id', id);
+  revalidatePath('/');
+}
+
 export async function createWorkspace(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim();
   if (!name) redirect('/?error=Name%20fehlt');

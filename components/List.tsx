@@ -6,6 +6,7 @@ import { useBoard } from '@/store/boardStore';
 import { Card } from './Card';
 import { PlusIcon } from './Icons';
 import { InlineEditableText } from './InlineEditableText';
+import { ListMenu } from './ListMenu';
 
 type Props = { listId: string };
 
@@ -55,6 +56,7 @@ function ListInner({ listId }: Props) {
             {list.cardIds.length}
           </span>
         </div>
+        <ListMenu listId={list.id} />
       </div>
 
       <Droppable droppableId={list.id}>
@@ -62,7 +64,7 @@ function ListInner({ listId }: Props) {
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 overflow-y-auto p-3 space-y-2 transition-colors ${
+            className={`flex-1 overflow-y-auto board-scroll p-3 space-y-2 transition-colors ${
               snapshot.isDraggingOver ? 'bg-slate-800/30' : ''
             }`}
           >

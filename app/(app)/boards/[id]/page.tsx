@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BoardClient } from '@/components/BoardClient';
+import { BoardMenu } from '@/components/BoardMenu';
 import { InviteDialog } from '@/components/InviteDialog';
 import { RenameBoardTitle } from '@/components/RenameTitle';
 import { createClient } from '@/lib/supabase/server';
@@ -19,6 +20,7 @@ type BoardRow = {
       list_id: string;
       title: string;
       description: string | null;
+      due_date: string | null;
       position: number;
       tasks: Array<{
         id: string;
@@ -28,7 +30,14 @@ type BoardRow = {
         position: number;
       }> | null;
       card_assignees: Array<{ user_id: string }> | null;
+      card_labels: Array<{ label_id: string }> | null;
     }> | null;
+  }> | null;
+  labels: Array<{
+    id: string;
+    name: string;
+    color: string;
+    created_at: string;
   }> | null;
 };
 
@@ -57,11 +66,13 @@ export default async function BoardPage({
           lists(
             id, title, position,
             cards(
-              id, list_id, title, description, position,
+              id, list_id, title, description, due_date, position,
               tasks(id, card_id, title, done, position),
-              card_assignees(user_id)
+              card_assignees(user_id),
+              card_labels(label_id)
             )
-          )
+          ),
+          labels(id, name, color, created_at)
         `
       )
       .eq('id', id)
@@ -90,6 +101,7 @@ export default async function BoardPage({
       list_id: c.list_id,
       title: c.title,
       description: c.description,
+      due_date: c.due_date,
       position: c.position,
     }))
   );
@@ -111,6 +123,17 @@ export default async function BoardPage({
       (c.card_assignees ?? []).map((a) => ({
         card_id: c.id,
         user_id: a.user_id,
+      }))
+    )
+  );
+
+  const initialLabels = board.labels ?? [];
+
+  const initialCardLabels = (board.lists ?? []).flatMap((l) =>
+    (l.cards ?? []).flatMap((c) =>
+      (c.card_labels ?? []).map((cl) => ({
+        card_id: c.id,
+        label_id: cl.label_id,
       }))
     )
   );
@@ -140,7 +163,14 @@ export default async function BoardPage({
             inputClassName="text-slate-100 font-medium bg-slate-800 border border-slate-600 rounded px-1 -mx-1 focus:outline-none focus:ring-1 focus:ring-violet-400/60 min-w-0"
           />
         </div>
-        <InviteDialog boardId={board.id} />
+        <div className="flex items-center gap-2">
+          <InviteDialog boardId={board.id} />
+          <BoardMenu
+            boardId={board.id}
+            boardName={board.name}
+            workspaceId={board.workspace_id}
+          />
+        </div>
       </div>
       <BoardClient
         boardId={board.id}
@@ -149,6 +179,8 @@ export default async function BoardPage({
         initialTasks={initialTasks}
         initialAssignees={initialAssignees}
         initialMembers={members}
+        initialLabels={initialLabels}
+        initialCardLabels={initialCardLabels}
       />
     </>
   );

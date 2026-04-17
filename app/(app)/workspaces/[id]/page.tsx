@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { CreateBoardInline } from '@/components/CreateBoardInline';
 import { RenameWorkspaceTitle } from '@/components/RenameTitle';
+import { WorkspaceMenu } from '@/components/WorkspaceMenu';
 
 export default async function WorkspacePage({
   params,
@@ -31,12 +32,16 @@ export default async function WorkspacePage({
           <span className="text-slate-300">{workspace.name}</span>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex items-start justify-between gap-4">
           <RenameWorkspaceTitle
             id={workspace.id}
             name={workspace.name}
             viewClassName="text-2xl font-semibold text-slate-100 hover:text-violet-200 transition-colors text-left"
             inputClassName="text-2xl font-semibold text-slate-100 bg-slate-800 border border-slate-600 rounded px-2 -mx-2 focus:outline-none focus:ring-2 focus:ring-violet-400/60"
+          />
+          <WorkspaceMenu
+            workspaceId={workspace.id}
+            workspaceName={workspace.name}
           />
         </div>
 

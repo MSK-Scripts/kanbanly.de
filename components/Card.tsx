@@ -2,8 +2,38 @@
 import { memo } from 'react';
 import { useBoard } from '@/store/boardStore';
 import { Avatar } from './Avatar';
+import { labelPill } from '@/lib/labelColors';
 
 type Props = { id: string; isDragging: boolean };
+
+function formatDue(date: string | null): {
+  label: string;
+  tone: 'overdue' | 'today' | 'soon' | 'future';
+} | null {
+  if (!date) return null;
+  const due = new Date(date + 'T00:00:00');
+  if (isNaN(due.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round(
+    (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const label = due.toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+  });
+  if (diffDays < 0) return { label, tone: 'overdue' };
+  if (diffDays === 0) return { label: 'heute', tone: 'today' };
+  if (diffDays <= 2) return { label, tone: 'soon' };
+  return { label, tone: 'future' };
+}
+
+const TONE_CLASSES = {
+  overdue: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+  today: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  soon: 'bg-slate-700/60 text-slate-200 border-slate-600',
+  future: 'bg-slate-800 text-slate-400 border-slate-700',
+} as const;
 
 function CardInner({ id, isDragging }: Props) {
   const card = useBoard((s) => s.cards[id]);
@@ -11,6 +41,8 @@ function CardInner({ id, isDragging }: Props) {
   const setOpenCardId = useBoard((s) => s.setOpenCardId);
   const assignees = useBoard((s) => s.assignees[id]) ?? [];
   const memberProfiles = useBoard((s) => s.memberProfiles);
+  const cardLabelIds = useBoard((s) => s.cardLabels[id]) ?? [];
+  const labels = useBoard((s) => s.labels);
 
   if (!card) return null;
 
@@ -19,6 +51,8 @@ function CardInner({ id, isDragging }: Props) {
   const progress = totalTasks ? (doneTasks / totalTasks) * 100 : 0;
   const hasDescription = !!card.description?.trim();
   const hasAssignees = assignees.length > 0;
+
+  const dueMeta = formatDue(card.due_date);
 
   return (
     <div
@@ -29,9 +63,39 @@ function CardInner({ id, isDragging }: Props) {
           : 'border-slate-700/60 shadow-sm hover:border-slate-600 hover:shadow-md'
       }`}
     >
+      {cardLabelIds.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {cardLabelIds.map((lid) => {
+            const lbl = labels[lid];
+            if (!lbl) return null;
+            return (
+              <span
+                key={lid}
+                className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium border ${labelPill(lbl.color)}`}
+              >
+                {lbl.name}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       <h3 className="text-sm font-medium text-slate-100 leading-snug break-words">
         {card.title}
       </h3>
+
+      {dueMeta && (
+        <div className="mt-2">
+          <span
+            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium ${TONE_CLASSES[dueMeta.tone]}`}
+          >
+            <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden>
+              <path d="M7 3v2H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2h-2V3h-2v2H9V3H7zm12 6v10H5V9h14z" />
+            </svg>
+            {dueMeta.label}
+          </span>
+        </div>
+      )}
 
       {(totalTasks > 0 || hasDescription) && (
         <div className="mt-3">

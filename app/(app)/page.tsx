@@ -17,6 +17,16 @@ export default async function Dashboard({
     data: { user },
   } = await supabase.auth.getUser();
 
+  let username: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+    username = profile?.username ?? null;
+  }
+
   const { data: workspaces } = await supabase
     .from('workspaces')
     .select('id, name, boards(id, name, created_at)')
@@ -28,7 +38,9 @@ export default async function Dashboard({
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">Dashboard</h1>
-            <p className="text-sm text-slate-400 mt-1">{user?.email}</p>
+            <p className="text-sm text-slate-400 mt-1">
+              Willkommen{username ? ` @${username}` : ''}
+            </p>
           </div>
           <CreateWorkspaceInline />
         </div>
