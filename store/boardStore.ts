@@ -170,6 +170,8 @@ type State = {
   addTask: (cardId: string, title: string) => Promise<void>;
   toggleTask: (cardId: string, taskId: string) => Promise<void>;
   deleteTask: (cardId: string, taskId: string) => Promise<void>;
+
+  duplicateCard: (cardId: string) => Promise<void>;
 };
 
 export const useBoard = create<State>((set, get) => ({
@@ -753,6 +755,111 @@ export const useBoard = create<State>((set, get) => ({
       logActivity(cardId, newDone ? 'task_done' : 'task_undone', {
         title: task.title,
       });
+  },
+
+  async duplicateCard(cardId) {
+    const state = get();
+    const card = state.cards[cardId];
+    if (!card) return;
+
+    let targetListId: string | null = null;
+    let sourceIndex = -1;
+    for (const lid of state.listOrder) {
+      const list = state.lists[lid];
+      const idx = list.cardIds.indexOf(cardId);
+      if (idx >= 0) {
+        targetListId = lid;
+        sourceIndex = idx;
+        break;
+      }
+    }
+    if (!targetListId) return;
+
+    const list = state.lists[targetListId];
+    const newId = crypto.randomUUID();
+    const newTitle = card.title;
+    const newPosition = sourceIndex + 1;
+    state.suppressPulse([newId]);
+
+    const newTasks = card.tasks.map((t) => ({
+      id: crypto.randomUUID(),
+      title: t.title,
+      done: t.done,
+    }));
+    const sourceLabels = state.cardLabels[cardId] ?? [];
+    const sourceAssignees = state.assignees[cardId] ?? [];
+
+    set((s) => {
+      const nextCardIds = [...list.cardIds];
+      nextCardIds.splice(newPosition, 0, newId);
+      return {
+        cards: {
+          ...s.cards,
+          [newId]: {
+            id: newId,
+            title: newTitle,
+            description: card.description,
+            due_date: card.due_date,
+            tasks: newTasks,
+          },
+        },
+        lists: {
+          ...s.lists,
+          [targetListId!]: { ...list, cardIds: nextCardIds },
+        },
+        cardLabels: {
+          ...s.cardLabels,
+          [newId]: [...sourceLabels],
+        },
+        assignees: {
+          ...s.assignees,
+          [newId]: [...sourceAssignees],
+        },
+      };
+    });
+
+    const supabase = createClient();
+    await supabase.from('cards').insert({
+      id: newId,
+      list_id: targetListId,
+      title: newTitle,
+      description: card.description,
+      due_date: card.due_date,
+      position: newPosition,
+    });
+
+    const listAfter = get().lists[targetListId];
+    if (listAfter) {
+      const promises = listAfter.cardIds.map((cid, idx) =>
+        supabase.from('cards').update({ position: idx }).eq('id', cid)
+      );
+      await Promise.all(promises);
+    }
+
+    if (newTasks.length > 0) {
+      await supabase.from('tasks').insert(
+        newTasks.map((t, i) => ({
+          id: t.id,
+          card_id: newId,
+          title: t.title,
+          done: t.done,
+          position: i,
+        }))
+      );
+    }
+    if (sourceLabels.length > 0) {
+      await supabase
+        .from('card_labels')
+        .insert(sourceLabels.map((lid) => ({ card_id: newId, label_id: lid })));
+    }
+    if (sourceAssignees.length > 0) {
+      await supabase
+        .from('card_assignees')
+        .insert(
+          sourceAssignees.map((uid) => ({ card_id: newId, user_id: uid }))
+        );
+    }
+    logActivity(newId, 'created', { title: newTitle, duplicated_from: cardId });
   },
 
   async deleteTask(cardId, taskId) {

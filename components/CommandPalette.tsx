@@ -17,6 +17,8 @@ type Action = {
 const QUICK_ACTIONS: Action[] = [
   { label: 'Zum Dashboard', hint: 'Übersicht aller Workspaces', href: '/dashboard', icon: '🏠' },
   { label: 'Meine Karten', hint: 'Alle mir zugewiesenen Karten', href: '/meine-karten', icon: '📌' },
+  { label: 'Diese Woche', hint: 'Wrap-up: Fällig, überfällig, neu', href: '/woche', icon: '📅' },
+  { label: 'Deine Stats', hint: 'Vanity-Metrics über deine Aktivität', href: '/stats', icon: '📈' },
   { label: 'Templates durchstöbern', hint: 'Kuratiert, Community, Deine', href: '/templates', icon: '📋' },
 ];
 

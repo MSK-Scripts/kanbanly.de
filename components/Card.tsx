@@ -1,8 +1,10 @@
 'use client';
-import { memo } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { useBoard } from '@/store/boardStore';
 import { Avatar } from './Avatar';
 import { labelPill } from '@/lib/labelColors';
+import { confirm } from '@/store/confirmStore';
+import { KebabMenu } from './KebabMenu';
 
 type Props = { id: string; isDragging: boolean };
 
@@ -44,6 +46,20 @@ function CardInner({ id, isDragging }: Props) {
   const cardLabelIds = useBoard((s) => s.cardLabels[id]) ?? [];
   const labels = useBoard((s) => s.labels);
   const pulsing = useBoard((s) => !!s.pulsingCards[id]);
+  const updateCardTitle = useBoard((s) => s.updateCardTitle);
+  const duplicateCard = useBoard((s) => s.duplicateCard);
+  const deleteCard = useBoard((s) => s.deleteCard);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
 
   if (!card) return null;
 
@@ -55,10 +71,25 @@ function CardInner({ id, isDragging }: Props) {
 
   const dueMeta = formatDue(card.due_date);
 
+  const commitTitle = () => {
+    const next = draft.trim();
+    if (next && next !== card.title) void updateCardTitle(id, next);
+    setEditing(false);
+  };
+
+  const startEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDraft(card.title);
+    setEditing(true);
+  };
+
   return (
     <div
-      onClick={() => setOpenCardId(id)}
-      className={`rounded-xl bg-elev/80 border p-3 cursor-pointer transition-all duration-700 ${
+      onClick={() => {
+        if (editing) return;
+        setOpenCardId(id);
+      }}
+      className={`group rounded-xl bg-elev/80 border p-3 cursor-pointer transition-all duration-700 ${
         isDragging
           ? 'shadow-xl shadow-violet-500/30 border-accent-hover/60 ring-1 ring-accent-hover/40'
           : pulsing
@@ -83,9 +114,67 @@ function CardInner({ id, isDragging }: Props) {
         </div>
       )}
 
-      <h3 className="text-sm font-medium text-fg leading-snug break-words">
-        {card.title}
-      </h3>
+      <div className="flex items-start gap-1">
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitTitle();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setEditing(false);
+              }
+            }}
+            className="flex-1 bg-elev border border-accent-hover/60 rounded px-1.5 py-0.5 text-sm font-medium text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+          />
+        ) : (
+          <h3
+            className="flex-1 text-sm font-medium text-fg leading-snug break-words cursor-text hover:text-accent-hover"
+            onClick={startEdit}
+            title="Klicken zum Umbenennen"
+          >
+            {card.title}
+          </h3>
+        )}
+        <div
+          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          <KebabMenu
+            size="sm"
+            ariaLabel="Karten-Aktionen"
+            actions={[
+              {
+                label: 'Duplizieren',
+                onSelect: () => void duplicateCard(id),
+              },
+              {
+                label: 'Löschen',
+                danger: true,
+                onSelect: async () => {
+                  const ok = await confirm({
+                    title: `Karte "${card.title}" löschen?`,
+                    confirmLabel: 'Löschen',
+                    danger: true,
+                  });
+                  if (!ok) return;
+                  void deleteCard(id);
+                },
+              },
+            ]}
+          />
+        </div>
+      </div>
 
       {dueMeta && (
         <div className="mt-2">
