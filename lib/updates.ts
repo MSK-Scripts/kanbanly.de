@@ -7,6 +7,36 @@ export type Update = {
 export const updates: Update[] = [
   {
     date: '2026-04-18',
+    title: 'Live-Präsenz + Cursor im Card-Modal',
+    description:
+      'Oben im Board siehst du, wer gerade anwesend ist. Öffnen mehrere das gleiche Card-Modal, wandern ihre Cursor live sichtbar durchs Fenster.',
+  },
+  {
+    date: '2026-04-18',
+    title: 'Swimlanes',
+    description:
+      'Gruppier dein Board horizontal nach Zugewiesene oder Labels. Toggle oben rechts neben dem Filter.',
+  },
+  {
+    date: '2026-04-18',
+    title: 'Multi-Select auf Karten',
+    description:
+      'Shift+Klick (oder ⌘/Strg) wählt mehrere Karten. Bulk-verschieben, -löschen, -labeln über die Action-Bar unten.',
+  },
+  {
+    date: '2026-04-18',
+    title: 'Karte duplizieren + Inline-Edit',
+    description:
+      'Hover eine Karte → Drei-Punkt-Menü → Duplizieren (inkl. Tasks, Labels, Zugewiesene). Klick auf den Titel öffnet Inline-Rename.',
+  },
+  {
+    date: '2026-04-18',
+    title: '/stats und /woche',
+    description:
+      'Vanity-Metrics (Karten, Kommentare, Aktivitäten) und Montags-Wrap-up (Überfällig, Diese Woche fällig, Neu von dir) in der Nav erreichbar.',
+  },
+  {
+    date: '2026-04-18',
     title: 'Global-Search mit ⌘K',
     description:
       'Drück ⌘K (oder Strg+K) irgendwo in der App — Boards, Karten, Workspaces und Quick-Actions in einer Palette. Mit „?" siehst du alle Shortcuts.',

@@ -49,6 +49,12 @@ function CardInner({ id, isDragging }: Props) {
   const updateCardTitle = useBoard((s) => s.updateCardTitle);
   const duplicateCard = useBoard((s) => s.duplicateCard);
   const deleteCard = useBoard((s) => s.deleteCard);
+  const selected = useBoard((s) => !!s.selectedCardIds[id]);
+  const hasSelection = useBoard(
+    (s) => Object.keys(s.selectedCardIds).length > 0
+  );
+  const toggleSelection = useBoard((s) => s.toggleSelection);
+  const clearSelection = useBoard((s) => s.clearSelection);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -83,15 +89,25 @@ function CardInner({ id, isDragging }: Props) {
     setEditing(true);
   };
 
+  const onCardClick = (e: React.MouseEvent) => {
+    if (editing) return;
+    if (e.shiftKey || e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      toggleSelection(id);
+      return;
+    }
+    if (hasSelection) clearSelection();
+    setOpenCardId(id);
+  };
+
   return (
     <div
-      onClick={() => {
-        if (editing) return;
-        setOpenCardId(id);
-      }}
+      onClick={onCardClick}
       className={`group rounded-xl bg-elev/80 border p-3 cursor-pointer transition-all duration-700 ${
         isDragging
           ? 'shadow-xl shadow-violet-500/30 border-accent-hover/60 ring-1 ring-accent-hover/40'
+          : selected
+          ? 'border-accent-hover/80 ring-2 ring-accent-hover/60 shadow-md'
           : pulsing
           ? 'border-emerald-400/60 ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-500/20'
           : 'border-line-strong/60 shadow-sm hover:border-muted hover:shadow-md'

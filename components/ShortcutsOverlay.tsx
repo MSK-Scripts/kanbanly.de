@@ -20,6 +20,16 @@ const SHORTCUTS: { section: string; rows: Row[] }[] = [
       { keys: ['↵'], label: 'Ausgewähltes Ergebnis öffnen' },
     ],
   },
+  {
+    section: 'Karten',
+    rows: [
+      { keys: ['Klick'], label: 'Karte öffnen' },
+      { keys: ['Titel-Klick'], label: 'Titel inline umbenennen' },
+      { keys: ['Shift', 'Klick'], label: 'Karte zur Mehrfachauswahl hinzufügen' },
+      { keys: ['⌘', 'Klick'], label: 'Alternative für Shift+Klick' },
+      { keys: ['Esc'], label: 'Auswahl aufheben' },
+    ],
+  },
 ];
 
 export function ShortcutsOverlay({ onClose }: { onClose: () => void }) {

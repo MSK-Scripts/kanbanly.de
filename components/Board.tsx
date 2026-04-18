@@ -4,10 +4,13 @@ import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { useBoard } from '@/store/boardStore';
 import { List } from './List';
 import { AddListInline } from './AddListInline';
+import { BulkActionBar } from './BulkActionBar';
+import { SwimlaneBoard } from './SwimlaneBoard';
 
 export default function Board() {
   const listOrder = useBoard((s) => s.listOrder);
   const moveCard = useBoard((s) => s.moveCard);
+  const groupBy = useBoard((s) => s.groupBy);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -30,7 +33,17 @@ export default function Board() {
     );
   };
 
+  if (mounted && groupBy !== 'none' && listOrder.length > 0) {
+    return (
+      <>
+        <SwimlaneBoard />
+        <BulkActionBar />
+      </>
+    );
+  }
+
   return (
+    <>
     <div className="flex-1 overflow-x-auto overscroll-x-contain board-scroll p-3 sm:p-6 min-h-0">
       {mounted ? (
         listOrder.length === 0 ? (
@@ -69,5 +82,7 @@ export default function Board() {
         </div>
       )}
     </div>
+    <BulkActionBar />
+    </>
   );
 }

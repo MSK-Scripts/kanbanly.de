@@ -5,6 +5,8 @@ import { useBoard, type MemberProfile } from '@/store/boardStore';
 import { useBoardSync } from '@/lib/useBoardSync';
 import Board from './Board';
 import { CardModal } from './CardModal';
+import { PresenceManager } from './PresenceManager';
+import { LiveCursors } from './LiveCursors';
 
 type Props = {
   boardId: string;
@@ -33,6 +35,8 @@ type Props = {
     created_at: string;
   }>;
   initialCardLabels: Array<{ card_id: string; label_id: string }>;
+  currentUserId: string;
+  currentUsername: string | null;
 };
 
 export function BoardClient(props: Props) {
@@ -54,8 +58,14 @@ export function BoardClient(props: Props) {
 
   return (
     <>
+      <PresenceManager
+        boardId={props.boardId}
+        userId={props.currentUserId}
+        username={props.currentUsername}
+      />
       <Board />
       <CardModal />
+      <LiveCursors />
     </>
   );
 }

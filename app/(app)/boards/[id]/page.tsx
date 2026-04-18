@@ -4,7 +4,9 @@ import { BoardClient } from '@/components/BoardClient';
 import { BoardMenu } from '@/components/BoardMenu';
 import { BoardTabs } from '@/components/BoardTabs';
 import { BoardFilterBar } from '@/components/BoardFilterBar';
+import { GroupByToggle } from '@/components/GroupByToggle';
 import { MembersDialog } from '@/components/MembersDialog';
+import { PresenceAvatars } from '@/components/PresenceAvatars';
 import { RenameBoardTitle } from '@/components/RenameTitle';
 import { createClient } from '@/lib/supabase/server';
 import { fetchBoardData } from '@/lib/boardData';
@@ -42,6 +44,18 @@ export default async function BoardPage({
 
   const { board } = data;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .maybeSingle();
+  const currentUsername = (profile as { username?: string | null } | null)?.username ?? null;
+
   if (isUuid(id) && board.slug !== id) {
     redirect(`/boards/${board.slug}`);
   }
@@ -72,6 +86,8 @@ export default async function BoardPage({
           />
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <PresenceAvatars selfUserId={user.id} />
+          <GroupByToggle />
           <BoardFilterBar />
           <MembersDialog boardId={board.id} />
           <BoardMenu
@@ -91,6 +107,8 @@ export default async function BoardPage({
         initialMembers={data.initialMembers}
         initialLabels={data.initialLabels}
         initialCardLabels={data.initialCardLabels}
+        currentUserId={user.id}
+        currentUsername={currentUsername}
       />
     </>
   );

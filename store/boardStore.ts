@@ -131,8 +131,18 @@ type State = {
   setFilters: (next: Partial<BoardFilters>) => void;
   clearFilters: () => void;
 
+  groupBy: 'none' | 'assignee' | 'label';
+  setGroupBy: (g: 'none' | 'assignee' | 'label') => void;
+
   openCardId: string | null;
   setOpenCardId: (id: string | null) => void;
+
+  selectedCardIds: Record<string, true>;
+  toggleSelection: (cardId: string) => void;
+  clearSelection: () => void;
+  bulkDelete: () => Promise<void>;
+  bulkMove: (targetListId: string) => Promise<void>;
+  bulkToggleLabel: (labelId: string) => Promise<void>;
 
   hydrate: (
     boardId: string,
@@ -188,8 +198,150 @@ export const useBoard = create<State>((set, get) => ({
   pulsingCards: {},
   filters: { ...EMPTY_FILTERS },
   openCardId: null,
+  selectedCardIds: {},
+  groupBy: 'none',
+
+  setGroupBy: (g) => set({ groupBy: g }),
 
   setOpenCardId: (id) => set({ openCardId: id }),
+
+  toggleSelection: (cardId) =>
+    set((s) => {
+      const next = { ...s.selectedCardIds };
+      if (next[cardId]) delete next[cardId];
+      else next[cardId] = true;
+      return { selectedCardIds: next };
+    }),
+
+  clearSelection: () => set({ selectedCardIds: {} }),
+
+  async bulkDelete() {
+    const ids = Object.keys(get().selectedCardIds);
+    if (ids.length === 0) return;
+
+    set((s) => {
+      const newCards = { ...s.cards };
+      const newAssignees = { ...s.assignees };
+      const newCardLabels = { ...s.cardLabels };
+      for (const id of ids) {
+        delete newCards[id];
+        delete newAssignees[id];
+        delete newCardLabels[id];
+      }
+      const newLists: Record<string, ListT> = {};
+      for (const [lid, list] of Object.entries(s.lists)) {
+        newLists[lid] = {
+          ...list,
+          cardIds: list.cardIds.filter((cid) => !ids.includes(cid)),
+        };
+      }
+      return {
+        cards: newCards,
+        assignees: newAssignees,
+        cardLabels: newCardLabels,
+        lists: newLists,
+        selectedCardIds: {},
+        openCardId: ids.includes(s.openCardId ?? '') ? null : s.openCardId,
+      };
+    });
+
+    const supabase = createClient();
+    await supabase.from('cards').delete().in('id', ids);
+  },
+
+  async bulkMove(targetListId) {
+    const state = get();
+    const ids = Object.keys(state.selectedCardIds);
+    if (ids.length === 0) return;
+    const target = state.lists[targetListId];
+    if (!target) return;
+
+    state.suppressPulse(ids);
+
+    set((s) => {
+      const newLists: Record<string, ListT> = {};
+      for (const [lid, list] of Object.entries(s.lists)) {
+        newLists[lid] = {
+          ...list,
+          cardIds: list.cardIds.filter((cid) => !ids.includes(cid)),
+        };
+      }
+      const targetList = newLists[targetListId];
+      newLists[targetListId] = {
+        ...targetList,
+        cardIds: [...targetList.cardIds, ...ids],
+      };
+      return { lists: newLists };
+    });
+
+    const supabase = createClient();
+    const afterTarget = get().lists[targetListId];
+    const promises: PromiseLike<unknown>[] = [];
+    afterTarget.cardIds.forEach((cid, idx) => {
+      promises.push(
+        supabase
+          .from('cards')
+          .update({ list_id: targetListId, position: idx })
+          .eq('id', cid)
+      );
+    });
+    const affectedSourceListIds = Object.keys(state.lists).filter(
+      (lid) => lid !== targetListId
+    );
+    for (const lid of affectedSourceListIds) {
+      const list = get().lists[lid];
+      if (!list) continue;
+      list.cardIds.forEach((cid, idx) => {
+        promises.push(
+          supabase.from('cards').update({ position: idx }).eq('id', cid)
+        );
+      });
+    }
+    await Promise.all(promises);
+    set({ selectedCardIds: {} });
+  },
+
+  async bulkToggleLabel(labelId) {
+    const state = get();
+    const ids = Object.keys(state.selectedCardIds);
+    if (ids.length === 0) return;
+
+    const allHave = ids.every((cid) =>
+      (state.cardLabels[cid] ?? []).includes(labelId)
+    );
+    const supabase = createClient();
+
+    if (allHave) {
+      set((s) => {
+        const next = { ...s.cardLabels };
+        for (const id of ids) {
+          next[id] = (next[id] ?? []).filter((lid) => lid !== labelId);
+        }
+        return { cardLabels: next };
+      });
+      await supabase
+        .from('card_labels')
+        .delete()
+        .eq('label_id', labelId)
+        .in('card_id', ids);
+    } else {
+      const toAdd = ids.filter(
+        (cid) => !(state.cardLabels[cid] ?? []).includes(labelId)
+      );
+      set((s) => {
+        const next = { ...s.cardLabels };
+        for (const id of toAdd) {
+          next[id] = [...(next[id] ?? []), labelId];
+        }
+        return { cardLabels: next };
+      });
+      if (toAdd.length > 0) {
+        await supabase
+          .from('card_labels')
+          .insert(toAdd.map((cid) => ({ card_id: cid, label_id: labelId })));
+      }
+    }
+  },
 
   setFilters(next) {
     set((s) => ({ filters: { ...s.filters, ...next } }));
