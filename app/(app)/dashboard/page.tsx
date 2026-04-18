@@ -3,6 +3,10 @@ import { createClient } from '@/lib/supabase/server';
 import { CreateWorkspaceInline } from '@/components/CreateWorkspaceInline';
 import { CreateBoardInline } from '@/components/CreateBoardInline';
 
+export const metadata = {
+  title: 'Dashboard · kanbanly',
+};
+
 type SearchParams = { error?: string };
 
 export default async function Dashboard({

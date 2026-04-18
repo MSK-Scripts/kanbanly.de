@@ -3,11 +3,31 @@ import { notFound, redirect } from 'next/navigation';
 import { BoardClient } from '@/components/BoardClient';
 import { BoardMenu } from '@/components/BoardMenu';
 import { BoardTabs } from '@/components/BoardTabs';
+import { BoardFilterBar } from '@/components/BoardFilterBar';
 import { InviteDialog } from '@/components/InviteDialog';
 import { RenameBoardTitle } from '@/components/RenameTitle';
 import { createClient } from '@/lib/supabase/server';
 import { fetchBoardData } from '@/lib/boardData';
 import { isUuid } from '@/lib/slug';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const filterCol = isUuid(id) ? 'id' : 'slug';
+  const { data } = await supabase
+    .from('boards')
+    .select('name')
+    .eq(filterCol, id)
+    .maybeSingle();
+  const name = (data as { name?: string } | null)?.name;
+  return {
+    title: name ? `${name} · kanbanly` : 'Board · kanbanly',
+  };
+}
 
 export default async function BoardPage({
   params,
@@ -52,6 +72,7 @@ export default async function BoardPage({
           />
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <BoardFilterBar />
           <InviteDialog boardId={board.id} />
           <BoardMenu
             boardId={board.id}

@@ -6,6 +6,25 @@ import { RenameWorkspaceTitle } from '@/components/RenameTitle';
 import { WorkspaceMenu } from '@/components/WorkspaceMenu';
 import { isUuid } from '@/lib/slug';
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const filterCol = isUuid(id) ? 'id' : 'slug';
+  const { data } = await supabase
+    .from('workspaces')
+    .select('name')
+    .eq(filterCol, id)
+    .maybeSingle();
+  const name = (data as { name?: string } | null)?.name;
+  return {
+    title: name ? `${name} · kanbanly` : 'Workspace · kanbanly',
+  };
+}
+
 export default async function WorkspacePage({
   params,
 }: {

@@ -89,6 +89,26 @@ export type MemberProfile = {
   role: string;
 };
 
+export type DueBucketFilter =
+  | 'all'
+  | 'overdue'
+  | 'today'
+  | 'week'
+  | 'later'
+  | 'none';
+
+export type BoardFilters = {
+  labels: string[];
+  assignees: string[];
+  due: DueBucketFilter;
+};
+
+const EMPTY_FILTERS: BoardFilters = {
+  labels: [],
+  assignees: [],
+  due: 'all',
+};
+
 type State = {
   boardId: string | null;
   lists: Record<string, ListT>;
@@ -106,6 +126,10 @@ type State = {
   pulsingCards: Record<string, true>;
   suppressPulse: (cardIds: string[]) => void;
   maybePulse: (cardId: string) => void;
+
+  filters: BoardFilters;
+  setFilters: (next: Partial<BoardFilters>) => void;
+  clearFilters: () => void;
 
   openCardId: string | null;
   setOpenCardId: (id: string | null) => void;
@@ -160,9 +184,18 @@ export const useBoard = create<State>((set, get) => ({
   labelOrder: [],
   cardLabels: {},
   pulsingCards: {},
+  filters: { ...EMPTY_FILTERS },
   openCardId: null,
 
   setOpenCardId: (id) => set({ openCardId: id }),
+
+  setFilters(next) {
+    set((s) => ({ filters: { ...s.filters, ...next } }));
+  },
+
+  clearFilters() {
+    set({ filters: { ...EMPTY_FILTERS } });
+  },
 
   suppressPulse(cardIds) {
     const until = Date.now() + PULSE_SUPPRESS_MS;
@@ -265,7 +298,7 @@ export const useBoard = create<State>((set, get) => ({
       cardLabelsObj[cl.card_id].push(cl.label_id);
     }
 
-    set({
+    set((s) => ({
       boardId,
       lists: listsObj,
       cards: cardsObj,
@@ -276,7 +309,8 @@ export const useBoard = create<State>((set, get) => ({
       labels: labelsObj,
       labelOrder,
       cardLabels: cardLabelsObj,
-    });
+      filters: s.boardId === boardId ? s.filters : { ...EMPTY_FILTERS },
+    }));
   },
 
   async createLabel(name, color) {

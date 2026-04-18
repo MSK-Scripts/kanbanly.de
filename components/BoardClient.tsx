@@ -1,5 +1,7 @@
 'use client';
-import { type MemberProfile } from '@/store/boardStore';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useBoard, type MemberProfile } from '@/store/boardStore';
 import { useBoardSync } from '@/lib/useBoardSync';
 import Board from './Board';
 import { CardModal } from './CardModal';
@@ -35,6 +37,20 @@ type Props = {
 
 export function BoardClient(props: Props) {
   useBoardSync(props);
+  const searchParams = useSearchParams();
+  const cardFromUrl = searchParams.get('card');
+  const setOpenCardId = useBoard((s) => s.setOpenCardId);
+
+  useEffect(() => {
+    if (!cardFromUrl) return;
+    const handle = setTimeout(() => {
+      const state = useBoard.getState();
+      if (state.cards[cardFromUrl]) {
+        setOpenCardId(cardFromUrl);
+      }
+    }, 50);
+    return () => clearTimeout(handle);
+  }, [cardFromUrl, setOpenCardId]);
 
   return (
     <>

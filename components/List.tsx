@@ -1,8 +1,9 @@
 'use client';
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { useBoard } from '@/store/boardStore';
+import { cardMatchesFilters, isFilterActive } from '@/lib/filterCards';
 import { Card } from './Card';
 import { PlusIcon } from './Icons';
 import { InlineEditableText } from './InlineEditableText';
@@ -14,6 +15,10 @@ function ListInner({ listId }: Props) {
   const list = useBoard((s) => s.lists[listId]);
   const addCard = useBoard((s) => s.addCard);
   const renameList = useBoard((s) => s.renameList);
+  const filters = useBoard((s) => s.filters);
+  const cards = useBoard((s) => s.cards);
+  const assignees = useBoard((s) => s.assignees);
+  const cardLabels = useBoard((s) => s.cardLabels);
   const [newTitle, setNewTitle] = useState('');
   const [adding, setAdding] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -21,6 +26,15 @@ function ListInner({ listId }: Props) {
   useEffect(() => {
     setPortalTarget(document.body);
   }, []);
+
+  const filterOn = isFilterActive(filters);
+  const visibleCardIds = useMemo(() => {
+    if (!list) return [];
+    if (!filterOn) return list.cardIds;
+    return list.cardIds.filter((cid) =>
+      cardMatchesFilters(cid, { filters, cards, assignees, cardLabels })
+    );
+  }, [list, filterOn, filters, cards, assignees, cardLabels]);
 
   if (!list) return null;
 
@@ -53,7 +67,9 @@ function ListInner({ listId }: Props) {
             inputClassName="text-sm font-semibold tracking-wide text-slate-100 bg-slate-800 border border-slate-600 rounded px-1 -mx-1 focus:outline-none focus:ring-1 focus:ring-violet-400/60 min-w-0"
           />
           <span className="text-[11px] text-slate-500 tabular-nums font-mono">
-            {list.cardIds.length}
+            {filterOn && visibleCardIds.length !== list.cardIds.length
+              ? `${visibleCardIds.length}/${list.cardIds.length}`
+              : list.cardIds.length}
           </span>
         </div>
         <ListMenu listId={list.id} />
@@ -68,29 +84,38 @@ function ListInner({ listId }: Props) {
               snapshot.isDraggingOver ? 'bg-slate-800/30' : ''
             }`}
           >
-            {list.cardIds.map((cardId, idx) => (
-              <Draggable key={cardId} draggableId={cardId} index={idx}>
-                {(drag, snap) => {
-                  const content = (
-                    <div
-                      ref={drag.innerRef}
-                      {...drag.draggableProps}
-                      {...drag.dragHandleProps}
-                      style={{
-                        ...drag.draggableProps.style,
-                        zIndex: snap.isDragging ? 9999 : undefined,
-                      }}
-                    >
-                      <Card id={cardId} isDragging={snap.isDragging} />
-                    </div>
-                  );
-                  if (snap.isDragging && portalTarget) {
-                    return createPortal(content, portalTarget);
-                  }
-                  return content;
-                }}
-              </Draggable>
-            ))}
+            {list.cardIds.map((cardId, idx) => {
+              const dimmed =
+                filterOn && !visibleCardIds.includes(cardId);
+              return (
+                <Draggable key={cardId} draggableId={cardId} index={idx}>
+                  {(drag, snap) => {
+                    const content = (
+                      <div
+                        ref={drag.innerRef}
+                        {...drag.draggableProps}
+                        {...drag.dragHandleProps}
+                        style={{
+                          ...drag.draggableProps.style,
+                          zIndex: snap.isDragging ? 9999 : undefined,
+                        }}
+                        className={
+                          dimmed && !snap.isDragging
+                            ? 'opacity-25 transition-opacity'
+                            : 'transition-opacity'
+                        }
+                      >
+                        <Card id={cardId} isDragging={snap.isDragging} />
+                      </div>
+                    );
+                    if (snap.isDragging && portalTarget) {
+                      return createPortal(content, portalTarget);
+                    }
+                    return content;
+                  }}
+                </Draggable>
+              );
+            })}
             {provided.placeholder}
           </div>
         )}

@@ -110,6 +110,17 @@ export async function createBoard(formData: FormData) {
       error instanceof Error ? error.message : 'Board konnte nicht erstellt werden';
     redirect(`/dashboard?error=${encodeURIComponent(msg)}`);
   }
+
+  const defaultLists = [
+    { board_id: data.id, title: 'To do', position: 0 },
+    { board_id: data.id, title: 'In Arbeit', position: 1 },
+    { board_id: data.id, title: 'Erledigt', position: 2 },
+  ];
+  const { error: listsError } = await supabase
+    .from('lists')
+    .insert(defaultLists);
+  if (listsError) console.error('createBoard defaultLists', listsError);
+
   revalidatePath('/dashboard');
   redirect(`/boards/${data.slug}`);
 }

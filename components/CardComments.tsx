@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { createClient } from '@/lib/supabase/client';
 import { confirm } from '@/store/confirmStore';
+import { withMentions } from '@/lib/mentions';
+import { useBoard } from '@/store/boardStore';
 import { Avatar } from './Avatar';
 
 type CommentRow = {
@@ -39,6 +41,8 @@ export function CardComments({ cardId }: { cardId: string }) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+  const memberProfiles = useBoard((s) => s.memberProfiles);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -71,7 +75,11 @@ export function CardComments({ cardId }: { cardId: string }) {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!cancelled) setCurrentUserId(user?.id ?? null);
+      if (!cancelled) {
+        setCurrentUserId(user?.id ?? null);
+        const profile = user ? memberProfiles[user.id] : undefined;
+        setCurrentUsername(profile?.username ?? null);
+      }
 
       const { data } = await supabase
         .from('card_comments')
@@ -194,7 +202,17 @@ export function CardComments({ cardId }: { cardId: string }) {
                   )}
                 </div>
                 <div className="rounded-lg bg-slate-800/60 border border-slate-700/60 px-3 py-2 text-sm text-slate-200 prose-markdown">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ children }) => (
+                        <p>{withMentions(children, currentUsername)}</p>
+                      ),
+                      li: ({ children }) => (
+                        <li>{withMentions(children, currentUsername)}</li>
+                      ),
+                    }}
+                  >
                     {c.content}
                   </ReactMarkdown>
                 </div>

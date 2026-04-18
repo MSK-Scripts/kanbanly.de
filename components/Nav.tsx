@@ -34,6 +34,12 @@ export async function Nav() {
       <div className="flex items-center gap-3">
         {user && (
           <>
+            <Link
+              href="/meine-karten"
+              className="text-xs text-slate-300 hover:text-slate-100 transition-colors hidden sm:inline"
+            >
+              Meine Karten
+            </Link>
             <span className="text-xs text-slate-400 hidden sm:inline">
               {displayName}
             </span>
