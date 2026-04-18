@@ -4,6 +4,58 @@ import { LegalFooter } from '@/components/LegalFooter';
 import { HelpMenu } from '@/components/HelpMenu';
 import { BoardPreview } from '@/components/BoardPreview';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanbanly.de';
+
+export const metadata = {
+  title:
+    'kanbanly — minimalistische Kanban-Alternative auf Deutsch · Flow first. Build fast.',
+  description:
+    'Kanbanly ist ein schlankes Kanban-Tool für Selbstständige und kleine Teams: Boards, Karten, Labels, Fälligkeiten, Zuweisungen, Realtime-Sync. Kostenlos, DSGVO-konform, ohne Ballast.',
+  alternates: { canonical: SITE_URL },
+  openGraph: {
+    title: 'kanbanly — minimalistische Kanban-Alternative',
+    description:
+      'Schlankes Kanban-Tool auf Deutsch. Boards, Labels, Realtime-Sync. Kostenlos und DSGVO-konform.',
+    url: SITE_URL,
+  },
+};
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'kanbanly',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  url: SITE_URL,
+  description:
+    'Minimalistisches Kanban-Tool für Selbstständige und kleine Teams. Boards, Karten, Labels, Fälligkeiten, Zuweisungen, Realtime-Sync. DSGVO-konform, auf Deutsch, kostenlos.',
+  inLanguage: 'de-DE',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'EUR',
+  },
+  creator: {
+    '@type': 'Person',
+    name: 'Felix Franzen',
+  },
+  featureList: [
+    'Drag & Drop Kanban-Board',
+    'Workspaces und Boards',
+    'Labels in acht Farben',
+    'Fälligkeitsdaten mit visueller Warnung',
+    'Mitglieder-Zuweisungen',
+    'Checklisten pro Karte',
+    'Markdown-Beschreibungen',
+    'Karten-Kommentare mit @mentions',
+    'Aktivitätslog pro Karte',
+    'Kalender-Ansicht',
+    'Realtime-Synchronisation zwischen Sessions',
+    'Rollen Viewer, Editor, Admin',
+    'Lesbare Slug-URLs',
+  ],
+};
+
 export default async function LandingPage() {
   const supabase = await createClient();
   const {
@@ -14,6 +66,10 @@ export default async function LandingPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <header className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex flex-col">
           <h1 className="text-base font-semibold text-slate-100 tracking-tight leading-none">

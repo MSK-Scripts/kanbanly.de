@@ -16,6 +16,17 @@ html,
 body {
   min-height: 100%;
   color: var(--foreground);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea,
+[contenteditable],
+[contenteditable] * {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 body {

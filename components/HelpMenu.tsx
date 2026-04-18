@@ -54,7 +54,7 @@ export function HelpMenu() {
               Neuigkeiten
             </h3>
           </div>
-          <ul className="max-h-80 overflow-y-auto divide-y divide-slate-800">
+          <ul className="max-h-80 overflow-y-auto board-scroll divide-y divide-slate-800">
             {recent.map((u, i) => (
               <li key={i} className="px-4 py-3">
                 <div className="flex items-baseline justify-between gap-2 mb-0.5">
