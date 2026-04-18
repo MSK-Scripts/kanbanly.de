@@ -33,7 +33,7 @@ export function HelpMenu() {
     };
   }, [open]);
 
-  const recent = updates.slice(0, 5);
+  const recent = updates.slice(0, 10);
 
   return (
     <div ref={ref} className="relative">
