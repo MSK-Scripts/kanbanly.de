@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState } from 'react';
 import { createBoard } from '@/app/(app)/actions';
 import { PlusIcon } from './Icons';
@@ -47,6 +48,12 @@ export function CreateBoardInline({ workspaceId }: { workspaceId: string }) {
           Abbrechen
         </button>
       </div>
+      <Link
+        href="/templates"
+        className="text-[11px] text-subtle hover:text-accent-soft text-center mt-0.5"
+      >
+        Oder aus Template erstellen →
+      </Link>
     </form>
   );
 }

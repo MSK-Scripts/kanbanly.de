@@ -74,9 +74,16 @@ export function HelpMenu() {
 
           <div className="px-4 pt-2 pb-3 border-t border-line bg-bg/40">
             <h3 className="text-[11px] font-semibold text-subtle uppercase tracking-wide mb-1.5">
-              Rechtliches
+              Links
             </h3>
             <div className="flex flex-col gap-1">
+              <Link
+                href="/templates"
+                onClick={() => setOpen(false)}
+                className="text-xs text-fg-soft hover:text-accent-soft"
+              >
+                Templates durchstöbern
+              </Link>
               <Link
                 href="/impressum"
                 onClick={() => setOpen(false)}

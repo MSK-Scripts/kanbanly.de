@@ -7,6 +7,24 @@ export type Update = {
 export const updates: Update[] = [
   {
     date: '2026-04-18',
+    title: 'Board-Templates + Community',
+    description:
+      'Starte Boards aus kuratierten Templates (Sprint, Content-Kalender, GTD). Speichere eigene als Template — privat oder öffentlich für die Community.',
+  },
+  {
+    date: '2026-04-18',
+    title: 'Light- und Dark-Mode',
+    description:
+      'Theme-Toggle im Header. Wird persistiert und respektiert deine System-Einstellung.',
+  },
+  {
+    date: '2026-04-18',
+    title: 'E-Mail-Bestätigung als Zwei-Schritt',
+    description:
+      'Der Bestätigungslink führt jetzt zu einer Seite mit „Jetzt bestätigen"-Button — so können Mail-Scanner den Token nicht mehr vorab verbrauchen.',
+  },
+  {
+    date: '2026-04-18',
     title: 'Spielbare Demo auf der Startseite',
     description:
       'Die Landing zeigt jetzt ein echtes, anfassbares Kanban-Board. Karten ziehen, Tasks abhaken — ganz ohne Anmeldung.',
