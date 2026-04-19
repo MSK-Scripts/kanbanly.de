@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { login } from '../actions';
+import { OAuthButtons } from '@/components/OAuthButtons';
 
 type SearchParams = { error?: string; next?: string };
 
@@ -61,6 +62,8 @@ export default async function LoginPage({
           Anmelden
         </button>
       </form>
+
+      <OAuthButtons />
 
       <div className="mt-4 text-center">
         <Link

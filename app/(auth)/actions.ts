@@ -243,6 +243,46 @@ export async function regenerateRecoveryCodes(): Promise<
   return { ok: true };
 }
 
+export async function completeUsername(formData: FormData) {
+  const username = String(formData.get('username') ?? '').trim();
+  const next = safeNext(String(formData.get('next') ?? '/dashboard'));
+
+  const usernameError = validateUsername(username);
+  if (usernameError) {
+    redirect(
+      `/register/username?error=${encodeURIComponent(usernameError)}&next=${encodeURIComponent(next)}`
+    );
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: taken } = await supabase.rpc('username_exists', {
+    u: username,
+  });
+  if (taken) {
+    redirect(
+      `/register/username?error=${encodeURIComponent(`Der Benutzername „${username}" ist schon vergeben.`)}&next=${encodeURIComponent(next)}`
+    );
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from('profiles')
+    .update({ username })
+    .eq('id', user.id);
+  if (error) {
+    redirect(
+      `/register/username?error=${encodeURIComponent(translateAuthError(error.message))}&next=${encodeURIComponent(next)}`
+    );
+  }
+
+  redirect(next);
+}
+
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();

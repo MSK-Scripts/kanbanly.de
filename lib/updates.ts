@@ -7,6 +7,12 @@ export type Update = {
 export const updates: Update[] = [
   {
     date: '2026-04-19',
+    title: 'Login mit GitHub und Discord',
+    description:
+      'Auf den Login- und Register-Seiten kannst du jetzt mit deinem GitHub- oder Discord-Account starten. Benutzername wird aus deinem Profil vorgeschlagen und kann einmalig angepasst werden.',
+  },
+  {
+    date: '2026-04-19',
     title: 'Recovery-Codes statt E-Mail-Bestätigung',
     description:
       'Kein Bestätigungslink mehr beim Signup. Stattdessen kriegst du 8 Recovery-Codes zum Speichern — einer davon setzt dein Passwort zurück, falls du es vergisst. Keine Wartezeiten, kein Rate-Limit.',

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { register } from '../actions';
+import { OAuthButtons } from '@/components/OAuthButtons';
 
 type SearchParams = { error?: string };
 
@@ -90,6 +91,8 @@ export default async function RegisterPage({
           Registrieren
         </button>
       </form>
+
+      <OAuthButtons />
 
       <p className="mt-5 text-center text-xs text-muted">
         Schon ein Konto?{' '}
