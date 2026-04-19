@@ -132,6 +132,15 @@ export async function revokeInvite(
   return { ok: true };
 }
 
+function translateInviteError(raw: string): string {
+  if (raw.includes('email_mismatch'))
+    return 'Diese Einladung wurde an eine andere E-Mail-Adresse geschickt. Melde dich mit der Adresse an, an die die Einladung ging.';
+  if (raw.includes('invitation_invalid_or_expired'))
+    return 'Diese Einladung ist abgelaufen oder wurde widerrufen.';
+  if (raw.includes('not_authenticated')) return 'Bitte melde dich an.';
+  return raw;
+}
+
 export async function acceptInviteByToken(
   token: string
 ): Promise<{ ok: true; boardSlug: string | null } | { ok: false; error: string }> {
@@ -143,7 +152,7 @@ export async function acceptInviteByToken(
   if (!user) return { ok: false, error: 'Nicht angemeldet.' };
 
   const { data, error } = await supabase.rpc('accept_invitation', { t: token });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: translateInviteError(error.message) };
 
   if (!data) return { ok: true, boardSlug: null };
 
