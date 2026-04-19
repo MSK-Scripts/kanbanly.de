@@ -7,6 +7,18 @@ export type Update = {
 export const updates: Update[] = [
   {
     date: '2026-04-19',
+    title: 'Board-Layout: 2 Spalten für mehr Übersicht',
+    description:
+      'Öffnet eine Karte, siehst du links Name, Labels, Beschreibung und Checkliste — rechts direkt Kommentare und Aktivität. Kein ewiges Scrollen mehr.',
+  },
+  {
+    date: '2026-04-19',
+    title: 'Board mit KI erstellen (Beta)',
+    description:
+      'Beim Erstellen eines Boards: „✨ Teste die KI" klicken, Projekt beschreiben — Kanbanly generiert Listen, Labels und Beispielkarten. Powered by Gemini.',
+  },
+  {
+    date: '2026-04-19',
     title: 'Login mit GitHub und Discord',
     description:
       'Auf den Login- und Register-Seiten kannst du jetzt mit deinem GitHub- oder Discord-Account starten. Benutzername wird aus deinem Profil vorgeschlagen und kann einmalig angepasst werden.',
