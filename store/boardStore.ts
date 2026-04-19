@@ -528,6 +528,8 @@ export const useBoard = create<State>((set, get) => ({
     const supabase = createClient();
     const label = get().labels[labelId];
     const labelName = label?.name ?? '';
+    const cardTitle = get().cards[cardId]?.title ?? '';
+    const bId = get().boardId;
     if (applied) {
       const { error } = await supabase
         .from('card_labels')
@@ -535,13 +537,33 @@ export const useBoard = create<State>((set, get) => ({
         .eq('card_id', cardId)
         .eq('label_id', labelId);
       if (error) console.error('toggleCardLabel remove', error);
-      else logActivity(cardId, 'label_removed', { label: labelName });
+      else {
+        logActivity(cardId, 'label_removed', { label: labelName });
+        if (bId && cardTitle) {
+          notifyBoardEvent(bId, {
+            kind: 'label_removed',
+            cardId,
+            cardTitle,
+            labelName,
+          }).catch(() => {});
+        }
+      }
     } else {
       const { error } = await supabase
         .from('card_labels')
         .insert({ card_id: cardId, label_id: labelId });
       if (error) console.error('toggleCardLabel add', error);
-      else logActivity(cardId, 'label_added', { label: labelName });
+      else {
+        logActivity(cardId, 'label_added', { label: labelName });
+        if (bId && cardTitle) {
+          notifyBoardEvent(bId, {
+            kind: 'label_added',
+            cardId,
+            cardTitle,
+            labelName,
+          }).catch(() => {});
+        }
+      }
     }
   },
 
@@ -562,6 +584,9 @@ export const useBoard = create<State>((set, get) => ({
     const supabase = createClient();
     const profile = get().memberProfiles[userId];
     const username = profile?.username ?? null;
+    const who = username ? `@${username}` : 'jemand';
+    const cardTitle = get().cards[cardId]?.title ?? '';
+    const bId = get().boardId;
     if (isAssigned) {
       const { error } = await supabase
         .from('card_assignees')
@@ -569,13 +594,33 @@ export const useBoard = create<State>((set, get) => ({
         .eq('card_id', cardId)
         .eq('user_id', userId);
       if (error) console.error('toggleAssignee remove', error);
-      else logActivity(cardId, 'assignee_removed', { user_id: userId, username });
+      else {
+        logActivity(cardId, 'assignee_removed', { user_id: userId, username });
+        if (bId && cardTitle) {
+          notifyBoardEvent(bId, {
+            kind: 'assignee_removed',
+            cardId,
+            cardTitle,
+            who,
+          }).catch(() => {});
+        }
+      }
     } else {
       const { error } = await supabase
         .from('card_assignees')
         .insert({ card_id: cardId, user_id: userId });
       if (error) console.error('toggleAssignee add', error);
-      else logActivity(cardId, 'assignee_added', { user_id: userId, username });
+      else {
+        logActivity(cardId, 'assignee_added', { user_id: userId, username });
+        if (bId && cardTitle) {
+          notifyBoardEvent(bId, {
+            kind: 'assignee_added',
+            cardId,
+            cardTitle,
+            who,
+          }).catch(() => {});
+        }
+      }
     }
   },
 
@@ -766,6 +811,7 @@ export const useBoard = create<State>((set, get) => ({
     if (!card) return;
     const trimmed = title.trim();
     if (!trimmed || trimmed === card.title) return;
+    const fromTitle = card.title;
     get().suppressPulse([cardId]);
 
     set((state) => ({
@@ -781,7 +827,18 @@ export const useBoard = create<State>((set, get) => ({
       .update({ title: trimmed })
       .eq('id', cardId);
     if (error) console.error('updateCardTitle', error);
-    else logActivity(cardId, 'renamed', { from: card.title, to: trimmed });
+    else {
+      logActivity(cardId, 'renamed', { from: fromTitle, to: trimmed });
+      const bId = get().boardId;
+      if (bId) {
+        notifyBoardEvent(bId, {
+          kind: 'card_renamed',
+          cardId,
+          fromTitle,
+          toTitle: trimmed,
+        }).catch(() => {});
+      }
+    }
   },
 
   async updateCardDueDate(cardId, due) {
@@ -804,7 +861,27 @@ export const useBoard = create<State>((set, get) => ({
       .update({ due_date: next })
       .eq('id', cardId);
     if (error) console.error('updateCardDueDate', error);
-    else logActivity(cardId, next ? 'due_set' : 'due_cleared', { due: next });
+    else {
+      logActivity(cardId, next ? 'due_set' : 'due_cleared', { due: next });
+      const bId = get().boardId;
+      const cardTitle = card.title;
+      if (bId) {
+        if (next) {
+          notifyBoardEvent(bId, {
+            kind: 'card_due_set',
+            cardId,
+            cardTitle,
+            due: next,
+          }).catch(() => {});
+        } else {
+          notifyBoardEvent(bId, {
+            kind: 'card_due_cleared',
+            cardId,
+            cardTitle,
+          }).catch(() => {});
+        }
+      }
+    }
   },
 
   async updateCardDescription(cardId, description) {
@@ -873,6 +950,15 @@ export const useBoard = create<State>((set, get) => ({
     const supabase = createClient();
     const { error } = await supabase.from('cards').delete().eq('id', cardId);
     if (error) console.error('deleteCard', error);
+    else {
+      const bId = get().boardId;
+      if (bId) {
+        notifyBoardEvent(bId, {
+          kind: 'card_deleted',
+          cardTitle: card.title,
+        }).catch(() => {});
+      }
+    }
   },
 
   async addTask(cardId, title) {
@@ -897,7 +983,18 @@ export const useBoard = create<State>((set, get) => ({
       .from('tasks')
       .insert({ id, card_id: cardId, title, position });
     if (error) console.error('addTask', error);
-    else logActivity(cardId, 'task_added', { title });
+    else {
+      logActivity(cardId, 'task_added', { title });
+      const bId = get().boardId;
+      if (bId) {
+        notifyBoardEvent(bId, {
+          kind: 'task_added',
+          cardId,
+          cardTitle: card.title,
+          taskTitle: title,
+        }).catch(() => {});
+      }
+    }
   },
 
   async toggleTask(cardId, taskId) {
@@ -926,10 +1023,20 @@ export const useBoard = create<State>((set, get) => ({
       .update({ done: newDone })
       .eq('id', taskId);
     if (error) console.error('toggleTask', error);
-    else
+    else {
       logActivity(cardId, newDone ? 'task_done' : 'task_undone', {
         title: task.title,
       });
+      const bId = get().boardId;
+      if (bId) {
+        notifyBoardEvent(bId, {
+          kind: newDone ? 'task_done' : 'task_undone',
+          cardId,
+          cardTitle: card.title,
+          taskTitle: task.title,
+        }).catch(() => {});
+      }
+    }
   },
 
   async duplicateCard(cardId) {
@@ -1056,6 +1163,17 @@ export const useBoard = create<State>((set, get) => ({
     const supabase = createClient();
     const { error } = await supabase.from('tasks').delete().eq('id', taskId);
     if (error) console.error('deleteTask', error);
-    else logActivity(cardId, 'task_deleted', { title: task?.title ?? null });
+    else {
+      logActivity(cardId, 'task_deleted', { title: task?.title ?? null });
+      const bId = get().boardId;
+      if (bId && task?.title) {
+        notifyBoardEvent(bId, {
+          kind: 'task_deleted',
+          cardId,
+          cardTitle: card.title,
+          taskTitle: task.title,
+        }).catch(() => {});
+      }
+    }
   },
 }));

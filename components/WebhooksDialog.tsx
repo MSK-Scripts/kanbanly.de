@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import {
   getBoardWebhook,
   saveBoardWebhook,
+  updateBoardWebhookSettings,
   deleteBoardWebhook,
   testBoardWebhook,
 } from '@/app/(app)/webhook-actions';
@@ -14,19 +15,67 @@ type Props = {
   onClose: () => void;
 };
 
-const EVENT_LABELS: Record<string, string> = {
-  card_created: 'Neue Karte',
-  card_moved: 'Karte verschoben',
-};
+type EventGroup = { label: string; events: Array<{ key: string; label: string }> };
 
-const AVAILABLE_EVENTS = ['card_created', 'card_moved'];
+const EVENT_GROUPS: EventGroup[] = [
+  {
+    label: 'Karten',
+    events: [
+      { key: 'card_created', label: 'Neue Karte' },
+      { key: 'card_moved', label: 'Karte verschoben' },
+      { key: 'card_renamed', label: 'Karte umbenannt' },
+      { key: 'card_deleted', label: 'Karte gelöscht' },
+      { key: 'card_due_set', label: 'Fälligkeit gesetzt' },
+      { key: 'card_due_cleared', label: 'Fälligkeit entfernt' },
+    ],
+  },
+  {
+    label: 'Tasks',
+    events: [
+      { key: 'task_added', label: 'Neuer Task' },
+      { key: 'task_done', label: 'Task abgehakt' },
+      { key: 'task_undone', label: 'Task wieder offen' },
+      { key: 'task_deleted', label: 'Task gelöscht' },
+    ],
+  },
+  {
+    label: 'Labels & Zuweisungen',
+    events: [
+      { key: 'label_added', label: 'Label hinzugefügt' },
+      { key: 'label_removed', label: 'Label entfernt' },
+      { key: 'assignee_added', label: 'Zuweisung hinzugefügt' },
+      { key: 'assignee_removed', label: 'Zuweisung entfernt' },
+    ],
+  },
+  {
+    label: 'Kommentare',
+    events: [
+      { key: 'comment_added', label: 'Neuer Kommentar' },
+      { key: 'comment_deleted', label: 'Kommentar gelöscht' },
+    ],
+  },
+];
+
+function maskUrl(url: string): string {
+  // https://discord.com/api/webhooks/ID/TOKEN → show host + last 6 of token
+  const m = url.match(
+    /^(https:\/\/(?:discord|discordapp)\.com\/api\/webhooks\/)(\d+)\/([A-Za-z0-9_-]+)$/
+  );
+  if (!m) return '•••••';
+  const [, prefix, , token] = m;
+  const last = token.slice(-6);
+  return `${prefix}•••/•••${last}`;
+}
 
 export function WebhooksDialog({ boardId, onClose }: Props) {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [url, setUrl] = useState('');
+  const [savedUrl, setSavedUrl] = useState<string | null>(null);
+  const [urlInput, setUrlInput] = useState('');
+  const [editingUrl, setEditingUrl] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [enabled, setEnabled] = useState(true);
-  const [events, setEvents] = useState<string[]>(AVAILABLE_EVENTS);
+  const [events, setEvents] = useState<string[]>([]);
   const [message, setMessage] = useState<
     { kind: 'ok' | 'err'; text: string } | null
   >(null);
@@ -47,9 +96,11 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
       const existing = await getBoardWebhook(boardId);
       if (cancelled) return;
       if (existing) {
-        setUrl(existing.url);
+        setSavedUrl(existing.url);
         setEnabled(existing.enabled);
-        setEvents(existing.events.length > 0 ? existing.events : AVAILABLE_EVENTS);
+        setEvents(existing.events);
+      } else {
+        setEditingUrl(true);
       }
       setLoading(false);
     })();
@@ -65,11 +116,32 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
       cur.includes(e) ? cur.filter((x) => x !== e) : [...cur, e]
     );
 
-  const save = () => {
+  const saveUrl = () => {
     setMessage(null);
     startTransition(async () => {
-      const res = await saveBoardWebhook(boardId, url.trim(), enabled, events);
-      if (res.ok) setMessage({ kind: 'ok', text: 'Gespeichert.' });
+      const res = await saveBoardWebhook(
+        boardId,
+        urlInput.trim(),
+        enabled,
+        events
+      );
+      if (res.ok) {
+        setSavedUrl(urlInput.trim());
+        setUrlInput('');
+        setEditingUrl(false);
+        setRevealed(false);
+        setMessage({ kind: 'ok', text: 'URL gespeichert.' });
+      } else {
+        setMessage({ kind: 'err', text: res.error });
+      }
+    });
+  };
+
+  const saveSettings = () => {
+    setMessage(null);
+    startTransition(async () => {
+      const res = await updateBoardWebhookSettings(boardId, enabled, events);
+      if (res.ok) setMessage({ kind: 'ok', text: 'Einstellungen gespeichert.' });
       else setMessage({ kind: 'err', text: res.error });
     });
   };
@@ -96,9 +168,10 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
     startTransition(async () => {
       const res = await deleteBoardWebhook(boardId);
       if (res.ok) {
-        setUrl('');
-        setEnabled(true);
-        setEvents(AVAILABLE_EVENTS);
+        setSavedUrl(null);
+        setUrlInput('');
+        setEditingUrl(true);
+        setRevealed(false);
         setMessage({ kind: 'ok', text: 'Webhook entfernt.' });
       } else {
         setMessage({ kind: 'err', text: res.error });
@@ -113,12 +186,12 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-surface border border-line shadow-2xl">
-        <div className="px-5 py-4 border-b border-line flex items-start justify-between gap-3">
+      <div className="w-full max-w-xl max-h-[90vh] rounded-2xl bg-surface border border-line shadow-2xl flex flex-col overflow-hidden">
+        <div className="px-5 py-4 border-b border-line flex items-start justify-between gap-3 shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-fg">Discord-Webhook</h2>
             <p className="text-xs text-muted mt-0.5">
-              Board-Events landen automatisch in deinem Discord-Channel.
+              Wähl aus, welche Board-Events in deinem Channel landen.
             </p>
           </div>
           <button
@@ -134,61 +207,148 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
         {loading ? (
           <div className="p-5 text-xs text-subtle">Lade…</div>
         ) : (
-          <div className="p-5 space-y-4">
+          <div className="p-5 space-y-5 overflow-y-auto board-scroll min-h-0">
             <div>
-              <label
-                htmlFor="wh-url"
-                className="block text-xs text-muted mb-1"
-              >
+              <label className="block text-xs text-muted mb-1">
                 Webhook-URL
               </label>
-              <input
-                id="wh-url"
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://discord.com/api/webhooks/…/…"
-                className="w-full rounded-lg bg-elev/80 border border-line-strong px-3 py-1.5 text-xs font-mono text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
-              />
+              {savedUrl && !editingUrl ? (
+                <div className="flex items-center gap-2 rounded-lg bg-elev/60 border border-line-strong px-3 py-1.5">
+                  <span className="flex-1 text-xs font-mono text-fg-soft truncate">
+                    {revealed ? savedUrl : maskUrl(savedUrl)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRevealed((v) => !v)}
+                    className="text-[11px] text-muted hover:text-fg-soft shrink-0"
+                  >
+                    {revealed ? 'Verbergen' : 'Anzeigen'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingUrl(true);
+                      setUrlInput('');
+                      setRevealed(false);
+                    }}
+                    className="text-[11px] text-accent-soft hover:text-accent-hover shrink-0"
+                  >
+                    Ändern
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="https://discord.com/api/webhooks/…/…"
+                    autoFocus
+                    className="flex-1 rounded-lg bg-elev/80 border border-line-strong px-3 py-1.5 text-xs font-mono text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+                  />
+                  <button
+                    type="button"
+                    onClick={saveUrl}
+                    disabled={pending || !urlInput.trim()}
+                    className="rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5"
+                  >
+                    {pending ? '…' : savedUrl ? 'Ersetzen' : 'Speichern'}
+                  </button>
+                  {savedUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingUrl(false);
+                        setUrlInput('');
+                      }}
+                      className="text-[11px] text-muted hover:text-fg-soft px-2"
+                    >
+                      Zurück
+                    </button>
+                  )}
+                </div>
+              )}
               <p className="text-[11px] text-subtle mt-1 leading-relaxed">
                 In Discord: Channel → Einstellungen → Integrationen → Webhooks
-                → „Neuer Webhook" → Name + Avatar → URL kopieren.
+                → „Neuer Webhook" → URL kopieren.
               </p>
             </div>
 
-            <div>
-              <p className="text-xs text-muted mb-1.5">Events</p>
-              <div className="flex flex-wrap gap-2">
-                {AVAILABLE_EVENTS.map((e) => (
-                  <label
-                    key={e}
-                    className="inline-flex items-center gap-1.5 cursor-pointer rounded-md border border-line-strong bg-elev/60 px-2 py-1"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={events.includes(e)}
-                      onChange={() => toggleEvent(e)}
-                      className="h-3.5 w-3.5 accent-accent"
-                    />
-                    <span className="text-[11px] text-fg-soft">
-                      {EVENT_LABELS[e] ?? e}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            {savedUrl && (
+              <>
+                <div>
+                  <p className="text-xs text-muted mb-2">Events</p>
+                  <div className="space-y-3">
+                    {EVENT_GROUPS.map((g) => (
+                      <div key={g.label}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <h4 className="text-[10px] font-semibold text-subtle uppercase tracking-wide">
+                            {g.label}
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const all = g.events.map((e) => e.key);
+                              const allOn = all.every((k) => events.includes(k));
+                              if (allOn) {
+                                setEvents((cur) =>
+                                  cur.filter((k) => !all.includes(k))
+                                );
+                              } else {
+                                setEvents((cur) =>
+                                  Array.from(new Set([...cur, ...all]))
+                                );
+                              }
+                            }}
+                            className="text-[10px] text-muted hover:text-accent-soft"
+                          >
+                            Alle
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {g.events.map((e) => {
+                            const on = events.includes(e.key);
+                            return (
+                              <label
+                                key={e.key}
+                                className={`inline-flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1 text-[11px] transition-colors ${
+                                  on
+                                    ? 'bg-accent/15 border-accent-hover/50 text-fg'
+                                    : 'bg-elev/50 border-line-strong text-muted hover:text-fg-soft'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={on}
+                                  onChange={() => toggleEvent(e.key)}
+                                  className="h-3 w-3 accent-accent"
+                                />
+                                <span>{e.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                className="h-4 w-4 accent-accent"
-              />
-              <span className="text-xs text-fg-soft">
-                Aktiv (bei „aus" wird nichts gesendet, Einstellungen bleiben)
-              </span>
-            </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={(e) => setEnabled(e.target.checked)}
+                    className="h-4 w-4 accent-accent"
+                  />
+                  <span className="text-xs text-fg-soft">
+                    Webhook aktiv
+                    <span className="block text-[11px] text-subtle">
+                      Bei „aus" bleibt die URL gespeichert, aber nichts wird gesendet.
+                    </span>
+                  </span>
+                </label>
+              </>
+            )}
 
             {message && (
               <div
@@ -201,33 +361,35 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
                 {message.text}
               </div>
             )}
+          </div>
+        )}
 
-            <div className="flex flex-wrap gap-2 pt-1">
-              <button
-                type="button"
-                onClick={save}
-                disabled={pending}
-                className="rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-60 text-white text-xs font-medium px-3 py-2 transition-colors"
-              >
-                {pending ? 'Speichere…' : 'Speichern'}
-              </button>
-              <button
-                type="button"
-                onClick={test}
-                disabled={pending || !url.trim()}
-                className="rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev disabled:opacity-50 text-fg-soft hover:text-fg text-xs font-medium px-3 py-2 transition-colors"
-              >
-                Test senden
-              </button>
-              <button
-                type="button"
-                onClick={remove}
-                disabled={pending}
-                className="rounded-lg text-xs text-muted hover:text-rose-600 dark:hover:text-rose-300 px-3 py-2 ml-auto disabled:opacity-50"
-              >
-                Webhook entfernen
-              </button>
-            </div>
+        {savedUrl && !editingUrl && (
+          <div className="px-5 py-3 border-t border-line flex flex-wrap gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={saveSettings}
+              disabled={pending}
+              className="rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-60 text-white text-xs font-medium px-3 py-2"
+            >
+              {pending ? 'Speichere…' : 'Events speichern'}
+            </button>
+            <button
+              type="button"
+              onClick={test}
+              disabled={pending}
+              className="rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev disabled:opacity-50 text-fg-soft hover:text-fg text-xs font-medium px-3 py-2"
+            >
+              Test senden
+            </button>
+            <button
+              type="button"
+              onClick={remove}
+              disabled={pending}
+              className="rounded-lg text-xs text-muted hover:text-rose-600 dark:hover:text-rose-300 px-3 py-2 ml-auto disabled:opacity-50"
+            >
+              Webhook entfernen
+            </button>
           </div>
         )}
       </div>

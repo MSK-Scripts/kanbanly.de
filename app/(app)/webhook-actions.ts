@@ -55,12 +55,31 @@ export async function saveBoardWebhook(
       board_id: boardId,
       discord_url: url,
       enabled,
-      events: events.length > 0 ? events : ['card_created', 'card_moved'],
+      events: events.length > 0 ? events : DEFAULT_EVENTS,
       created_by: user.id,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'board_id' }
   );
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function updateBoardWebhookSettings(
+  boardId: string,
+  enabled: boolean,
+  events: string[]
+): Promise<Ok | Err> {
+  if (!boardId) return { ok: false, error: 'Board fehlt.' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('board_webhooks')
+    .update({
+      enabled,
+      events: events.length > 0 ? events : DEFAULT_EVENTS,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('board_id', boardId);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
@@ -139,18 +158,154 @@ export async function testBoardWebhook(boardId: string): Promise<Ok | Err> {
 
 export type WebhookEvent =
   | { kind: 'card_created'; cardId: string; cardTitle: string; listTitle: string }
-  | {
-      kind: 'card_moved';
-      cardId: string;
-      cardTitle: string;
-      fromList: string;
-      toList: string;
-    };
+  | { kind: 'card_moved'; cardId: string; cardTitle: string; fromList: string; toList: string }
+  | { kind: 'card_renamed'; cardId: string; fromTitle: string; toTitle: string }
+  | { kind: 'card_deleted'; cardTitle: string }
+  | { kind: 'card_due_set'; cardId: string; cardTitle: string; due: string }
+  | { kind: 'card_due_cleared'; cardId: string; cardTitle: string }
+  | { kind: 'task_added'; cardId: string; cardTitle: string; taskTitle: string }
+  | { kind: 'task_done'; cardId: string; cardTitle: string; taskTitle: string }
+  | { kind: 'task_undone'; cardId: string; cardTitle: string; taskTitle: string }
+  | { kind: 'task_deleted'; cardId: string; cardTitle: string; taskTitle: string }
+  | { kind: 'label_added'; cardId: string; cardTitle: string; labelName: string }
+  | { kind: 'label_removed'; cardId: string; cardTitle: string; labelName: string }
+  | { kind: 'assignee_added'; cardId: string; cardTitle: string; who: string }
+  | { kind: 'assignee_removed'; cardId: string; cardTitle: string; who: string }
+  | { kind: 'comment_added'; cardId: string; cardTitle: string; snippet: string }
+  | { kind: 'comment_deleted'; cardId: string; cardTitle: string };
 
 const EMBED_COLORS: Record<WebhookEvent['kind'], number> = {
   card_created: 0x22c55e,
   card_moved: 0x8b5cf6,
+  card_renamed: 0x8b5cf6,
+  card_deleted: 0xf43f5e,
+  card_due_set: 0xf59e0b,
+  card_due_cleared: 0x64748b,
+  task_added: 0x22c55e,
+  task_done: 0x22c55e,
+  task_undone: 0x64748b,
+  task_deleted: 0xf43f5e,
+  label_added: 0x8b5cf6,
+  label_removed: 0x64748b,
+  assignee_added: 0x22c55e,
+  assignee_removed: 0x64748b,
+  comment_added: 0x0ea5e9,
+  comment_deleted: 0xf43f5e,
 };
+
+export const AVAILABLE_EVENTS: Array<WebhookEvent['kind']> = [
+  'card_created',
+  'card_moved',
+  'card_renamed',
+  'card_deleted',
+  'card_due_set',
+  'card_due_cleared',
+  'task_added',
+  'task_done',
+  'task_undone',
+  'task_deleted',
+  'label_added',
+  'label_removed',
+  'assignee_added',
+  'assignee_removed',
+  'comment_added',
+  'comment_deleted',
+];
+
+export const DEFAULT_EVENTS: Array<WebhookEvent['kind']> = [
+  'card_created',
+  'card_moved',
+  'card_deleted',
+  'comment_added',
+];
+
+function buildEmbed(
+  event: WebhookEvent,
+  by: string
+): { title: string; description: string } {
+  switch (event.kind) {
+    case 'card_created':
+      return {
+        title: 'Neue Karte',
+        description: `**${event.cardTitle}**\nin *${event.listTitle}* erstellt von ${by}`,
+      };
+    case 'card_moved':
+      return {
+        title: 'Karte verschoben',
+        description: `**${event.cardTitle}**\n*${event.fromList}* → *${event.toList}* von ${by}`,
+      };
+    case 'card_renamed':
+      return {
+        title: 'Karte umbenannt',
+        description: `~~${event.fromTitle}~~ → **${event.toTitle}** von ${by}`,
+      };
+    case 'card_deleted':
+      return {
+        title: 'Karte gelöscht',
+        description: `~~${event.cardTitle}~~ gelöscht von ${by}`,
+      };
+    case 'card_due_set':
+      return {
+        title: 'Fälligkeit gesetzt',
+        description: `**${event.cardTitle}** ist fällig am **${event.due}** (${by})`,
+      };
+    case 'card_due_cleared':
+      return {
+        title: 'Fälligkeit entfernt',
+        description: `**${event.cardTitle}** hat keinen Termin mehr (${by})`,
+      };
+    case 'task_added':
+      return {
+        title: 'Neuer Task',
+        description: `**${event.cardTitle}** · „${event.taskTitle}" hinzugefügt von ${by}`,
+      };
+    case 'task_done':
+      return {
+        title: 'Task erledigt',
+        description: `**${event.cardTitle}** · ✓ „${event.taskTitle}" abgehakt von ${by}`,
+      };
+    case 'task_undone':
+      return {
+        title: 'Task wieder offen',
+        description: `**${event.cardTitle}** · „${event.taskTitle}" wieder aktiv (${by})`,
+      };
+    case 'task_deleted':
+      return {
+        title: 'Task gelöscht',
+        description: `**${event.cardTitle}** · ~~${event.taskTitle}~~ gelöscht von ${by}`,
+      };
+    case 'label_added':
+      return {
+        title: 'Label hinzugefügt',
+        description: `**${event.cardTitle}** · Label „${event.labelName}" gesetzt von ${by}`,
+      };
+    case 'label_removed':
+      return {
+        title: 'Label entfernt',
+        description: `**${event.cardTitle}** · Label „${event.labelName}" entfernt von ${by}`,
+      };
+    case 'assignee_added':
+      return {
+        title: 'Zuweisung hinzugefügt',
+        description: `**${event.cardTitle}** · ${event.who} zugewiesen von ${by}`,
+      };
+    case 'assignee_removed':
+      return {
+        title: 'Zuweisung entfernt',
+        description: `**${event.cardTitle}** · ${event.who} nicht mehr zugewiesen (${by})`,
+      };
+    case 'comment_added':
+      return {
+        title: 'Neuer Kommentar',
+        description: `**${event.cardTitle}** · ${by}: „${event.snippet}"`,
+      };
+    case 'comment_deleted':
+      return {
+        title: 'Kommentar gelöscht',
+        description: `**${event.cardTitle}** · Kommentar entfernt von ${by}`,
+      };
+  }
+}
 
 export async function notifyBoardEvent(
   boardId: string,
@@ -178,9 +333,11 @@ export async function notifyBoardEvent(
 
   const board = boardRes.data as { name?: string; slug?: string } | null;
   const boardName = board?.name ?? 'Board';
-  const cardUrl = board?.slug
-    ? boardLink(board.slug, event.cardId)
-    : undefined;
+  const cardIdInEvent =
+    'cardId' in event && typeof event.cardId === 'string'
+      ? event.cardId
+      : undefined;
+  const cardUrl = board?.slug ? boardLink(board.slug, cardIdInEvent) : undefined;
 
   const username =
     userRes.data.user?.user_metadata &&
@@ -189,15 +346,7 @@ export async function notifyBoardEvent(
       : null;
   const by = typeof username === 'string' ? `@${username}` : 'jemand';
 
-  let title = '';
-  let description = '';
-  if (event.kind === 'card_created') {
-    title = 'Neue Karte';
-    description = `**${event.cardTitle}**\nin *${event.listTitle}* erstellt von ${by}`;
-  } else {
-    title = 'Karte verschoben';
-    description = `**${event.cardTitle}**\n*${event.fromList}* → *${event.toList}* von ${by}`;
-  }
+  const { title, description } = buildEmbed(event, by);
 
   await postToDiscord(hook.discord_url, {
     username: `kanbanly · ${boardName}`,

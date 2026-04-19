@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { confirm } from '@/store/confirmStore';
 import { withMentions } from '@/lib/mentions';
 import { useBoard } from '@/store/boardStore';
+import { notifyBoardEvent } from '@/app/(app)/webhook-actions';
 import { Avatar } from './Avatar';
 
 type CommentRow = {
@@ -155,6 +156,21 @@ export function CardComments({ cardId }: { cardId: string }) {
       .from('card_comments')
       .insert({ card_id: cardId, user_id: user.id, content });
     if (error) console.error('comment insert', error);
+    else {
+      const state = useBoard.getState();
+      const bId = state.boardId;
+      const cardTitle = state.cards[cardId]?.title ?? '';
+      if (bId && cardTitle) {
+        const snippet =
+          content.length > 120 ? content.slice(0, 120) + '…' : content;
+        notifyBoardEvent(bId, {
+          kind: 'comment_added',
+          cardId,
+          cardTitle,
+          snippet,
+        }).catch(() => {});
+      }
+    }
     setDraft('');
     setSending(false);
   };
@@ -170,6 +186,18 @@ export function CardComments({ cardId }: { cardId: string }) {
     const supabase = createClient();
     const { error } = await supabase.from('card_comments').delete().eq('id', id);
     if (error) console.error('comment delete', error);
+    else {
+      const state = useBoard.getState();
+      const bId = state.boardId;
+      const cardTitle = state.cards[cardId]?.title ?? '';
+      if (bId && cardTitle) {
+        notifyBoardEvent(bId, {
+          kind: 'comment_deleted',
+          cardId,
+          cardTitle,
+        }).catch(() => {});
+      }
+    }
   };
 
   return (
