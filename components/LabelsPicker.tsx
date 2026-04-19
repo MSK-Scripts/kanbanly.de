@@ -26,26 +26,32 @@ export function LabelsPicker({ cardId }: { cardId: string }) {
       {labelOrder.length === 0 && !creating ? (
         <p className="text-xs text-subtle">Noch keine Labels.</p>
       ) : (
-        <ul className="space-y-1">
+        <div className="flex flex-wrap gap-1.5">
           {labelOrder.map((id) => {
             const lbl = labels[id];
             if (!lbl) return null;
             const active = applied.includes(id);
             return (
-              <li key={id} className="flex items-center gap-2 group">
+              <span
+                key={id}
+                className={`group relative inline-flex items-center rounded border text-[11px] font-medium transition-all ${labelPill(lbl.color)} ${
+                  active
+                    ? 'ring-1 ring-accent-hover/70 shadow-sm'
+                    : 'opacity-55 hover:opacity-100'
+                }`}
+              >
                 <button
                   type="button"
                   onClick={() => toggleCardLabel(cardId, id)}
-                  className={`flex-1 flex items-center gap-2 rounded-md px-2 py-1 border text-xs text-left transition-colors ${labelPill(lbl.color)} ${
-                    active ? 'ring-1 ring-accent-hover/60' : 'opacity-80 hover:opacity-100'
-                  }`}
+                  className="px-2 py-0.5 pr-2"
+                  title={active ? 'Entfernen' : 'Anwenden'}
                 >
-                  <span className="flex-1 truncate">{lbl.name}</span>
-                  {active && <span className="text-[10px]">✓</span>}
+                  {lbl.name}
                 </button>
                 <button
                   type="button"
-                  onClick={async () => {
+                  onClick={async (e) => {
+                    e.stopPropagation();
                     const ok = await confirm({
                       title: `Label "${lbl.name}" löschen?`,
                       description:
@@ -55,15 +61,15 @@ export function LabelsPicker({ cardId }: { cardId: string }) {
                     });
                     if (ok) deleteLabel(id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 text-subtle hover:text-rose-600 dark:text-rose-400 text-sm shrink-0 transition-opacity"
                   aria-label="Label löschen"
+                  className="opacity-0 group-hover:opacity-100 text-[10px] leading-none pr-1 hover:text-rose-700 dark:hover:text-rose-300 transition-opacity"
                 >
                   ×
                 </button>
-              </li>
+              </span>
             );
           })}
-        </ul>
+        </div>
       )}
 
       {creating ? (
@@ -121,7 +127,7 @@ export function LabelsPicker({ cardId }: { cardId: string }) {
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="w-full text-left text-xs text-accent-soft hover:text-accent-hover"
+          className="text-xs text-accent-soft hover:text-accent-hover"
         >
           + Neues Label
         </button>
