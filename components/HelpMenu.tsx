@@ -77,6 +77,22 @@ export function HelpMenu() {
               Links
             </h3>
             <div className="flex flex-col gap-1">
+              <a
+                href="https://discord.gg/BA8uB6yNUU"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="text-xs text-fg-soft hover:text-accent-soft flex items-center gap-1.5"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-3.5 w-3.5 fill-current"
+                  aria-hidden
+                >
+                  <path d="M20.317 4.37A19.79 19.79 0 0 0 16.558 3c-.207.369-.449.865-.615 1.26a18.27 18.27 0 0 0-5.487 0A12.64 12.64 0 0 0 9.834 3 19.74 19.74 0 0 0 6.073 4.37C2.38 9.5 1.373 14.55 1.876 19.53a19.93 19.93 0 0 0 6.03 3c.487-.66.92-1.363 1.292-2.104a12.86 12.86 0 0 1-2.034-.971c.17-.125.337-.255.5-.388 4.096 1.898 8.53 1.898 12.57 0 .164.133.33.263.499.388-.65.385-1.33.711-2.036.972.374.741.806 1.443 1.292 2.103a19.9 19.9 0 0 0 6.032-3c.59-5.74-1.01-10.743-4.203-15.16zM8.02 16.4c-1.182 0-2.157-1.09-2.157-2.42s.956-2.42 2.157-2.42 2.177 1.09 2.157 2.42c0 1.33-.956 2.42-2.157 2.42zm7.963 0c-1.183 0-2.157-1.09-2.157-2.42s.956-2.42 2.157-2.42c1.2 0 2.177 1.09 2.156 2.42 0 1.33-.955 2.42-2.156 2.42z" />
+                </svg>
+                Discord &amp; Support
+              </a>
               <Link
                 href="/templates"
                 onClick={() => setOpen(false)}
