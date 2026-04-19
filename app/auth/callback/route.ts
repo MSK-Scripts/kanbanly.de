@@ -35,8 +35,12 @@ export async function GET(request: NextRequest) {
   }
 
   const store = await cookies();
-  const cookieNames = store.getAll().map((c) => c.name);
-  console.log('[auth/callback] incoming cookies:', cookieNames);
+  const allCookies = store.getAll();
+  console.log('[auth/callback] incoming cookies:', allCookies.map((c) => {
+    const v = c.value ?? '';
+    const preview = v.length > 60 ? v.slice(0, 60) + '…' : v;
+    return `${c.name}=${preview} (len=${v.length})`;
+  }));
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
