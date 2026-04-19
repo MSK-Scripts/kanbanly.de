@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 
 function siteBase() {
@@ -33,9 +34,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const store = await cookies();
+  const cookieNames = store.getAll().map((c) => c.name);
+  console.log('[auth/callback] incoming cookies:', cookieNames);
+
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
+    console.log('[auth/callback] exchange error:', error.message);
     return NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent(error.message)}`, base)
     );
