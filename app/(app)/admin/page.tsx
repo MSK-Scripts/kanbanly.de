@@ -173,12 +173,21 @@ export default async function AdminPage() {
                       {formatDate(b.created_at)}
                     </td>
                     <td className="px-4 py-2">
-                      <Link
-                        href={`/boards/${b.slug}`}
-                        className="text-fg hover:text-accent-hover"
-                      >
-                        {b.name}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/boards/${b.slug}`}
+                          className="text-fg hover:text-accent-hover"
+                        >
+                          {b.name}
+                        </Link>
+                        <Link
+                          href={`/admin/boards/${b.slug}`}
+                          className="text-[10px] text-subtle hover:text-accent-soft border border-line-strong rounded px-1 py-0.5"
+                          title="Ghost-View — Read-only, unsichtbar"
+                        >
+                          👻
+                        </Link>
+                      </div>
                     </td>
                     <td className="px-4 py-2 text-muted text-xs">
                       {b.workspace_name ?? '—'}
