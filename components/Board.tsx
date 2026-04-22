@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd';
 import { useBoard } from '@/store/boardStore';
 import { List } from './List';
 import { AddListInline } from './AddListInline';
@@ -10,6 +10,7 @@ import { SwimlaneBoard } from './SwimlaneBoard';
 export default function Board() {
   const listOrder = useBoard((s) => s.listOrder);
   const moveCard = useBoard((s) => s.moveCard);
+  const moveList = useBoard((s) => s.moveList);
   const groupBy = useBoard((s) => s.groupBy);
   const backgroundUrl = useBoard((s) => s.backgroundUrl);
   const [mounted, setMounted] = useState(false);
@@ -19,12 +20,17 @@ export default function Board() {
   }, []);
 
   const onDragEnd = (result: DropResult) => {
-    const { source, destination } = result;
+    const { source, destination, type } = result;
     if (!destination) return;
     if (
       source.droppableId === destination.droppableId &&
       source.index === destination.index
     ) {
+      return;
+    }
+
+    if (type === 'COLUMN') {
+      moveList(source.index, destination.index);
       return;
     }
 
@@ -66,12 +72,25 @@ export default function Board() {
             </div>
           ) : (
             <DragDropContext onDragEnd={onDragEnd}>
-              <div className="flex gap-3 sm:gap-4 items-start min-h-full">
-                {listOrder.map((id) => (
-                  <List key={id} listId={id} />
-                ))}
-                <AddListInline />
-              </div>
+              <Droppable
+                droppableId="board"
+                type="COLUMN"
+                direction="horizontal"
+              >
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="flex gap-3 sm:gap-4 items-start min-h-full"
+                  >
+                    {listOrder.map((id, idx) => (
+                      <List key={id} listId={id} index={idx} />
+                    ))}
+                    {provided.placeholder}
+                    <AddListInline />
+                  </div>
+                )}
+              </Droppable>
             </DragDropContext>
           )
         ) : (

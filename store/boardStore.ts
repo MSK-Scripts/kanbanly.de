@@ -169,6 +169,7 @@ type State = {
   addList: (title: string) => Promise<void>;
   renameList: (listId: string, title: string) => Promise<void>;
   deleteList: (listId: string) => Promise<void>;
+  moveList: (fromIndex: number, toIndex: number) => Promise<void>;
   addCard: (listId: string, title: string) => Promise<void>;
   moveCard: (
     source: { listId: string; index: number },
@@ -726,6 +727,27 @@ export const useBoard = create<State>((set, get) => ({
     const supabase = createClient();
     const { error } = await supabase.from('lists').delete().eq('id', listId);
     if (error) console.error('deleteList', error);
+  },
+
+  async moveList(fromIndex, toIndex) {
+    const { listOrder, boardId } = get();
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || fromIndex >= listOrder.length) return;
+    if (toIndex < 0 || toIndex >= listOrder.length) return;
+
+    const nextOrder = [...listOrder];
+    const [moved] = nextOrder.splice(fromIndex, 1);
+    if (!moved) return;
+    nextOrder.splice(toIndex, 0, moved);
+
+    set({ listOrder: nextOrder });
+
+    if (!boardId) return;
+    const supabase = createClient();
+    const promises = nextOrder.map((id, idx) =>
+      supabase.from('lists').update({ position: idx }).eq('id', id)
+    );
+    await Promise.all(promises);
   },
 
   async addCard(listId, title) {

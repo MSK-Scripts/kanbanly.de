@@ -58,3 +58,18 @@ export function labelPill(color: string): string {
 export function labelDot(color: string): string {
   return COLORS[color]?.dot ?? LABEL_COLORS.violet.dot;
 }
+
+export const LABEL_HEX: Record<string, string> = {
+  rose: '#f43f5e',
+  orange: '#f97316',
+  amber: '#f59e0b',
+  emerald: '#10b981',
+  teal: '#14b8a6',
+  sky: '#0ea5e9',
+  violet: '#8b5cf6',
+  pink: '#ec4899',
+};
+
+export function labelHex(color: string): string {
+  return LABEL_HEX[color] ?? LABEL_HEX.violet;
+}

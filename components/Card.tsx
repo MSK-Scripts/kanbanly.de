@@ -2,7 +2,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { useBoard } from '@/store/boardStore';
 import { Avatar } from './Avatar';
-import { labelPill } from '@/lib/labelColors';
+import { labelPill, labelHex } from '@/lib/labelColors';
 import { confirm } from '@/store/confirmStore';
 import { KebabMenu } from './KebabMenu';
 
@@ -89,6 +89,20 @@ function CardInner({ id, isDragging }: Props) {
     setEditing(true);
   };
 
+  const primaryLabelColor = (() => {
+    for (const lid of cardLabelIds) {
+      const lbl = labels[lid];
+      if (lbl) return lbl.color;
+    }
+    return null;
+  })();
+  const tintStyle = primaryLabelColor
+    ? {
+        backgroundColor: `color-mix(in srgb, var(--elev) 88%, ${labelHex(primaryLabelColor)} 12%)`,
+        borderColor: `color-mix(in srgb, var(--line-strong) 70%, ${labelHex(primaryLabelColor)} 30%)`,
+      }
+    : undefined;
+
   const onCardClick = (e: React.MouseEvent) => {
     if (editing) return;
     if (e.shiftKey || e.metaKey || e.ctrlKey) {
@@ -103,14 +117,17 @@ function CardInner({ id, isDragging }: Props) {
   return (
     <div
       onClick={onCardClick}
-      className={`group rounded-xl bg-elev/80 border p-3 cursor-pointer transition-all duration-700 ${
+      style={primaryLabelColor && !isDragging && !selected && !pulsing ? tintStyle : undefined}
+      className={`group rounded-xl border p-3 cursor-pointer transition-all duration-700 ${
         isDragging
-          ? 'shadow-xl shadow-violet-500/30 border-accent-hover/60 ring-1 ring-accent-hover/40'
+          ? 'bg-elev/80 shadow-xl shadow-violet-500/30 border-accent-hover/60 ring-1 ring-accent-hover/40'
           : selected
-          ? 'border-accent-hover/80 ring-2 ring-accent-hover/60 shadow-md'
+          ? 'bg-elev/80 border-accent-hover/80 ring-2 ring-accent-hover/60 shadow-md'
           : pulsing
-          ? 'border-emerald-400/60 ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-500/20'
-          : 'border-line-strong/60 shadow-sm hover:border-muted hover:shadow-md'
+          ? 'bg-elev/80 border-emerald-400/60 ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-500/20'
+          : primaryLabelColor
+          ? 'shadow-sm hover:shadow-md'
+          : 'bg-elev/80 border-line-strong/60 shadow-sm hover:border-muted hover:shadow-md'
       }`}
     >
       {cardLabelIds.length > 0 && (

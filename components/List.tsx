@@ -9,9 +9,9 @@ import { PlusIcon } from './Icons';
 import { InlineEditableText } from './InlineEditableText';
 import { ListMenu } from './ListMenu';
 
-type Props = { listId: string };
+type Props = { listId: string; index: number };
 
-function ListInner({ listId }: Props) {
+function ListInner({ listId, index }: Props) {
   const list = useBoard((s) => s.lists[listId]);
   const addCard = useBoard((s) => s.addCard);
   const renameList = useBoard((s) => s.renameList);
@@ -55,9 +55,24 @@ function ListInner({ listId }: Props) {
     : 'bg-muted';
 
   return (
-    <div className="w-[88vw] sm:w-[320px] shrink-0 flex flex-col rounded-2xl bg-surface/70 border border-line/80 max-h-[calc(100vh-9rem)] sm:max-h-[calc(100vh-8rem)]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-line/80">
-        <div className="flex items-center gap-2">
+    <Draggable draggableId={listId} index={index}>
+      {(listDrag, listSnap) => (
+        <div
+          ref={listDrag.innerRef}
+          {...listDrag.draggableProps}
+          style={{
+            ...listDrag.draggableProps.style,
+            zIndex: listSnap.isDragging ? 9998 : undefined,
+          }}
+          className={`w-[88vw] sm:w-[320px] shrink-0 flex flex-col rounded-2xl bg-surface/70 border border-line/80 max-h-[calc(100vh-9rem)] sm:max-h-[calc(100vh-8rem)] ${
+            listSnap.isDragging ? 'shadow-xl ring-1 ring-accent-hover/40' : ''
+          }`}
+        >
+          <div
+            {...listDrag.dragHandleProps}
+            className="flex items-center justify-between px-4 py-3 border-b border-line/80 cursor-grab active:cursor-grabbing select-none"
+          >
+            <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${dotColor}`} />
           <InlineEditableText
             value={list.title}
@@ -176,7 +191,9 @@ function ListInner({ listId }: Props) {
           </button>
         )}
       </div>
-    </div>
+        </div>
+      )}
+    </Draggable>
   );
 }
 
