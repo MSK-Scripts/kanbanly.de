@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { notifySubscribers } from '@/lib/notifications';
 
 export type AutomationTriggerKind = 'card_moved_to_list';
 
@@ -32,12 +33,18 @@ export type RunResult = {
  * Run any matching automation actions against a card. Used after a card
  * has moved into a list. Returns what happened so callers can update
  * client-side state without a full refetch.
+ *
+ * `actorId` ist der User der den Move ausgelöst hat — die durch eine
+ * Automation entstehende Card-Archivierung soll Subscriber/Assignees
+ * benachrichtigen, aber nicht den Auslöser selbst.
  */
 export async function runMoveAutomations(
   supabase: SupabaseClient,
   cardId: string,
   targetListId: string,
-  rules: Automation[]
+  rules: Automation[],
+  actorId: string | null = null,
+  cardTitle: string | null = null
 ): Promise<RunResult> {
   const result: RunResult = {
     archived: false,
@@ -61,7 +68,18 @@ export async function runMoveAutomations(
           .from('cards')
           .update({ archived_at: new Date().toISOString() })
           .eq('id', cardId);
-        if (!error) result.archived = true;
+        if (!error) {
+          result.archived = true;
+          if (actorId) {
+            notifySubscribers(
+              supabase,
+              cardId,
+              actorId,
+              'card_archived',
+              cardTitle ? { cardTitle, byAutomation: true } : { byAutomation: true }
+            ).catch(() => {});
+          }
+        }
         break;
       }
       case 'clear_due_date': {

@@ -23,6 +23,10 @@ const REALTIME_TABLES = [
   'labels',
   'card_assignees',
   'card_labels',
+  'board_automations',
+  'custom_fields',
+  'card_field_values',
+  'card_links',
 ] as const;
 
 const REFETCH_DEBOUNCE_MS = 300;

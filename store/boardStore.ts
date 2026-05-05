@@ -919,7 +919,9 @@ export const useBoard = create<State>((set, get) => ({
           supabase,
           moved,
           destination.listId,
-          rules
+          rules,
+          user?.id ?? null,
+          movedCard?.title ?? null
         );
         applyAutomationResultToStore(moved, result);
       }

@@ -77,18 +77,44 @@ create policy "n_delete" on public.notifications
   for delete to authenticated
   using (user_id = auth.uid());
 
--- Insert: jeder Authentifizierte darf Notifications schreiben (für
--- andere User), aber nur wenn er das Board sehen darf — sonst könnte
--- ein User beliebige Karten-IDs unterjubeln. Der Card-Bezug erzwingt
--- das implizit über can_view_board.
+-- Insert: nur wenn der Empfänger ebenfalls Zugriff aufs Board hat und
+-- der Actor (=auth.uid()) auch. Ohne den ersten Check könnte jeder
+-- Workspace-Mitglied jedem anderen Mitglied beliebige Notifications
+-- unterjubeln — Phishing-Vektor. Mit dem Check müssen sowohl Sender
+-- als auch Empfänger zur Board-Membership gehören.
 drop policy if exists "n_insert" on public.notifications;
 create policy "n_insert" on public.notifications
   for insert to authenticated
   with check (
-    card_id is null
-    or public.can_view_board(
-      public.list_board_id(
-        (select list_id from public.cards where id = notifications.card_id)
+    actor_id = auth.uid()
+    and (
+      card_id is null
+      or (
+        public.can_view_board(
+          public.list_board_id(
+            (select list_id from public.cards where id = notifications.card_id)
+          )
+        )
+        and exists (
+          select 1
+          from public.cards c
+          where c.id = notifications.card_id
+            and (
+              -- Empfänger muss das Board ebenfalls sehen können.
+              -- Wir prüfen das über workspace_members oder board_members.
+              exists (
+                select 1 from public.workspace_members wm
+                join public.boards b on b.workspace_id = wm.workspace_id
+                join public.lists l on l.board_id = b.id
+                where l.id = c.list_id and wm.user_id = notifications.user_id
+              )
+              or exists (
+                select 1 from public.board_members bm
+                join public.lists l on l.board_id = bm.board_id
+                where l.id = c.list_id and bm.user_id = notifications.user_id
+              )
+            )
+        )
       )
     )
   );
