@@ -6,10 +6,12 @@ import { LabelsPicker } from './LabelsPicker';
 import { DescriptionEditor } from './DescriptionEditor';
 import { ActivityLog } from './ActivityLog';
 import { CardComments } from './CardComments';
+import { CustomFieldsSection } from './CustomFieldsSection';
 
 export function CardModal() {
   const openCardId = useBoard((s) => s.openCardId);
   const setOpenCardId = useBoard((s) => s.setOpenCardId);
+  const boardId = useBoard((s) => s.boardId);
   const card = useBoard((s) => (openCardId ? s.cards[openCardId] : null));
   const assignees =
     useBoard((s) => (openCardId ? s.assignees[openCardId] : undefined)) ?? [];
@@ -293,6 +295,10 @@ export function CardModal() {
                 </button>
               </form>
             </section>
+
+            {boardId && (
+              <CustomFieldsSection cardId={openCardId} boardId={boardId} />
+            )}
 
             <div className="p-5 flex justify-end">
               <button
