@@ -38,7 +38,7 @@ export function DescriptionEditor({
       <button
         type="button"
         onClick={startEdit}
-        className="w-full min-h-[5rem] rounded-lg bg-elev/40 hover:bg-elev/70 border border-line-strong px-3 py-2 text-sm text-left transition-colors"
+        className="w-full min-h-[5rem] rounded-md bg-elev hover:bg-elev border border-line-strong px-3 py-2 text-sm text-left transition-colors"
         aria-label="Beschreibung bearbeiten"
       >
         {hasContent ? (
@@ -70,7 +70,7 @@ export function DescriptionEditor({
         }}
         placeholder={placeholder}
         rows={6}
-        className="w-full rounded-lg bg-elev/80 border border-accent-hover/50 px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60 resize-y font-mono"
+        className="w-full rounded-md bg-elev border border-accent-hover/50 px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60 resize-y font-mono"
       />
       <div className="mt-1 flex items-center justify-between text-[10px] text-faint font-mono">
         <span>Markdown: **fett**, *kursiv*, - Liste, [link](url)</span>

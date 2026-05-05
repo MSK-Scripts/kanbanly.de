@@ -43,19 +43,19 @@ export function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1800] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[1800] flex items-center justify-center bg-black/60 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-2xl bg-surface border border-line shadow-2xl p-5">
+      <div className="w-full max-w-md rounded-md bg-surface border border-line shadow-md p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-fg">Keyboard-Shortcuts</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Schließen"
-            className="h-7 w-7 grid place-items-center rounded text-muted hover:text-fg hover:bg-elev/60"
+            className="h-7 w-7 grid place-items-center rounded text-muted hover:text-fg hover:bg-elev"
           >
             ✕
           </button>

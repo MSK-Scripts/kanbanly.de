@@ -75,7 +75,7 @@ export default async function AdminPage() {
       </Section>
 
       <Section title="Signups pro Tag (letzte 14 Tage)">
-        <div className="rounded-xl bg-surface/60 border border-line/80 p-4">
+        <div className="rounded-md bg-surface border border-line p-4">
           <div className="flex items-end gap-1.5 h-32">
             {stats.signupsPerDay.map((d) => {
               const h = d.count === 0 ? 2 : (d.count / maxSignup) * 100;
@@ -86,7 +86,7 @@ export default async function AdminPage() {
                   title={`${d.day}: ${d.count}`}
                 >
                   <div
-                    className="w-full bg-accent/80 rounded-t-sm transition-all"
+                    className="w-full bg-accent rounded-t-sm transition-all"
                     style={{ height: `${h}%` }}
                   />
                   <span className="text-[9px] text-subtle font-mono tabular-nums">
@@ -104,9 +104,9 @@ export default async function AdminPage() {
       </Section>
 
       <Section title="Neueste Nutzer">
-        <div className="rounded-xl bg-surface/60 border border-line/80 overflow-hidden">
+        <div className="rounded-md bg-surface border border-line overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="text-[10px] text-subtle uppercase tracking-wide bg-bg/40">
+            <thead className="text-[10px] text-subtle uppercase tracking-wide bg-bg">
               <tr>
                 <th className="text-left font-semibold px-4 py-2">Zeit</th>
                 <th className="text-left font-semibold px-4 py-2">Username</th>
@@ -146,9 +146,9 @@ export default async function AdminPage() {
       </Section>
 
       <Section title="Neueste Boards">
-        <div className="rounded-xl bg-surface/60 border border-line/80 overflow-hidden">
+        <div className="rounded-md bg-surface border border-line overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="text-[10px] text-subtle uppercase tracking-wide bg-bg/40">
+            <thead className="text-[10px] text-subtle uppercase tracking-wide bg-bg">
               <tr>
                 <th className="text-left font-semibold px-4 py-2">Zeit</th>
                 <th className="text-left font-semibold px-4 py-2">Board</th>
@@ -243,7 +243,7 @@ function Grid({ children }: { children: React.ReactNode }) {
 
 function Stat({ value, label }: { value: number; label: string }) {
   return (
-    <div className="rounded-xl bg-surface/60 border border-line/80 p-4">
+    <div className="rounded-md bg-surface border border-line p-4">
       <div className="text-2xl font-semibold text-fg font-mono tabular-nums">
         {value}
       </div>

@@ -38,7 +38,7 @@ function Chip({
   accent?: 'violet' | 'rose' | 'amber' | 'emerald';
 }) {
   const accentClasses: Record<string, string> = {
-    violet: 'bg-accent/80 text-white border-accent-hover',
+    violet: 'bg-accent text-white border-accent-hover',
     rose: 'bg-rose-500/80 text-white border-rose-400',
     amber: 'bg-amber-500/80 text-slate-950 border-amber-400',
     emerald: 'bg-emerald-500/80 text-slate-950 border-emerald-400',
@@ -51,7 +51,7 @@ function Chip({
       className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
         active
           ? accentClasses[a]
-          : 'bg-elev/60 text-fg-soft border-line-strong hover:border-fg-soft hover:text-fg'
+          : 'bg-elev text-fg-soft border-line-strong hover:border-fg-soft hover:text-fg'
       }`}
     >
       {children}
@@ -134,7 +134,7 @@ export function BoardFilterBar() {
         className={`flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs transition-colors ${
           hasAny
             ? 'border-accent-hover/50 bg-accent/10 text-accent-hover'
-            : 'border-line-strong bg-elev/60 text-fg-soft hover:border-fg-soft hover:text-fg'
+            : 'border-line-strong bg-elev text-fg-soft hover:border-fg-soft hover:text-fg'
         }`}
       >
         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden>
@@ -149,7 +149,7 @@ export function BoardFilterBar() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-40 w-80 rounded-xl bg-surface border border-line shadow-2xl overflow-hidden">
+        <div className="absolute right-0 top-9 z-40 w-80 rounded-md bg-surface border border-line shadow-md overflow-hidden">
           <div className="px-4 py-3 border-b border-line flex items-center justify-between">
             <div>
               <h3 className="text-[11px] font-semibold text-fg uppercase tracking-wide">
@@ -173,7 +173,7 @@ export function BoardFilterBar() {
           </div>
 
           {hasAny && (
-            <div className="px-4 py-3 border-b border-line bg-bg/40">
+            <div className="px-4 py-3 border-b border-line bg-bg">
               <h4 className="text-[10px] font-semibold text-subtle uppercase tracking-wide mb-2">
                 Aktive Filter
               </h4>

@@ -62,11 +62,11 @@ export function CardModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4"
       onClick={close}
     >
       <div
-        className="w-full max-w-5xl h-[calc(100vh-2rem)] md:h-[min(90vh,900px)] rounded-2xl bg-surface border border-line shadow-2xl flex flex-col overflow-hidden"
+        className="w-full max-w-5xl h-[calc(100vh-2rem)] md:h-[min(90vh,900px)] rounded-md bg-surface border border-line shadow-md flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-line flex items-start gap-3 shrink-0">
@@ -131,7 +131,7 @@ export function CardModal() {
               )}
 
               {pickerOpen && (
-                <div className="mt-1 rounded-lg bg-elev/60 border border-line-strong max-h-52 overflow-y-auto divide-y divide-line">
+                <div className="mt-1 rounded-md bg-elev border border-line-strong max-h-52 overflow-y-auto divide-y divide-line">
                   {memberOrder.length === 0 ? (
                     <p className="p-3 text-xs text-subtle">
                       Keine Mitglieder verfügbar.
@@ -187,7 +187,7 @@ export function CardModal() {
                   onChange={(e) =>
                     updateCardDueDate(openCardId, e.target.value || null)
                   }
-                  className="rounded-lg bg-elev/80 border border-line-strong px-3 py-1.5 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60 [color-scheme:dark]"
+                  className="rounded-md bg-elev border border-line-strong px-3 py-1.5 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60 [color-scheme:dark]"
                 />
                 {card.due_date && (
                   <button
@@ -228,7 +228,7 @@ export function CardModal() {
               {total > 0 && (
                 <div className="h-1.5 w-full rounded-full bg-elev overflow-hidden mb-3">
                   <div
-                    className="h-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-[width] duration-300"
+                    className="h-full bg-accent transition-[width] duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -284,11 +284,11 @@ export function CardModal() {
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   placeholder="Neuer Task…"
-                  className="flex-1 rounded-lg bg-elev/80 border border-line-strong px-3 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+                  className="flex-1 rounded-md bg-elev border border-line-strong px-3 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
                 />
                 <button
                   type="submit"
-                  className="rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium px-4 transition-colors"
+                  className="rounded-md bg-accent hover:bg-accent-hover text-white text-xs font-medium px-4 transition-colors"
                 >
                   Hinzufügen
                 </button>

@@ -37,12 +37,12 @@ export function AIBoardDialog({ workspaceId, onClose }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/60 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-2xl max-h-[90vh] rounded-2xl bg-surface border border-line shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-2xl max-h-[90vh] rounded-md bg-surface border border-line shadow-md flex flex-col overflow-hidden">
         <div className="px-5 py-4 border-b border-line flex items-start justify-between gap-3 shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-fg flex items-center gap-2">
@@ -84,7 +84,7 @@ export function AIBoardDialog({ workspaceId, onClose }: Props) {
                   maxLength={2000}
                   autoFocus
                   placeholder="z. B. FiveM-Roleplay-Server aufsetzen mit 3 Entwicklern — Planung, Skripting, Deployment, Community-Management"
-                  className="w-full rounded-lg bg-elev/80 border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60 resize-none"
+                  className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60 resize-none"
                 />
                 <p className="text-[11px] text-subtle mt-1">
                   Je konkreter, desto besser — Ziel, Rolle, Zeitraum, Team-Größe.
@@ -92,7 +92,7 @@ export function AIBoardDialog({ workspaceId, onClose }: Props) {
               </div>
 
               {state && !state.ok && state.error && (
-                <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
+                <div className="rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
                   {state.error}
                 </div>
               )}
@@ -107,14 +107,14 @@ export function AIBoardDialog({ workspaceId, onClose }: Props) {
                 <button
                   type="submit"
                   disabled={pending}
-                  className="flex-1 rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-medium py-2 transition-colors"
+                  className="flex-1 rounded-md bg-accent hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-medium py-2 transition-colors"
                 >
                   {pending ? 'KI denkt nach…' : 'Board vorschlagen'}
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg text-sm text-muted hover:text-fg-soft px-3 py-2"
+                  className="rounded-md text-sm text-muted hover:text-fg-soft px-3 py-2"
                 >
                   Abbrechen
                 </button>
@@ -138,18 +138,18 @@ export function AIBoardDialog({ workspaceId, onClose }: Props) {
               onChange={(e) => setOverrideName(e.target.value)}
               placeholder={draft.name}
               maxLength={40}
-              className="flex-1 rounded-lg bg-elev/80 border border-line-strong px-3 py-1.5 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+              className="flex-1 rounded-md bg-elev border border-line-strong px-3 py-1.5 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
             />
             <button
               type="submit"
-              className="rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium px-4 py-2 transition-colors"
+              className="rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-4 py-2 transition-colors"
             >
               Board erstellen
             </button>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="rounded-lg text-xs text-muted hover:text-fg-soft px-2"
+              className="rounded-md text-xs text-muted hover:text-fg-soft px-2"
               title="Nochmal generieren"
             >
               Nochmal
@@ -165,7 +165,7 @@ export function AIBoardDialog({ workspaceId, onClose }: Props) {
 function DraftPreview({ draft }: { draft: AIBoardDraft }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3 rounded-xl bg-elev/40 border border-line p-3">
+      <div className="flex items-start gap-3 rounded-md bg-elev border border-line p-3">
         <div className="text-2xl leading-none" aria-hidden>
           {draft.emoji}
         </div>
@@ -205,7 +205,7 @@ function DraftPreview({ draft }: { draft: AIBoardDraft }) {
           {draft.lists.map((list, i) => (
             <div
               key={i}
-              className="rounded-lg bg-elev/40 border border-line p-3"
+              className="rounded-md bg-elev border border-line p-3"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-fg">

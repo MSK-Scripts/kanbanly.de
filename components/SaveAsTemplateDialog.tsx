@@ -35,12 +35,12 @@ export function SaveAsTemplateDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/60 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-2xl bg-surface border border-line shadow-2xl p-5">
+      <div className="w-full max-w-md rounded-md bg-surface border border-line shadow-md p-5">
         <h2 className="text-lg font-semibold text-fg mb-1">
           Als Template speichern
         </h2>
@@ -67,7 +67,7 @@ export function SaveAsTemplateDialog({
               required
               maxLength={80}
               defaultValue={defaultTitle}
-              className="w-full rounded-md bg-elev/80 border border-line-strong px-3 py-1.5 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+              className="w-full rounded-md bg-elev border border-line-strong px-3 py-1.5 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
             />
           </div>
 
@@ -84,7 +84,7 @@ export function SaveAsTemplateDialog({
               rows={3}
               maxLength={500}
               placeholder="Wofür ist dieses Template? Wann hilft es?"
-              className="w-full rounded-md bg-elev/80 border border-line-strong px-3 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60 resize-none"
+              className="w-full rounded-md bg-elev border border-line-strong px-3 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60 resize-none"
             />
           </div>
 
@@ -99,7 +99,7 @@ export function SaveAsTemplateDialog({
                   className={`h-8 w-8 grid place-items-center rounded-md text-base transition-colors ${
                     emoji === e
                       ? 'bg-accent/20 ring-2 ring-accent-hover/60'
-                      : 'bg-elev/60 hover:bg-elev'
+                      : 'bg-elev hover:bg-elev'
                   }`}
                 >
                   {e}
@@ -126,7 +126,7 @@ export function SaveAsTemplateDialog({
           <div className="flex items-center gap-2 mt-1">
             <button
               type="submit"
-              className="flex-1 rounded-none bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium py-2 transition-colors"
+              className="flex-1 rounded-none bg-accent hover:bg-accent-hover text-white text-sm font-medium py-2 transition-colors"
             >
               Speichern
             </button>

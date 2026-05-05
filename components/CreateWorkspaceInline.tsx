@@ -11,7 +11,7 @@ export function CreateWorkspaceInline() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium px-4 py-2 transition-colors"
+        className="flex items-center gap-2 rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-4 py-2 transition-colors"
       >
         <PlusIcon />
         Neuer Workspace
@@ -22,18 +22,18 @@ export function CreateWorkspaceInline() {
   return (
     <form
       action={createWorkspace}
-      className="flex items-center gap-2 rounded-lg bg-surface/60 border border-line/80 p-2"
+      className="flex items-center gap-2 rounded-md bg-surface border border-line p-2"
     >
       <input
         autoFocus
         name="name"
         required
         placeholder="Workspace-Name"
-        className="rounded-md bg-elev/80 border border-line-strong px-3 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+        className="rounded-md bg-elev border border-line-strong px-3 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
       />
       <button
         type="submit"
-        className="rounded-md bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium px-3 py-1.5"
+        className="rounded-md bg-accent hover:bg-accent-hover text-white text-xs font-medium px-3 py-1.5"
       >
         Erstellen
       </button>

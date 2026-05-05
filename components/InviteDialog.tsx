@@ -12,7 +12,7 @@ export function InviteDialog({ boardId }: { boardId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg border border-line-strong hover:border-accent-hover/60 bg-elev/60 hover:bg-elev text-fg-soft hover:text-white text-xs font-medium px-3 py-1.5 transition-colors"
+        className="rounded-md border border-line-strong hover:border-accent-hover/60 bg-elev hover:bg-elev text-fg-soft hover:text-white text-xs font-medium px-3 py-1.5 transition-colors"
       >
         Einladen
       </button>
@@ -28,8 +28,8 @@ export function InviteDialog({ boardId }: { boardId: string }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-surface border border-line p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-md rounded-md bg-surface border border-line p-6 shadow-md">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold text-fg">
@@ -51,20 +51,20 @@ export function InviteDialog({ boardId }: { boardId: string }) {
 
         {state?.ok ? (
           <div className="space-y-3">
-            <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs px-3 py-2">
+            <div className="rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs px-3 py-2">
               Einladung erstellt. Kopier den Link und schick ihn der Person.
             </div>
             <div className="flex gap-2">
               <input
                 readOnly
                 value={state.url}
-                className="flex-1 rounded-lg bg-elev border border-line-strong px-3 py-2 text-xs text-fg-soft font-mono focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+                className="flex-1 rounded-md bg-elev border border-line-strong px-3 py-2 text-xs text-fg-soft font-mono focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
                 onFocus={(e) => e.currentTarget.select()}
               />
               <button
                 type="button"
                 onClick={() => copyLink(state.url)}
-                className="rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium px-4 py-2 transition-colors"
+                className="rounded-md bg-accent hover:bg-accent-hover text-white text-xs font-medium px-4 py-2 transition-colors"
               >
                 {copied ? 'Kopiert ✓' : 'Kopieren'}
               </button>
@@ -72,7 +72,7 @@ export function InviteDialog({ boardId }: { boardId: string }) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="w-full rounded-lg bg-elev hover:bg-elev-hover text-fg-soft text-xs py-2 transition-colors"
+              className="w-full rounded-md bg-elev hover:bg-elev-hover text-fg-soft text-xs py-2 transition-colors"
             >
               Fertig
             </button>
@@ -82,7 +82,7 @@ export function InviteDialog({ boardId }: { boardId: string }) {
             <input type="hidden" name="board_id" value={boardId} />
 
             {state && !state.ok && (
-              <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
+              <div className="rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
                 {state.error}
               </div>
             )}
@@ -100,7 +100,7 @@ export function InviteDialog({ boardId }: { boardId: string }) {
                 type="email"
                 required
                 placeholder="kollege@firma.de"
-                className="w-full rounded-lg bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+                className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
               />
             </div>
 
@@ -115,7 +115,7 @@ export function InviteDialog({ boardId }: { boardId: string }) {
                 id="inv-role"
                 name="role"
                 defaultValue="editor"
-                className="w-full rounded-lg bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+                className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
               >
                 <option value="viewer">Viewer — nur lesen</option>
                 <option value="editor">Editor — Karten bearbeiten</option>
@@ -126,7 +126,7 @@ export function InviteDialog({ boardId }: { boardId: string }) {
             <button
               type="submit"
               disabled={pending}
-              className="w-full rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-medium py-2 transition-colors"
+              className="w-full rounded-md bg-accent hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-medium py-2 transition-colors"
             >
               {pending ? 'Erstelle…' : 'Einladung erstellen'}
             </button>

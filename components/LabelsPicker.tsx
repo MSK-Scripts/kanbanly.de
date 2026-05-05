@@ -82,7 +82,7 @@ export function LabelsPicker({ cardId }: { cardId: string }) {
             setNewName('');
             setCreating(false);
           }}
-          className="rounded-md bg-elev/60 border border-line-strong p-2 space-y-2"
+          className="rounded-md bg-elev border border-line-strong p-2 space-y-2"
         >
           <input
             autoFocus
@@ -107,7 +107,7 @@ export function LabelsPicker({ cardId }: { cardId: string }) {
           <div className="flex gap-2">
             <button
               type="submit"
-              className="flex-1 rounded-md bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium py-1"
+              className="flex-1 rounded-md bg-accent hover:bg-accent-hover text-white text-xs font-medium py-1"
             >
               Erstellen
             </button>

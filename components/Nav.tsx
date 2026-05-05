@@ -23,7 +23,7 @@ export async function Nav() {
   const displayName = username ? `@${username}` : user?.email ?? '';
 
   return (
-    <header className="px-6 py-3 border-b border-line/60 backdrop-blur-sm flex items-center justify-between">
+    <header className="px-6 py-3 border-b border-line/60 flex items-center justify-between">
       <Link href="/dashboard" className="flex flex-col group">
         <h1 className="text-base font-semibold text-fg tracking-tight leading-none group-hover:text-accent-hover transition-colors">
           kanbanly
@@ -50,7 +50,7 @@ export async function Nav() {
             <form action={logout}>
               <button
                 type="submit"
-                className="rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev text-fg-soft hover:text-fg text-xs px-3 py-1.5 transition-colors"
+                className="rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-fg-soft hover:text-fg text-xs px-3 py-1.5 transition-colors"
               >
                 Abmelden
               </button>

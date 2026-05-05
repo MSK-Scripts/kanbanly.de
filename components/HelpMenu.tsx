@@ -66,7 +66,7 @@ export function HelpMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Hilfe und Informationen"
         aria-expanded={open}
-        className="h-8 w-8 grid place-items-center rounded-none border border-line hover:border-line-strong bg-elev/60 hover:bg-elev text-fg-soft hover:text-fg text-sm transition-colors"
+        className="h-8 w-8 grid place-items-center rounded-none border border-line hover:border-line-strong bg-elev hover:bg-elev text-fg-soft hover:text-fg text-sm transition-colors"
       >
         ?
       </button>
@@ -76,7 +76,7 @@ export function HelpMenu() {
           <div
             ref={panelRef}
             style={{ top: pos.top, right: pos.right }}
-            className="fixed w-80 rounded-xl bg-surface border border-line shadow-2xl overflow-hidden z-[1100]"
+            className="fixed w-80 rounded-md bg-surface border border-line shadow-md overflow-hidden z-[1100]"
           >
             <div className="px-4 pt-3 pb-2 border-b border-line">
               <h3 className="text-xs font-semibold text-fg uppercase tracking-wide">
@@ -101,7 +101,7 @@ export function HelpMenu() {
               ))}
             </ul>
 
-            <div className="px-4 pt-2 pb-3 border-t border-line bg-bg/40">
+            <div className="px-4 pt-2 pb-3 border-t border-line bg-bg">
               <h3 className="text-[11px] font-semibold text-subtle uppercase tracking-wide mb-1.5">
                 Links
               </h3>

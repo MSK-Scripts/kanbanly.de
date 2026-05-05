@@ -10,7 +10,7 @@ export default function DatenschutzPage() {
           Datenschutzerklärung
         </h1>
 
-        <div className="rounded-2xl bg-surface/60 border border-line/80 p-6 space-y-6 text-sm text-fg-soft leading-relaxed">
+        <div className="rounded-md bg-surface border border-line p-6 space-y-6 text-sm text-fg-soft leading-relaxed">
           <section>
             <h2 className="text-base font-semibold text-fg mb-2">
               1. Verantwortlicher

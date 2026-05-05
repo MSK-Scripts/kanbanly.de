@@ -46,7 +46,7 @@ export function BulkActionBar() {
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[900] flex items-center gap-2 rounded-xl bg-surface border border-line shadow-2xl px-3 py-2">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[900] flex items-center gap-2 rounded-md bg-surface border border-line shadow-md px-3 py-2">
       <span className="text-xs text-fg font-medium tabular-nums">
         {count} ausgewählt
       </span>
@@ -60,12 +60,12 @@ export function BulkActionBar() {
             setMoveOpen((v) => !v);
             setLabelOpen(false);
           }}
-          className="rounded-md text-xs text-fg-soft hover:text-fg hover:bg-elev/60 px-2 py-1"
+          className="rounded-md text-xs text-fg-soft hover:text-fg hover:bg-elev px-2 py-1"
         >
           Verschieben
         </button>
         {moveOpen && (
-          <div className="absolute bottom-full mb-1 left-0 min-w-[160px] rounded-lg bg-surface border border-line shadow-xl overflow-hidden">
+          <div className="absolute bottom-full mb-1 left-0 min-w-[160px] rounded-md bg-surface border border-line shadow-md overflow-hidden">
             {listOrder.map((lid) => {
               const list = lists[lid];
               if (!list) return null;
@@ -94,12 +94,12 @@ export function BulkActionBar() {
             setLabelOpen((v) => !v);
             setMoveOpen(false);
           }}
-          className="rounded-md text-xs text-fg-soft hover:text-fg hover:bg-elev/60 px-2 py-1"
+          className="rounded-md text-xs text-fg-soft hover:text-fg hover:bg-elev px-2 py-1"
         >
           Label
         </button>
         {labelOpen && (
-          <div className="absolute bottom-full mb-1 left-0 min-w-[180px] rounded-lg bg-surface border border-line shadow-xl overflow-hidden p-1.5 max-h-60 overflow-y-auto board-scroll">
+          <div className="absolute bottom-full mb-1 left-0 min-w-[180px] rounded-md bg-surface border border-line shadow-md overflow-hidden p-1.5 max-h-60 overflow-y-auto board-scroll">
             {labelOrder.length === 0 ? (
               <div className="text-[11px] text-subtle p-2">
                 Keine Labels vorhanden.
@@ -149,7 +149,7 @@ export function BulkActionBar() {
       <button
         type="button"
         onClick={clearSelection}
-        className="rounded-md text-xs text-muted hover:text-fg-soft hover:bg-elev/60 px-2 py-1"
+        className="rounded-md text-xs text-muted hover:text-fg-soft hover:bg-elev px-2 py-1"
       >
         Auswahl aufheben
       </button>

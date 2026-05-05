@@ -267,7 +267,7 @@ function CardRow({
     <li>
       <Link
         href={href}
-        className="flex items-center gap-3 rounded-lg bg-surface/60 border border-line/80 hover:border-muted p-3 transition-colors"
+        className="flex items-center gap-3 rounded-md bg-surface border border-line hover:border-muted p-3 transition-colors"
       >
         <div className="flex-1 min-w-0">
           <div className="text-sm text-fg truncate">{title}</div>
@@ -285,7 +285,7 @@ function CardRow({
 
 function Empty({ text }: { text: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-line-strong p-4 text-center text-xs text-subtle">
+    <div className="rounded-md border border-dashed border-line-strong p-4 text-center text-xs text-subtle">
       {text}
     </div>
   );

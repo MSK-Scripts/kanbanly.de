@@ -83,7 +83,7 @@ export default async function GhostBoardPage({
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <div className="mb-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs px-3 py-2 flex items-center justify-between gap-3">
+      <div className="mb-4 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs px-3 py-2 flex items-center justify-between gap-3">
         <span>
           👻 <strong>Ghost-Modus:</strong> Read-only, keine Presence, keine
           Activity, keine Webhooks. Der Board-Besitzer sieht nicht dass du hier
@@ -138,9 +138,9 @@ export default async function GhostBoardPage({
               return (
                 <div
                   key={list.id}
-                  className="w-[300px] shrink-0 rounded-xl bg-surface/60 border border-line/80"
+                  className="w-[300px] shrink-0 rounded-md bg-surface border border-line"
                 >
-                  <div className="px-3 py-2 border-b border-line/80 flex items-center justify-between">
+                  <div className="px-3 py-2 border-b border-line flex items-center justify-between">
                     <span className="text-sm font-semibold text-fg">
                       {list.title}
                     </span>
@@ -157,7 +157,7 @@ export default async function GhostBoardPage({
                       listCards.map((c) => (
                         <div
                           key={c.id}
-                          className="rounded-lg bg-elev/70 border border-line-strong/60 p-2.5 text-xs"
+                          className="rounded-md bg-elev border border-line-strong p-2.5 text-xs"
                         >
                           {c.label_ids.length > 0 && (
                             <div className="flex flex-wrap gap-1 mb-1.5">
@@ -257,7 +257,7 @@ export default async function GhostBoardPage({
         <h2 className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-2">
           Letzte Aktivität (max 50)
         </h2>
-        <div className="rounded-xl bg-surface/60 border border-line/80 divide-y divide-line">
+        <div className="rounded-md bg-surface border border-line divide-y divide-line">
           {activity.length === 0 ? (
             <p className="p-4 text-xs text-subtle">Noch keine Aktivität.</p>
           ) : (

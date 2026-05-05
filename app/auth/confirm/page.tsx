@@ -21,7 +21,7 @@ export default async function ConfirmPage({
   if (!hasLegacy && !hasPkce) {
     return (
       <main className="min-h-screen flex items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl bg-surface/60 backdrop-blur-md border border-line/80 p-6 shadow-xl shadow-black/20 text-center">
+        <div className="w-full max-w-md rounded-md bg-surface border border-line p-6 shadow-md text-center">
           <h1 className="text-xl font-semibold text-fg mb-2">
             Link unvollständig
           </h1>
@@ -42,7 +42,7 @@ export default async function ConfirmPage({
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl bg-surface/60 backdrop-blur-md border border-line/80 p-6 shadow-xl shadow-black/20 text-center">
+      <div className="w-full max-w-md rounded-md bg-surface border border-line p-6 shadow-md text-center">
         <h1 className="text-xl font-semibold text-fg mb-2">
           E-Mail bestätigen
         </h1>
@@ -61,7 +61,7 @@ export default async function ConfirmPage({
           {next && <input type="hidden" name="next" value={next} />}
           <button
             type="submit"
-            className="w-full rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium py-2.5 transition-colors"
+            className="w-full rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium py-2.5 transition-colors"
           >
             Jetzt bestätigen
           </button>

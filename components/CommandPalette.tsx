@@ -140,12 +140,12 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1800] flex items-start justify-center bg-black/60 backdrop-blur-sm p-4 pt-[10vh]"
+      className="fixed inset-0 z-[1800] flex items-start justify-center bg-black/60 p-4 pt-[10vh]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-xl rounded-2xl bg-surface border border-line shadow-2xl overflow-hidden flex flex-col">
+      <div className="w-full max-w-xl rounded-md bg-surface border border-line shadow-md overflow-hidden flex flex-col">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-line">
           <span className="text-muted" aria-hidden>⌘</span>
           <input
@@ -312,7 +312,7 @@ function Row({
       data-idx={idx}
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors ${
-        active ? 'bg-accent/15 text-fg' : 'text-fg-soft hover:bg-elev/60'
+        active ? 'bg-accent/15 text-fg' : 'text-fg-soft hover:bg-elev'
       }`}
     >
       <span className="w-5 text-center text-muted" aria-hidden>

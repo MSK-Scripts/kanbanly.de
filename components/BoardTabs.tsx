@@ -24,7 +24,7 @@ export function BoardTabs({ boardSlug, active }: Props) {
           href={t.href}
           className={`rounded-t-md px-3 py-1.5 text-xs font-medium transition-colors ${
             active === t.key
-              ? 'bg-surface/70 text-fg border border-line/80 border-b-transparent'
+              ? 'bg-surface text-fg border border-line border-b-transparent'
               : 'text-muted hover:text-fg-soft'
           }`}
         >

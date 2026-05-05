@@ -109,7 +109,7 @@ export function SwimlaneBoard() {
                 return (
                   <div
                     key={lid}
-                    className="w-[280px] shrink-0 rounded-xl bg-surface/50 border border-line/60"
+                    className="w-[280px] shrink-0 rounded-md bg-surface border border-line/60"
                   >
                     <div className="flex items-center justify-between px-3 py-2 border-b border-line/60">
                       <span className="text-xs font-semibold text-fg-soft truncate">

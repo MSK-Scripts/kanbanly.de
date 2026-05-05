@@ -174,7 +174,7 @@ function Stat({
   hint?: string;
 }) {
   return (
-    <div className="rounded-xl bg-surface/60 border border-line/80 p-4">
+    <div className="rounded-md bg-surface border border-line p-4">
       <div className="text-2xl font-semibold text-fg font-mono tabular-nums">
         {value}
       </div>

@@ -74,7 +74,7 @@ export default async function WorkspacePage({
         </div>
 
         {(workspace.boards ?? []).length === 0 ? (
-          <div className="rounded-2xl bg-surface/60 border border-line/80 p-8 sm:p-10 text-center">
+          <div className="rounded-md bg-surface border border-line p-8 sm:p-10 text-center">
             <h2 className="text-lg font-semibold text-fg mb-1">
               Noch keine Boards
             </h2>
@@ -91,7 +91,7 @@ export default async function WorkspacePage({
               <Link
                 key={b.id}
                 href={`/boards/${b.slug}`}
-                className="rounded-xl bg-surface/60 border border-line/80 p-4 hover:border-accent-hover/60 hover:bg-surface/80 transition-colors min-h-[84px] flex items-center"
+                className="rounded-md bg-surface border border-line p-4 hover:border-accent-hover/60 hover:bg-surface transition-colors min-h-[84px] flex items-center"
               >
                 <div className="font-medium text-fg text-sm leading-snug break-words">
                   {b.name}

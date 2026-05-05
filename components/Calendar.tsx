@@ -85,7 +85,7 @@ export function Calendar() {
   if (totalWithDue === 0) {
     return (
       <div className="flex-1 overflow-y-auto board-scroll p-3 sm:p-6">
-        <div className="max-w-3xl mx-auto mt-10 rounded-2xl bg-surface/50 border border-line/80 p-8 sm:p-10 text-center">
+        <div className="max-w-3xl mx-auto mt-10 rounded-md bg-surface border border-line p-8 sm:p-10 text-center">
           <h3 className="text-base font-semibold text-fg mb-1">
             Noch keine Fälligkeiten
           </h3>
@@ -136,7 +136,7 @@ export function Calendar() {
                       <button
                         type="button"
                         onClick={() => setOpenCardId(cardId)}
-                        className="w-full text-left rounded-xl bg-surface/60 border border-line/80 hover:border-accent-hover/50 hover:bg-surface/80 transition-colors p-3 flex items-start gap-3"
+                        className="w-full text-left rounded-md bg-surface border border-line hover:border-accent-hover/50 hover:bg-surface transition-colors p-3 flex items-start gap-3"
                       >
                         <span className="text-[11px] text-muted tabular-nums font-mono pt-0.5 shrink-0 w-20">
                           {formatDate(due)}

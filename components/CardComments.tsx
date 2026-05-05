@@ -229,7 +229,7 @@ export function CardComments({ cardId }: { cardId: string }) {
                     </button>
                   )}
                 </div>
-                <div className="rounded-lg bg-elev/60 border border-line-strong/60 px-3 py-2 text-sm text-fg-soft prose-markdown">
+                <div className="rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg-soft prose-markdown">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
@@ -269,13 +269,13 @@ export function CardComments({ cardId }: { cardId: string }) {
           }}
           placeholder="Kommentar schreiben… Markdown erlaubt. (Strg+Enter zum Senden)"
           rows={2}
-          className="w-full rounded-lg bg-elev/80 border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60 resize-y font-mono"
+          className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60 resize-y font-mono"
         />
         <div className="flex items-center justify-end gap-2">
           <button
             type="submit"
             disabled={!draft.trim() || sending}
-            className="rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-medium px-4 py-1.5 transition-colors"
+            className="rounded-md bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-medium px-4 py-1.5 transition-colors"
           >
             {sending ? 'Sende…' : 'Senden'}
           </button>

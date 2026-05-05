@@ -12,7 +12,7 @@ export function GroupByToggle() {
   const setGroupBy = useBoard((s) => s.setGroupBy);
 
   return (
-    <div className="hidden sm:flex items-center gap-1 rounded-md bg-elev/60 border border-line-strong p-0.5">
+    <div className="hidden sm:flex items-center gap-1 rounded-md bg-elev border border-line-strong p-0.5">
       {OPTIONS.map((o) => (
         <button
           key={o.key}

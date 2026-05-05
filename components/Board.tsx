@@ -57,7 +57,7 @@ export default function Board() {
         {mounted ? (
           listOrder.length === 0 ? (
             <div className="h-full min-h-[60vh] flex items-center justify-center">
-              <div className="max-w-sm text-center rounded-2xl bg-surface/50 border border-line/80 p-8">
+              <div className="max-w-sm text-center rounded-md bg-surface border border-line p-8">
                 <h3 className="text-base font-semibold text-fg mb-1">
                   Leere Bühne
                 </h3>
@@ -98,7 +98,7 @@ export default function Board() {
             {listOrder.map((id) => (
               <div
                 key={id}
-                className="w-[88vw] sm:w-[320px] h-40 rounded-2xl bg-surface/60 border border-line/80 animate-pulse shrink-0"
+                className="w-[88vw] sm:w-[320px] h-40 rounded-md bg-surface border border-line animate-pulse shrink-0"
               />
             ))}
           </div>

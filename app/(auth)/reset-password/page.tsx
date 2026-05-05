@@ -15,7 +15,7 @@ export default async function ResetPasswordPage({
   const { error, email } = await searchParams;
 
   return (
-    <div className="rounded-2xl bg-surface/60 backdrop-blur-md border border-line/80 p-6 shadow-xl shadow-black/20">
+    <div className="rounded-md bg-surface border border-line p-6 shadow-md">
       <h2 className="text-xl font-semibold text-fg mb-1">
         Passwort zurücksetzen
       </h2>
@@ -25,7 +25,7 @@ export default async function ResetPasswordPage({
       </p>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
+        <div className="mb-4 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
           {error}
         </div>
       )}
@@ -42,7 +42,7 @@ export default async function ResetPasswordPage({
             required
             defaultValue={email ?? ''}
             autoComplete="email"
-            className="w-full rounded-lg bg-elev/80 border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
           />
         </div>
         <div>
@@ -56,7 +56,7 @@ export default async function ResetPasswordPage({
             required
             placeholder="XXXXX-XXXXX"
             autoComplete="one-time-code"
-            className="w-full rounded-lg bg-elev/80 border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
           />
         </div>
         <div>
@@ -70,7 +70,7 @@ export default async function ResetPasswordPage({
             required
             minLength={8}
             autoComplete="new-password"
-            className="w-full rounded-lg bg-elev/80 border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
           />
           <p className="text-[11px] text-subtle mt-1">
             Mindestens 8 Zeichen.
@@ -78,7 +78,7 @@ export default async function ResetPasswordPage({
         </div>
         <button
           type="submit"
-          className="w-full rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium py-2 mt-2 transition-colors"
+          className="w-full rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium py-2 mt-2 transition-colors"
         >
           Passwort setzen
         </button>

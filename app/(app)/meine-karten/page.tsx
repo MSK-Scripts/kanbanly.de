@@ -161,7 +161,7 @@ export default async function MyCardsPage() {
         </div>
 
         {total === 0 ? (
-          <div className="rounded-2xl bg-surface/60 border border-line/80 p-8 sm:p-10 text-center">
+          <div className="rounded-md bg-surface border border-line p-8 sm:p-10 text-center">
             <h2 className="text-lg font-semibold text-fg mb-1">
               Nichts zugewiesen
             </h2>
@@ -199,7 +199,7 @@ export default async function MyCardsPage() {
                       <li key={r.id}>
                         <Link
                           href={`/boards/${r.board_slug}?card=${r.id}`}
-                          className="block rounded-xl bg-surface/60 border border-line/80 hover:border-accent-hover/50 hover:bg-surface/80 transition-colors p-3 flex items-start gap-3"
+                          className="block rounded-md bg-surface border border-line hover:border-accent-hover/50 hover:bg-surface transition-colors p-3 flex items-start gap-3"
                         >
                           <span className="text-[11px] text-muted tabular-nums font-mono pt-0.5 shrink-0 w-20">
                             {formatDate(r.due_date)}

@@ -25,11 +25,11 @@ export function ConfirmDialog() {
 
   return (
     <div
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-4"
       onClick={() => close(false)}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-surface border border-line shadow-2xl overflow-hidden"
+        className="w-full max-w-sm rounded-md bg-surface border border-line shadow-md overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -42,11 +42,11 @@ export function ConfirmDialog() {
             </p>
           )}
         </div>
-        <div className="px-5 py-3 bg-bg/40 border-t border-line flex justify-end gap-2">
+        <div className="px-5 py-3 bg-bg border-t border-line flex justify-end gap-2">
           <button
             type="button"
             onClick={() => close(false)}
-            className="rounded-lg px-4 py-1.5 text-sm text-fg-soft hover:text-fg hover:bg-elev transition-colors"
+            className="rounded-md px-4 py-1.5 text-sm text-fg-soft hover:text-fg hover:bg-elev transition-colors"
             autoFocus
           >
             {cancelLabel}
@@ -54,10 +54,10 @@ export function ConfirmDialog() {
           <button
             type="button"
             onClick={() => close(true)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white transition-colors ${
+            className={`rounded-md px-4 py-1.5 text-sm font-medium text-white transition-colors ${
               danger
                 ? 'bg-rose-500/90 hover:bg-rose-500'
-                : 'bg-accent/90 hover:bg-accent-hover'
+                : 'bg-accent hover:bg-accent-hover'
             }`}
           >
             {confirmLabel}

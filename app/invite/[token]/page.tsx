@@ -39,7 +39,7 @@ export default async function InvitePage({
           <h1 className="text-lg font-semibold text-fg">kanbanly</h1>
         </div>
 
-        <div className="rounded-2xl bg-surface/60 border border-line/80 p-6">
+        <div className="rounded-md bg-surface border border-line p-6">
           {!invitation ? (
             <>
               <h2 className="text-lg font-semibold text-fg mb-1">
@@ -59,7 +59,7 @@ export default async function InvitePage({
               </p>
               <Link
                 href="/dashboard"
-                className="inline-block rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium px-4 py-2"
+                className="inline-block rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-4 py-2"
               >
                 Zum Dashboard
               </Link>
@@ -94,7 +94,7 @@ export default async function InvitePage({
               </p>
 
               {error && (
-                <div className="mb-4 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
+                <div className="mb-4 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
                   {error === 'email_mismatch'
                     ? `Diese Einladung ist für ${invitation.email}. Du bist aber als ${user?.email ?? 'jemand anderes'} angemeldet.`
                     : error === 'not_authenticated'
@@ -109,20 +109,20 @@ export default async function InvitePage({
                 <div className="space-y-2">
                   <Link
                     href={`/register?next=${encodeURIComponent(`/invite/${token}`)}`}
-                    className="block text-center rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium py-2 transition-colors"
+                    className="block text-center rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium py-2 transition-colors"
                   >
                     Konto mit {invitation.email} anlegen
                   </Link>
                   <Link
                     href={`/login?next=${encodeURIComponent(`/invite/${token}`)}`}
-                    className="block text-center rounded-lg bg-elev hover:bg-elev-hover text-fg-soft text-sm py-2 transition-colors"
+                    className="block text-center rounded-md bg-elev hover:bg-elev-hover text-fg-soft text-sm py-2 transition-colors"
                   >
                     Ich habe schon ein Konto — anmelden
                   </Link>
                 </div>
               ) : user.email?.toLowerCase() !== invitation.email.toLowerCase() ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-rose-800 dark:text-rose-200 rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2">
+                  <p className="text-xs text-rose-800 dark:text-rose-200 rounded-md bg-rose-500/10 border border-rose-500/30 px-3 py-2">
                     Du bist als {user.email} angemeldet, aber die Einladung
                     ist für {invitation.email}.
                   </p>
@@ -130,7 +130,7 @@ export default async function InvitePage({
                     <input type="hidden" name="token" value={token} />
                     <button
                       type="submit"
-                      className="w-full rounded-lg bg-elev hover:bg-elev-hover text-fg-soft text-sm py-2 transition-colors"
+                      className="w-full rounded-md bg-elev hover:bg-elev-hover text-fg-soft text-sm py-2 transition-colors"
                     >
                       Abmelden & mit richtiger E-Mail neu anmelden
                     </button>
@@ -141,7 +141,7 @@ export default async function InvitePage({
                   <input type="hidden" name="token" value={token} />
                   <button
                     type="submit"
-                    className="w-full rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium py-2 transition-colors"
+                    className="w-full rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium py-2 transition-colors"
                   >
                     Einladung annehmen
                   </button>

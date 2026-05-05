@@ -16,10 +16,10 @@ export function SearchButton() {
       type="button"
       onClick={() => window.dispatchEvent(new Event('open-palette'))}
       aria-label="Suche öffnen"
-      className="hidden sm:flex items-center gap-2 rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev text-muted hover:text-fg text-xs px-2.5 py-1.5 transition-colors"
+      className="hidden sm:flex items-center gap-2 rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-muted hover:text-fg text-xs px-2.5 py-1.5 transition-colors"
     >
       <span>Suche</span>
-      <kbd className="text-[10px] font-mono border border-line-strong bg-bg/40 px-1 rounded">
+      <kbd className="text-[10px] font-mono border border-line-strong bg-bg px-1 rounded">
         {isMac ? '⌘K' : 'Ctrl K'}
       </kbd>
     </button>

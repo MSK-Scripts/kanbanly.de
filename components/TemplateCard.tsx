@@ -55,7 +55,7 @@ export function TemplateCard({
   };
 
   return (
-    <div className="rounded-xl bg-surface/60 border border-line/80 p-4 flex flex-col gap-3">
+    <div className="rounded-md bg-surface border border-line p-4 flex flex-col gap-3">
       <div className="flex items-start gap-3">
         <div className="text-2xl leading-none shrink-0" aria-hidden>
           {template.cover_emoji || '📋'}
@@ -99,7 +99,7 @@ export function TemplateCard({
           <button
             type="button"
             onClick={() => setUseOpen(true)}
-            className="flex-1 rounded-none bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium py-1.5 transition-colors"
+            className="flex-1 rounded-none bg-accent hover:bg-accent-hover text-white text-xs font-medium py-1.5 transition-colors"
           >
             Verwenden
           </button>
@@ -109,7 +109,7 @@ export function TemplateCard({
                 type="button"
                 onClick={togglePublic}
                 disabled={isPending}
-                className="rounded-none border border-line-strong hover:border-muted bg-elev/60 hover:bg-elev text-fg-soft hover:text-fg text-xs px-2.5 py-1.5 transition-colors disabled:opacity-50"
+                className="rounded-none border border-line-strong hover:border-muted bg-elev hover:bg-elev text-fg-soft hover:text-fg text-xs px-2.5 py-1.5 transition-colors disabled:opacity-50"
                 title={
                   template.is_public
                     ? 'Aus der Community entfernen'
@@ -154,7 +154,7 @@ function UseForm({
 }) {
   if (workspaces.length === 0) {
     return (
-      <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs p-2.5">
+      <div className="rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs p-2.5">
         Du brauchst erst einen Workspace. Erstelle einen im Dashboard.
       </div>
     );
@@ -163,7 +163,7 @@ function UseForm({
   return (
     <form
       action={createBoardFromTemplate}
-      className="flex flex-col gap-2 rounded-lg bg-elev/40 p-2.5"
+      className="flex flex-col gap-2 rounded-md bg-elev p-2.5"
     >
       <input type="hidden" name="template_id" value={templateId} />
       <input
@@ -171,13 +171,13 @@ function UseForm({
         required
         defaultValue={defaultName}
         placeholder="Board-Name"
-        className="rounded-md bg-elev/80 border border-line-strong px-2.5 py-1.5 text-xs text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+        className="rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-xs text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
       />
       <select
         name="workspace_id"
         defaultValue={workspaces[0]?.id}
         required
-        className="rounded-md bg-elev/80 border border-line-strong px-2.5 py-1.5 text-xs text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+        className="rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-xs text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
       >
         {workspaces.map((w) => (
           <option key={w.id} value={w.id}>
@@ -188,7 +188,7 @@ function UseForm({
       <div className="flex gap-2">
         <button
           type="submit"
-          className="flex-1 rounded-none bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium py-1.5 transition-colors"
+          className="flex-1 rounded-none bg-accent hover:bg-accent-hover text-white text-xs font-medium py-1.5 transition-colors"
         >
           Board erstellen
         </button>

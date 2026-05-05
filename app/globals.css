@@ -101,11 +101,7 @@ textarea,
 }
 
 body {
-  background:
-    radial-gradient(ellipse at 15% -10%, var(--glow-a), transparent 55%),
-    radial-gradient(ellipse at 95% 110%, var(--glow-b), transparent 50%),
-    var(--bg);
-  background-attachment: fixed;
+  background: var(--bg);
 }
 
 .board-scroll {

@@ -169,7 +169,7 @@ export function NotificationsBell() {
         onClick={() => setOpen((v) => !v)}
         aria-label={`Benachrichtigungen${count > 0 ? ` (${count})` : ''}`}
         aria-expanded={open}
-        className="relative h-8 w-8 grid place-items-center rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev text-fg-soft hover:text-fg transition-colors"
+        className="relative h-8 w-8 grid place-items-center rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-fg-soft hover:text-fg transition-colors"
       >
         <svg
           viewBox="0 0 24 24"
@@ -192,7 +192,7 @@ export function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-80 rounded-xl bg-surface border border-line shadow-2xl overflow-hidden z-50">
+        <div className="absolute right-0 top-10 w-80 rounded-md bg-surface border border-line shadow-md overflow-hidden z-50">
           <div className="px-4 pt-3 pb-2 border-b border-line">
             <h3 className="text-xs font-semibold text-fg uppercase tracking-wide">
               Einladungen
@@ -235,7 +235,7 @@ export function NotificationsBell() {
                     type="button"
                     onClick={() => accept(inv)}
                     disabled={isPending}
-                    className="mt-2 w-full rounded-md bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium py-1.5 transition-colors disabled:opacity-50"
+                    className="mt-2 w-full rounded-md bg-accent hover:bg-accent-hover text-white text-xs font-medium py-1.5 transition-colors disabled:opacity-50"
                   >
                     {isPending ? 'Nehme an…' : 'Annehmen'}
                   </button>

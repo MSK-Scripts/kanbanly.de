@@ -47,7 +47,7 @@ export function RecoveryCodesView({ codes }: { codes: string[] }) {
   };
 
   return (
-    <div className="rounded-2xl bg-surface/60 backdrop-blur-md border border-line/80 p-6 shadow-xl shadow-black/20">
+    <div className="rounded-md bg-surface border border-line p-6 shadow-md">
       <h2 className="text-xl font-semibold text-fg mb-1">
         Deine Recovery-Codes
       </h2>
@@ -56,7 +56,7 @@ export function RecoveryCodesView({ codes }: { codes: string[] }) {
         sind das einzige, womit du dein Passwort zurücksetzen kannst.
       </p>
 
-      <div className="mb-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs px-3 py-2">
+      <div className="mb-4 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs px-3 py-2">
         Speichere die Codes jetzt. Nach dem Weiter siehst du sie nie wieder.
         Jeder Code gilt genau einmal.
       </div>
@@ -76,14 +76,14 @@ export function RecoveryCodesView({ codes }: { codes: string[] }) {
         <button
           type="button"
           onClick={copyAll}
-          className="flex-1 rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev text-fg-soft hover:text-fg text-xs px-3 py-2 transition-colors"
+          className="flex-1 rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-fg-soft hover:text-fg text-xs px-3 py-2 transition-colors"
         >
           {copied ? 'Kopiert ✓' : 'Alle kopieren'}
         </button>
         <button
           type="button"
           onClick={download}
-          className="flex-1 rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev text-fg-soft hover:text-fg text-xs px-3 py-2 transition-colors"
+          className="flex-1 rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-fg-soft hover:text-fg text-xs px-3 py-2 transition-colors"
         >
           Als .txt speichern
         </button>
@@ -106,7 +106,7 @@ export function RecoveryCodesView({ codes }: { codes: string[] }) {
         type="button"
         disabled={!confirmed || isPending}
         onClick={proceed}
-        className="w-full rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium py-2 transition-colors"
+        className="w-full rounded-md bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium py-2 transition-colors"
       >
         {isPending ? 'Einen Moment…' : 'Weiter zum Dashboard'}
       </button>

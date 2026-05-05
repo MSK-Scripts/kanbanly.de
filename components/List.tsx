@@ -64,13 +64,13 @@ function ListInner({ listId, index }: Props) {
             ...listDrag.draggableProps.style,
             zIndex: listSnap.isDragging ? 9998 : undefined,
           }}
-          className={`w-[88vw] sm:w-[320px] shrink-0 flex flex-col rounded-2xl bg-surface/70 border border-line/80 max-h-[calc(100vh-9rem)] sm:max-h-[calc(100vh-8rem)] ${
-            listSnap.isDragging ? 'shadow-xl ring-1 ring-accent-hover/40' : ''
+          className={`w-[88vw] sm:w-[320px] shrink-0 flex flex-col rounded-md bg-surface border border-line max-h-[calc(100vh-9rem)] sm:max-h-[calc(100vh-8rem)] ${
+            listSnap.isDragging ? 'shadow-md ring-1 ring-accent' : ''
           }`}
         >
           <div
             {...listDrag.dragHandleProps}
-            className="flex items-center justify-between px-4 py-3 border-b border-line/80 cursor-grab active:cursor-grabbing select-none"
+            className="flex items-center justify-between px-4 py-3 border-b border-line cursor-grab active:cursor-grabbing select-none"
           >
             <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${dotColor}`} />
@@ -136,7 +136,7 @@ function ListInner({ listId, index }: Props) {
         )}
       </Droppable>
 
-      <div className="p-2 border-t border-line/80">
+      <div className="p-2 border-t border-line">
         {adding ? (
           <form
             onSubmit={(e) => {
@@ -159,12 +159,12 @@ function ListInner({ listId, index }: Props) {
                 }
               }}
               placeholder="Kartentitel…"
-              className="w-full rounded-lg bg-elev/80 border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+              className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-1 focus:ring-accent"
             />
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="flex-1 rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium py-1.5 transition-colors"
+                className="flex-1 rounded-md bg-accent hover:bg-accent-hover text-white text-xs font-medium py-1.5 transition-colors"
               >
                 Hinzufügen
               </button>
@@ -174,7 +174,7 @@ function ListInner({ listId, index }: Props) {
                   setAdding(false);
                   setNewTitle('');
                 }}
-                className="rounded-lg px-3 text-xs text-muted hover:text-fg-soft"
+                className="rounded-md px-3 text-xs text-muted hover:text-fg-soft"
               >
                 Abbrechen
               </button>
@@ -184,7 +184,7 @@ function ListInner({ listId, index }: Props) {
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="w-full flex items-center justify-center gap-2 rounded-lg py-2 text-xs text-muted hover:text-fg hover:bg-elev/60 transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-md py-2 text-xs text-muted hover:text-fg hover:bg-elev transition-colors"
           >
             <PlusIcon />
             Karte hinzufügen

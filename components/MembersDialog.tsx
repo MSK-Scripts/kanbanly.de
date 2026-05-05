@@ -206,7 +206,7 @@ export function MembersDialog({ boardId }: { boardId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg border border-line-strong hover:border-accent-hover/60 bg-elev/60 hover:bg-elev text-fg-soft hover:text-white text-xs font-medium px-3 py-1.5 transition-colors"
+        className="rounded-md border border-line-strong hover:border-accent-hover/60 bg-elev hover:bg-elev text-fg-soft hover:text-white text-xs font-medium px-3 py-1.5 transition-colors"
       >
         Mitglieder
       </button>
@@ -215,12 +215,12 @@ export function MembersDialog({ boardId }: { boardId: string }) {
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-start justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+      className="fixed inset-0 z-[1000] flex items-start justify-center bg-black/60 p-4 overflow-y-auto"
       onClick={() => setOpen(false)}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg mt-10 mb-10 rounded-2xl bg-surface border border-line shadow-2xl"
+        className="w-full max-w-lg mt-10 mb-10 rounded-md bg-surface border border-line shadow-md"
       >
         <div className="px-5 pt-5 pb-4 border-b border-line flex items-start justify-between">
           <div>
@@ -240,7 +240,7 @@ export function MembersDialog({ boardId }: { boardId: string }) {
         </div>
 
         {actionError && (
-          <div className="mx-5 mt-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
+          <div className="mx-5 mt-3 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
             {actionError}
           </div>
         )}
@@ -258,7 +258,7 @@ export function MembersDialog({ boardId }: { boardId: string }) {
               {members.map((m) => (
                 <li
                   key={m.user_id}
-                  className="flex items-center gap-3 rounded-lg bg-elev/50 border border-line px-3 py-2"
+                  className="flex items-center gap-3 rounded-md bg-elev border border-line px-3 py-2"
                 >
                   <Avatar username={m.username} size="sm" />
                   <div className="flex-1 min-w-0">
@@ -338,7 +338,7 @@ export function MembersDialog({ boardId }: { boardId: string }) {
                 return (
                   <li
                     key={p.id}
-                    className="flex items-center gap-3 rounded-lg bg-elev/50 border border-line px-3 py-2"
+                    className="flex items-center gap-3 rounded-md bg-elev border border-line px-3 py-2"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-fg truncate">{p.email}</div>
@@ -369,20 +369,20 @@ export function MembersDialog({ boardId }: { boardId: string }) {
           </h3>
           {inviteState?.ok ? (
             <div className="space-y-3">
-              <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs px-3 py-2">
+              <div className="rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs px-3 py-2">
                 Einladung erstellt. Kopier den Link und schick ihn der Person.
               </div>
               <div className="flex gap-2">
                 <input
                   readOnly
                   value={inviteState.url}
-                  className="flex-1 rounded-lg bg-elev border border-line-strong px-3 py-2 text-xs text-fg-soft font-mono focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+                  className="flex-1 rounded-md bg-elev border border-line-strong px-3 py-2 text-xs text-fg-soft font-mono focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
                   onFocus={(e) => e.currentTarget.select()}
                 />
                 <button
                   type="button"
                   onClick={() => copyLink(inviteState.url)}
-                  className="rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium px-4 py-2 transition-colors"
+                  className="rounded-md bg-accent hover:bg-accent-hover text-white text-xs font-medium px-4 py-2 transition-colors"
                 >
                   {copied ? 'Kopiert ✓' : 'Kopieren'}
                 </button>
@@ -392,7 +392,7 @@ export function MembersDialog({ boardId }: { boardId: string }) {
             <form action={inviteAction} className="space-y-3">
               <input type="hidden" name="board_id" value={boardId} />
               {inviteState && !inviteState.ok && (
-                <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
+                <div className="rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs px-3 py-2">
                   {inviteState.error}
                 </div>
               )}
@@ -402,12 +402,12 @@ export function MembersDialog({ boardId }: { boardId: string }) {
                   type="email"
                   required
                   placeholder="kollege@firma.de"
-                  className="flex-1 rounded-lg bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+                  className="flex-1 rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
                 />
                 <select
                   name="role"
                   defaultValue="editor"
-                  className="rounded-lg bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+                  className="rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
                 >
                   <option value="viewer">Viewer</option>
                   <option value="editor">Editor</option>
@@ -417,7 +417,7 @@ export function MembersDialog({ boardId }: { boardId: string }) {
               <button
                 type="submit"
                 disabled={invitePending}
-                className="w-full rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-medium py-2 transition-colors"
+                className="w-full rounded-md bg-accent hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-medium py-2 transition-colors"
               >
                 {invitePending ? 'Erstelle…' : 'Einladungs-Link erstellen'}
               </button>

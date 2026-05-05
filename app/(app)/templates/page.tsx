@@ -106,7 +106,7 @@ export default async function TemplatesPage({
       </div>
 
       {created && (
-        <div className="mb-6 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs px-3 py-2">
+        <div className="mb-6 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs px-3 py-2">
           Template wurde gespeichert.
         </div>
       )}
@@ -204,7 +204,7 @@ function Grid({ children }: { children: React.ReactNode }) {
 
 function Empty({ text }: { text: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-line-strong p-6 text-center text-xs text-subtle">
+    <div className="rounded-md border border-dashed border-line-strong p-6 text-center text-xs text-subtle">
       {text}
     </div>
   );

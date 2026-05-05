@@ -189,12 +189,12 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-xl max-h-[90vh] rounded-2xl bg-surface border border-line shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-xl max-h-[90vh] rounded-md bg-surface border border-line shadow-md flex flex-col overflow-hidden">
         <div className="px-5 py-4 border-b border-line flex items-start justify-between gap-3 shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-fg">Discord-Webhook</h2>
@@ -221,7 +221,7 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
                 Webhook-URL
               </label>
               {savedUrl && !editingUrl ? (
-                <div className="flex items-center gap-2 rounded-lg bg-elev/60 border border-line-strong px-3 py-1.5">
+                <div className="flex items-center gap-2 rounded-md bg-elev border border-line-strong px-3 py-1.5">
                   <span className="flex-1 text-xs font-mono text-fg-soft truncate">
                     {revealed ? savedUrl : maskUrl(savedUrl)}
                   </span>
@@ -252,13 +252,13 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
                     onChange={(e) => setUrlInput(e.target.value)}
                     placeholder="https://discord.com/api/webhooks/…/…"
                     autoFocus
-                    className="flex-1 rounded-lg bg-elev/80 border border-line-strong px-3 py-1.5 text-xs font-mono text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+                    className="flex-1 rounded-md bg-elev border border-line-strong px-3 py-1.5 text-xs font-mono text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
                   />
                   <button
                     type="button"
                     onClick={saveUrl}
                     disabled={pending || !urlInput.trim()}
-                    className="rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5"
+                    className="rounded-md bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5"
                   >
                     {pending ? '…' : savedUrl ? 'Ersetzen' : 'Speichern'}
                   </button>
@@ -322,7 +322,7 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
                                 className={`inline-flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1 text-[11px] transition-colors ${
                                   on
                                     ? 'bg-accent/15 border-accent-hover/50 text-fg'
-                                    : 'bg-elev/50 border-line-strong text-muted hover:text-fg-soft'
+                                    : 'bg-elev border-line-strong text-muted hover:text-fg-soft'
                                 }`}
                               >
                                 <input
@@ -378,7 +378,7 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
               type="button"
               onClick={saveSettings}
               disabled={pending}
-              className="rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-60 text-white text-xs font-medium px-3 py-2"
+              className="rounded-md bg-accent hover:bg-accent-hover disabled:opacity-60 text-white text-xs font-medium px-3 py-2"
             >
               {pending ? 'Speichere…' : 'Events speichern'}
             </button>
@@ -386,7 +386,7 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
               type="button"
               onClick={test}
               disabled={pending}
-              className="rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev disabled:opacity-50 text-fg-soft hover:text-fg text-xs font-medium px-3 py-2"
+              className="rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev disabled:opacity-50 text-fg-soft hover:text-fg text-xs font-medium px-3 py-2"
             >
               Test senden
             </button>
@@ -394,7 +394,7 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
               type="button"
               onClick={remove}
               disabled={pending}
-              className="rounded-lg text-xs text-muted hover:text-rose-600 dark:hover:text-rose-300 px-3 py-2 ml-auto disabled:opacity-50"
+              className="rounded-md text-xs text-muted hover:text-rose-600 dark:hover:text-rose-300 px-3 py-2 ml-auto disabled:opacity-50"
             >
               Webhook entfernen
             </button>

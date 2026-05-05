@@ -84,12 +84,12 @@ export function BackgroundDialog({ onClose }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-surface border border-line shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-lg rounded-md bg-surface border border-line shadow-md flex flex-col overflow-hidden">
         <div className="px-5 py-4 border-b border-line flex items-start justify-between gap-3 shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-fg">
@@ -121,7 +121,7 @@ export function BackgroundDialog({ onClose }: Props) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="https://images.unsplash.com/..."
-              className="w-full rounded-lg bg-elev/80 border border-line-strong px-3 py-1.5 text-xs font-mono text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
+              className="w-full rounded-md bg-elev border border-line-strong px-3 py-1.5 text-xs font-mono text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
             />
             <p className="text-[11px] text-subtle mt-1 leading-relaxed">
               Tipp: Unsplash, eigener CDN, oder öffentliche Bild-URLs. Bild
@@ -159,7 +159,7 @@ export function BackgroundDialog({ onClose }: Props) {
           {previewValid && (
             <div>
               <p className="text-[11px] text-muted mb-1.5">Vorschau</p>
-              <div className="aspect-video rounded-lg overflow-hidden border border-line-strong">
+              <div className="aspect-video rounded-md overflow-hidden border border-line-strong">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={preview}
@@ -182,7 +182,7 @@ export function BackgroundDialog({ onClose }: Props) {
             type="button"
             onClick={save}
             disabled={pending}
-            className="flex-1 rounded-lg bg-accent/90 hover:bg-accent-hover disabled:opacity-60 text-white text-xs font-medium py-2"
+            className="flex-1 rounded-md bg-accent hover:bg-accent-hover disabled:opacity-60 text-white text-xs font-medium py-2"
           >
             {pending ? 'Speichere…' : 'Speichern'}
           </button>
@@ -191,7 +191,7 @@ export function BackgroundDialog({ onClose }: Props) {
               type="button"
               onClick={clear}
               disabled={pending}
-              className="rounded-lg text-xs text-muted hover:text-rose-600 dark:hover:text-rose-300 px-3 py-2 disabled:opacity-50"
+              className="rounded-md text-xs text-muted hover:text-rose-600 dark:hover:text-rose-300 px-3 py-2 disabled:opacity-50"
             >
               Entfernen
             </button>

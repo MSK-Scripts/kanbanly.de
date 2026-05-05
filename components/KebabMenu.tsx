@@ -43,8 +43,8 @@ export function KebabMenu({
 
   const defaultButton =
     size === 'sm'
-      ? 'h-6 w-6 text-sm text-muted hover:text-fg hover:bg-elev/60 rounded grid place-items-center transition-colors'
-      : 'h-8 w-8 rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev text-fg-soft hover:text-fg grid place-items-center transition-colors';
+      ? 'h-6 w-6 text-sm text-muted hover:text-fg hover:bg-elev rounded grid place-items-center transition-colors'
+      : 'h-8 w-8 rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-fg-soft hover:text-fg grid place-items-center transition-colors';
 
   return (
     <div ref={ref} className="relative">
@@ -58,7 +58,7 @@ export function KebabMenu({
         ⋯
       </button>
       {open && (
-        <div className="absolute right-0 top-[calc(100%+4px)] min-w-[180px] rounded-lg bg-surface border border-line shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-[calc(100%+4px)] min-w-[180px] rounded-md bg-surface border border-line shadow-md z-50 overflow-hidden">
           {actions.map((a, i) => (
             <button
               key={i}
