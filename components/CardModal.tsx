@@ -7,6 +7,7 @@ import { DescriptionEditor } from './DescriptionEditor';
 import { ActivityLog } from './ActivityLog';
 import { CardComments } from './CardComments';
 import { CustomFieldsSection } from './CustomFieldsSection';
+import { CardLinksSection } from './CardLinksSection';
 import {
   aiImproveDescription,
   aiSuggestSubtasks,
@@ -354,6 +355,8 @@ export function CardModal() {
             {boardId && (
               <CustomFieldsSection cardId={openCardId} boardId={boardId} />
             )}
+
+            <CardLinksSection cardId={openCardId} />
 
             <div className="p-5 flex justify-end">
               <button
