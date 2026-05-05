@@ -84,7 +84,7 @@ export default async function LandingPage() {
           {signedIn ? (
             <Link
               href="/dashboard"
-              className="rounded-none bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium px-3 py-1.5 transition-colors"
+              className="rounded-md bg-accent hover:bg-accent-hover text-white text-xs font-medium px-3 py-1.5 transition-colors"
             >
               Zum Dashboard
             </Link>
@@ -98,7 +98,7 @@ export default async function LandingPage() {
               </Link>
               <Link
                 href="/register"
-                className="rounded-none border border-line-strong hover:border-muted bg-elev/60 hover:bg-elev text-fg-soft hover:text-fg text-xs px-3 py-1.5 transition-colors"
+                className="rounded-md border border-line-strong hover:border-muted bg-elev hover:bg-elev-hover text-fg-soft hover:text-fg text-xs px-3 py-1.5 transition-colors"
               >
                 Registrieren
               </Link>
@@ -114,9 +114,7 @@ export default async function LandingPage() {
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl sm:text-5xl font-semibold text-fg tracking-tight leading-tight">
               Manage dein Projekt —
-              <span className="block bg-gradient-to-r from-violet-400 to-emerald-400 bg-clip-text text-transparent">
-                ohne Chaos.
-              </span>
+              <span className="block text-accent">ohne Chaos.</span>
             </h2>
             <p className="mt-5 text-base sm:text-lg text-muted max-w-xl mx-auto leading-relaxed">
               Workspaces, Boards, Karten mit Labels, Fälligkeiten und
@@ -126,14 +124,14 @@ export default async function LandingPage() {
             <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
               <Link
                 href={signedIn ? '/dashboard' : '/register'}
-                className="rounded-none bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors shadow-lg shadow-violet-500/20"
+                className="rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors"
               >
                 {signedIn ? 'Zum Dashboard' : 'Manage dein Projekt'}
               </Link>
               {!signedIn && (
                 <Link
                   href="/login"
-                  className="rounded-none border border-line-strong hover:border-muted bg-elev/40 hover:bg-elev text-fg-soft text-sm px-5 py-2.5 transition-colors"
+                  className="rounded-md border border-line-strong hover:border-muted bg-elev hover:bg-elev-hover text-fg-soft text-sm px-5 py-2.5 transition-colors"
                 >
                   Anmelden
                 </Link>
@@ -168,7 +166,7 @@ export default async function LandingPage() {
         </section>
 
         <section className="px-4 sm:px-6 pb-20 sm:pb-24">
-          <div className="max-w-3xl mx-auto rounded-2xl bg-surface/60 border border-line/80 p-6 sm:p-8 text-center">
+          <div className="max-w-3xl mx-auto rounded-md bg-surface border border-line p-6 sm:p-8 text-center">
             <h3 className="text-xl font-semibold text-fg mb-2">
               Bereit loszulegen?
             </h3>
@@ -177,7 +175,7 @@ export default async function LandingPage() {
             </p>
             <Link
               href={signedIn ? '/dashboard' : '/register'}
-              className="inline-block rounded-none bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors"
+              className="inline-block rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors"
             >
               {signedIn ? 'Zum Dashboard' : 'Konto erstellen'}
             </Link>
@@ -192,7 +190,7 @@ export default async function LandingPage() {
 
 function Feature({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-xl bg-surface/40 border border-line/80 p-5">
+    <div className="rounded-md bg-surface border border-line p-5">
       <h4 className="text-sm font-semibold text-fg mb-1.5">{title}</h4>
       <p className="text-xs text-muted leading-relaxed">{body}</p>
     </div>

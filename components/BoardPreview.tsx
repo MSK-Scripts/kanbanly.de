@@ -34,73 +34,71 @@ const TONE_CLASSES = {
 const INITIAL_CARDS: Record<string, PreviewCard> = {
   c1: {
     id: 'c1',
-    title: 'Landing-Page Hero überarbeiten',
-    labels: [{ name: 'Design', color: 'violet' }],
-    due: { label: '22.04', tone: 'soon' },
-    assignees: ['F'],
+    title: 'Newsletter Mai vorbereiten',
+    labels: [{ name: 'Marketing', color: 'violet' }],
+    due: { label: '15.05', tone: 'soon' },
+    assignees: ['L'],
   },
   c2: {
     id: 'c2',
-    title: 'Onboarding-Flow skizzieren',
+    title: 'Briefing für Neukunde Schmitz GmbH',
     labels: [
-      { name: 'UX', color: 'sky' },
+      { name: 'Vertrieb', color: 'sky' },
       { name: 'Q2', color: 'teal' },
     ],
     tasks: [
-      { id: 't1', title: 'Personas definieren', done: false },
-      { id: 't2', title: 'Wireframes zeichnen', done: false },
-      { id: 't3', title: 'Review mit Team', done: false },
-      { id: 't4', title: 'Prototyp in Figma', done: false },
+      { id: 't1', title: 'Kick-off-Call terminieren', done: false },
+      { id: 't2', title: 'Anforderungs-Doc anlegen', done: false },
+      { id: 't3', title: 'Angebot kalkulieren', done: false },
     ],
-    assignees: ['F', 'M'],
+    assignees: ['L', 'M'],
   },
   c3: {
     id: 'c3',
-    title: 'Realtime-Sync zwischen Sessions',
-    labels: [{ name: 'Backend', color: 'emerald' }],
+    title: 'Website-Relaunch finalisieren',
+    labels: [{ name: 'Web', color: 'emerald' }],
     due: { label: 'heute', tone: 'today' },
     tasks: [
-      { id: 't5', title: 'Supabase Channels einrichten', done: true },
-      { id: 't6', title: 'Postgres-Changes abonnieren', done: true },
-      { id: 't7', title: 'Debounced refetch', done: true },
-      { id: 't8', title: 'Pulse-Effekt bei Remote-Änderung', done: false },
-      { id: 't9', title: 'Token-Refresh beim Reconnect', done: false },
+      { id: 't5', title: 'DNS umstellen', done: true },
+      { id: 't6', title: 'Tracking & Cookie-Banner', done: true },
+      { id: 't7', title: 'Lighthouse-Score prüfen', done: true },
+      { id: 't8', title: '404-Weiterleitungen anlegen', done: false },
+      { id: 't9', title: 'Newsletter-Formular testen', done: false },
     ],
-    assignees: ['F'],
+    assignees: ['L'],
   },
   c4: {
     id: 'c4',
-    title: 'Mobile-Column 88vw testen',
-    labels: [{ name: 'Mobile', color: 'pink' }],
+    title: 'Rechnungen April versenden',
+    labels: [{ name: 'Finanzen', color: 'pink' }],
     tasks: [
-      { id: 't10', title: 'iOS Safari prüfen', done: true },
-      { id: 't11', title: 'Swipe-Verhalten', done: false },
-      { id: 't12', title: 'Landscape-Modus', done: false },
+      { id: 't10', title: 'Stunden zusammenfassen', done: true },
+      { id: 't11', title: 'PDFs erstellen', done: false },
+      { id: 't12', title: 'Per Mail rausschicken', done: false },
     ],
-    assignees: ['F', 'J', 'M'],
+    assignees: ['L'],
   },
   c5: {
     id: 'c5',
-    title: 'Labels + Fälligkeitsdaten',
+    title: 'Logo-Redesign abgenommen',
     labels: [
-      { name: 'Feature', color: 'amber' },
-      { name: 'v1', color: 'rose' },
+      { name: 'Design', color: 'amber' },
+      { name: 'v2', color: 'rose' },
     ],
     tasks: [
-      { id: 't13', title: 'Label-Tabelle + RLS', done: true },
-      { id: 't14', title: '8 Farben definieren', done: true },
-      { id: 't15', title: 'Label-Picker im Modal', done: true },
-      { id: 't16', title: 'Due-Badge mit Tönen', done: true },
-      { id: 't17', title: 'Auf Karten anzeigen', done: true },
-      { id: 't18', title: 'Deploy + Test', done: true },
+      { id: 't13', title: 'Moodboard', done: true },
+      { id: 't14', title: 'Erste Entwürfe', done: true },
+      { id: 't15', title: 'Feedback-Runde', done: true },
+      { id: 't16', title: 'Finalisierung', done: true },
+      { id: 't17', title: 'Brand-Guide anlegen', done: true },
     ],
-    assignees: ['F'],
+    assignees: ['M'],
   },
   c6: {
     id: 'c6',
-    title: 'Bestätigungsdialog selbst gebaut',
-    labels: [{ name: 'UX', color: 'sky' }],
-    assignees: ['M'],
+    title: 'Onboarding-Guide veröffentlicht',
+    labels: [{ name: 'Content', color: 'sky' }],
+    assignees: ['L', 'M', 'J'],
   },
 };
 
@@ -127,13 +125,13 @@ function PreviewCardView({
   const progressPct = total > 0 ? (done / total) * 100 : 0;
 
   return (
-    <div className="rounded-xl bg-elev/80 border border-line-strong/60 p-3 shadow-sm transition-shadow hover:shadow-md hover:border-muted">
+    <div className="rounded-md bg-elev border border-line-strong p-3 shadow-sm transition-shadow hover:shadow-md hover:border-muted">
       {card.labels.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
           {card.labels.map((l) => (
             <span
               key={l.name}
-              className={`inline-block rounded-none px-1.5 py-0.5 text-[10px] font-medium border ${labelPill(l.color)}`}
+              className={`inline-block rounded-sm px-1.5 py-0.5 text-[10px] font-medium border ${labelPill(l.color)}`}
             >
               {l.name}
             </span>
@@ -148,7 +146,7 @@ function PreviewCardView({
       {card.due && (
         <div className="mt-2">
           <span
-            className={`inline-flex items-center gap-1 rounded-none border px-1.5 py-0.5 text-[10px] font-medium font-mono tabular-nums ${TONE_CLASSES[card.due.tone]}`}
+            className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[10px] font-medium font-mono tabular-nums ${TONE_CLASSES[card.due.tone]}`}
           >
             <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden>
               <path d="M7 3v2H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2h-2V3h-2v2H9V3H7zm12 6v10H5V9h14z" />
@@ -163,9 +161,9 @@ function PreviewCardView({
           <div className="text-[11px] text-muted mb-1 font-mono tabular-nums">
             {done}/{total} Tasks
           </div>
-          <div className="h-1.5 w-full rounded-full bg-elev-hover/50 overflow-hidden mb-2">
+          <div className="h-1.5 w-full rounded-sm bg-elev-hover overflow-hidden mb-2">
             <div
-              className="h-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-[width] duration-300"
+              className="h-full bg-accent transition-[width] duration-300"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -183,9 +181,9 @@ function PreviewCardView({
                   className="w-full flex items-center gap-2 text-left text-[12px] text-fg-soft hover:text-fg"
                 >
                   <span
-                    className={`h-3.5 w-3.5 shrink-0 rounded border transition-colors ${
+                    className={`h-3.5 w-3.5 shrink-0 rounded-sm border transition-colors ${
                       t.done
-                        ? 'bg-emerald-500/80 border-emerald-400'
+                        ? 'bg-emerald-500 border-emerald-500'
                         : 'border-line-strong'
                     }`}
                   />
@@ -204,7 +202,7 @@ function PreviewCardView({
           {card.assignees.slice(0, 4).map((initial, i) => (
             <span
               key={i}
-              className="h-5 w-5 grid place-items-center rounded-full bg-accent/80 text-[10px] font-semibold text-white ring-2 ring-surface"
+              className="h-5 w-5 grid place-items-center rounded-full bg-accent text-[10px] font-semibold text-white ring-2 ring-surface"
             >
               {initial}
             </span>
@@ -282,15 +280,15 @@ export function BoardPreview() {
         </button>
       </div>
 
-      <div className="rounded-2xl bg-surface/70 border border-line/80 shadow-2xl shadow-black/40 overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line/80 bg-bg/40">
+      <div className="rounded-md bg-surface border border-line shadow-md overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg">
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-elev-hover" />
             <span className="h-2.5 w-2.5 rounded-full bg-elev-hover" />
             <span className="h-2.5 w-2.5 rounded-full bg-elev-hover" />
           </div>
-          <div className="flex-1 mx-2 rounded-md bg-elev/80 border border-line-strong/60 px-3 py-1 text-[11px] text-muted font-mono truncate">
-            kanbanly.de/boards/alpha-projekt
+          <div className="flex-1 mx-2 rounded-sm bg-elev border border-line-strong px-3 py-1 text-[11px] text-muted font-mono truncate">
+            kanbanly.de/boards/agentur-q2
           </div>
         </div>
 
@@ -301,9 +299,9 @@ export function BoardPreview() {
                 {columns.map((col) => (
                   <div
                     key={col.id}
-                    className="w-[260px] sm:w-[280px] shrink-0 flex flex-col rounded-2xl bg-surface/70 border border-line/80"
+                    className="w-[260px] sm:w-[280px] shrink-0 flex flex-col rounded-md bg-surface border border-line"
                   >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-line/80">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-line">
                       <div className="flex items-center gap-2">
                         <span
                           className={`h-2 w-2 rounded-full ${col.dotColor}`}
@@ -346,7 +344,7 @@ export function BoardPreview() {
                                       }}
                                       className={
                                         snap.isDragging
-                                          ? 'ring-1 ring-violet-400/50 rounded-xl'
+                                          ? 'ring-1 ring-accent rounded-md'
                                           : ''
                                       }
                                     >
@@ -377,7 +375,7 @@ export function BoardPreview() {
               {columns.map((col) => (
                 <div
                   key={col.id}
-                  className="w-[260px] sm:w-[280px] shrink-0 h-40 rounded-2xl bg-surface/60 border border-line/80 animate-pulse"
+                  className="w-[260px] sm:w-[280px] shrink-0 h-40 rounded-md bg-surface border border-line animate-pulse"
                 />
               ))}
             </div>

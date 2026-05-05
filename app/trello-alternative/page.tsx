@@ -141,7 +141,7 @@ export default async function TrelloAlternativePage() {
           {signedIn ? (
             <Link
               href="/dashboard"
-              className="rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-xs font-medium px-3 py-1.5 transition-colors"
+              className="rounded-md bg-accent hover:bg-accent-hover text-white text-xs font-medium px-3 py-1.5 transition-colors"
             >
               Zum Dashboard
             </Link>
@@ -155,7 +155,7 @@ export default async function TrelloAlternativePage() {
               </Link>
               <Link
                 href="/register"
-                className="rounded-lg border border-line-strong hover:border-fg-soft bg-elev/60 hover:bg-elev text-fg-soft hover:text-fg text-xs px-3 py-1.5 transition-colors"
+                className="rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-fg-soft hover:text-fg text-xs px-3 py-1.5 transition-colors"
               >
                 Registrieren
               </Link>
@@ -173,7 +173,7 @@ export default async function TrelloAlternativePage() {
             </p>
             <h2 className="text-3xl sm:text-5xl font-semibold text-fg tracking-tight leading-tight mb-5">
               Die schlanke Kanban-Alternative —{' '}
-              <span className="bg-gradient-to-r from-violet-300 to-emerald-300 bg-clip-text text-transparent">
+              <span className="text-accent">
                 auf Deutsch
               </span>
               .
@@ -187,13 +187,13 @@ export default async function TrelloAlternativePage() {
             <div className="mt-7 flex flex-col sm:flex-row gap-3">
               <Link
                 href={signedIn ? '/dashboard' : '/register'}
-                className="rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors shadow-lg shadow-violet-500/20 text-center"
+                className="rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors shadow-md text-center"
               >
                 {signedIn ? 'Zum Dashboard' : 'Konto erstellen — kostenlos'}
               </Link>
               <Link
                 href="/"
-                className="rounded-lg border border-line-strong hover:border-fg-soft bg-elev/40 hover:bg-elev text-fg-soft text-sm px-5 py-2.5 transition-colors text-center"
+                className="rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-fg-soft text-sm px-5 py-2.5 transition-colors text-center"
               >
                 Zur Landing
               </Link>
@@ -207,7 +207,7 @@ export default async function TrelloAlternativePage() {
               Wann Kanbanly passt — wann nicht
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="rounded-xl bg-surface/60 border border-line/80 p-5">
+              <div className="rounded-md bg-surface border border-line p-5">
                 <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-300 mb-2">
                   Passt, wenn du …
                 </h4>
@@ -219,7 +219,7 @@ export default async function TrelloAlternativePage() {
                   <li>ohne Monats-Abo starten willst</li>
                 </ul>
               </div>
-              <div className="rounded-xl bg-surface/60 border border-line/80 p-5">
+              <div className="rounded-md bg-surface border border-line p-5">
                 <h4 className="text-sm font-semibold text-rose-700 dark:text-rose-300 mb-2">
                   Passt nicht, wenn du …
                 </h4>
@@ -242,7 +242,7 @@ export default async function TrelloAlternativePage() {
             <p className="text-xs text-subtle mb-5">
               Ehrliche Gegenüberstellung. Kein Trello-Bashing, nur Fakten.
             </p>
-            <div className="overflow-x-auto rounded-xl bg-surface/60 border border-line/80">
+            <div className="overflow-x-auto rounded-md bg-surface border border-line">
               <table className="w-full text-sm">
                 <thead className="border-b border-line">
                   <tr>
@@ -314,7 +314,7 @@ export default async function TrelloAlternativePage() {
         </section>
 
         <section className="px-4 sm:px-6 pb-20 sm:pb-24">
-          <div className="max-w-3xl mx-auto rounded-2xl bg-surface/60 border border-line/80 p-6 sm:p-8 text-center">
+          <div className="max-w-3xl mx-auto rounded-md bg-surface border border-line p-6 sm:p-8 text-center">
             <h3 className="text-xl font-semibold text-fg mb-2">
               Ausprobieren kostet nichts
             </h3>
@@ -324,7 +324,7 @@ export default async function TrelloAlternativePage() {
             </p>
             <Link
               href={signedIn ? '/dashboard' : '/register'}
-              className="inline-block rounded-lg bg-accent/90 hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors"
+              className="inline-block rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors"
             >
               {signedIn ? 'Zum Dashboard' : 'Konto erstellen'}
             </Link>
