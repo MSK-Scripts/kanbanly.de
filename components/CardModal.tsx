@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useBoard } from '@/store/boardStore';
-import { confirm } from '@/store/confirmStore';
 import { Avatar } from './Avatar';
 import { LabelsPicker } from './LabelsPicker';
 import { DescriptionEditor } from './DescriptionEditor';
@@ -19,7 +18,7 @@ export function CardModal() {
   const updateCardTitle = useBoard((s) => s.updateCardTitle);
   const updateCardDescription = useBoard((s) => s.updateCardDescription);
   const updateCardDueDate = useBoard((s) => s.updateCardDueDate);
-  const deleteCard = useBoard((s) => s.deleteCard);
+  const archiveCard = useBoard((s) => s.archiveCard);
   const addTask = useBoard((s) => s.addTask);
   const toggleTask = useBoard((s) => s.toggleTask);
   const deleteTask = useBoard((s) => s.deleteTask);
@@ -298,18 +297,10 @@ export function CardModal() {
             <div className="p-5 flex justify-end">
               <button
                 type="button"
-                onClick={async () => {
-                  const ok = await confirm({
-                    title: 'Karte löschen?',
-                    description: `"${card.title}" wird inkl. aller Tasks und Zuweisungen gelöscht.`,
-                    confirmLabel: 'Löschen',
-                    danger: true,
-                  });
-                  if (ok) deleteCard(openCardId);
-                }}
-                className="text-xs text-muted hover:text-rose-600 dark:text-rose-400 transition-colors"
+                onClick={() => archiveCard(openCardId)}
+                className="text-xs text-muted hover:text-fg transition-colors"
               >
-                Karte löschen
+                Karte archivieren
               </button>
             </div>
           </div>

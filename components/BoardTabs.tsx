@@ -1,20 +1,18 @@
 import Link from 'next/link';
 
+type Tab = 'board' | 'calendar' | 'archive';
+
 type Props = {
   boardSlug: string;
-  active: 'board' | 'calendar';
+  active: Tab;
 };
 
 export function BoardTabs({ boardSlug, active }: Props) {
-  const tabs: Array<{ key: 'board' | 'calendar'; label: string; href: string }> =
-    [
-      { key: 'board', label: 'Board', href: `/boards/${boardSlug}` },
-      {
-        key: 'calendar',
-        label: 'Kalender',
-        href: `/boards/${boardSlug}/kalender`,
-      },
-    ];
+  const tabs: Array<{ key: Tab; label: string; href: string }> = [
+    { key: 'board', label: 'Board', href: `/boards/${boardSlug}` },
+    { key: 'calendar', label: 'Kalender', href: `/boards/${boardSlug}/kalender` },
+    { key: 'archive', label: 'Archiv', href: `/boards/${boardSlug}/archiv` },
+  ];
 
   return (
     <div className="flex items-center gap-1 px-3 sm:px-6 pt-2 border-b border-line/60">

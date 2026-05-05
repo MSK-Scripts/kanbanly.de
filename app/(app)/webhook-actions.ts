@@ -161,6 +161,7 @@ export type WebhookEvent =
   | { kind: 'card_moved'; cardId: string; cardTitle: string; fromList: string; toList: string }
   | { kind: 'card_renamed'; cardId: string; fromTitle: string; toTitle: string }
   | { kind: 'card_deleted'; cardTitle: string }
+  | { kind: 'card_archived'; cardTitle: string }
   | { kind: 'card_due_set'; cardId: string; cardTitle: string; due: string }
   | { kind: 'card_due_cleared'; cardId: string; cardTitle: string }
   | { kind: 'task_added'; cardId: string; cardTitle: string; taskTitle: string }
@@ -179,6 +180,7 @@ const EMBED_COLORS: Record<WebhookEvent['kind'], number> = {
   card_moved: 0x8b5cf6,
   card_renamed: 0x8b5cf6,
   card_deleted: 0xf43f5e,
+  card_archived: 0x94a3b8,
   card_due_set: 0xf59e0b,
   card_due_cleared: 0x64748b,
   task_added: 0x22c55e,
@@ -224,6 +226,11 @@ function buildEmbed(
       return {
         title: 'Karte gelöscht',
         description: `~~${event.cardTitle}~~ gelöscht von ${by}`,
+      };
+    case 'card_archived':
+      return {
+        title: 'Karte archiviert',
+        description: `**${event.cardTitle}** archiviert von ${by}`,
       };
     case 'card_due_set':
       return {

@@ -124,3 +124,34 @@ export async function createBoard(formData: FormData) {
   revalidatePath('/dashboard');
   redirect(`/boards/${data.slug}`);
 }
+
+export async function restoreCard(cardId: string, boardSlug: string) {
+  if (!cardId) return;
+  const supabase = await createClient();
+  const { data: card } = await supabase
+    .from('cards')
+    .select('list_id')
+    .eq('id', cardId)
+    .maybeSingle();
+  if (!card) return;
+
+  const { count } = await supabase
+    .from('cards')
+    .select('id', { count: 'exact', head: true })
+    .eq('list_id', card.list_id)
+    .is('archived_at', null);
+
+  await supabase
+    .from('cards')
+    .update({ archived_at: null, position: count ?? 0 })
+    .eq('id', cardId);
+  revalidatePath(`/boards/${boardSlug}/archiv`);
+  revalidatePath(`/boards/${boardSlug}`);
+}
+
+export async function permanentlyDeleteCard(cardId: string, boardSlug: string) {
+  if (!cardId) return;
+  const supabase = await createClient();
+  await supabase.from('cards').delete().eq('id', cardId);
+  revalidatePath(`/boards/${boardSlug}/archiv`);
+}

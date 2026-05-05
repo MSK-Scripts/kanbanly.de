@@ -20,6 +20,7 @@ type BoardRow = {
       description: string | null;
       due_date: string | null;
       position: number;
+      archived_at: string | null;
       tasks: Array<{
         id: string;
         card_id: string;
@@ -89,7 +90,7 @@ const BOARD_QUERY = `
   lists(
     id, title, position,
     cards(
-      id, list_id, title, description, due_date, position,
+      id, list_id, title, description, due_date, position, archived_at,
       tasks(id, card_id, title, done, position),
       card_assignees(user_id),
       card_labels(label_id)
@@ -128,47 +129,43 @@ export async function fetchBoardData(
     position: l.position,
   }));
 
-  const initialCards = (board.lists ?? []).flatMap((l) =>
-    (l.cards ?? []).map((c) => ({
-      id: c.id,
-      list_id: c.list_id,
-      title: c.title,
-      description: c.description,
-      due_date: c.due_date,
-      position: c.position,
+  const activeCards = (board.lists ?? []).flatMap((l) =>
+    (l.cards ?? []).filter((c) => !c.archived_at)
+  );
+
+  const initialCards = activeCards.map((c) => ({
+    id: c.id,
+    list_id: c.list_id,
+    title: c.title,
+    description: c.description,
+    due_date: c.due_date,
+    position: c.position,
+  }));
+
+  const initialTasks = activeCards.flatMap((c) =>
+    (c.tasks ?? []).map((t) => ({
+      id: t.id,
+      card_id: t.card_id,
+      title: t.title,
+      done: t.done,
+      position: t.position,
     }))
   );
 
-  const initialTasks = (board.lists ?? []).flatMap((l) =>
-    (l.cards ?? []).flatMap((c) =>
-      (c.tasks ?? []).map((t) => ({
-        id: t.id,
-        card_id: t.card_id,
-        title: t.title,
-        done: t.done,
-        position: t.position,
-      }))
-    )
-  );
-
-  const initialAssignees = (board.lists ?? []).flatMap((l) =>
-    (l.cards ?? []).flatMap((c) =>
-      (c.card_assignees ?? []).map((a) => ({
-        card_id: c.id,
-        user_id: a.user_id,
-      }))
-    )
+  const initialAssignees = activeCards.flatMap((c) =>
+    (c.card_assignees ?? []).map((a) => ({
+      card_id: c.id,
+      user_id: a.user_id,
+    }))
   );
 
   const initialLabels = board.labels ?? [];
 
-  const initialCardLabels = (board.lists ?? []).flatMap((l) =>
-    (l.cards ?? []).flatMap((c) =>
-      (c.card_labels ?? []).map((cl) => ({
-        card_id: c.id,
-        label_id: cl.label_id,
-      }))
-    )
+  const initialCardLabels = activeCards.flatMap((c) =>
+    (c.card_labels ?? []).map((cl) => ({
+      card_id: c.id,
+      label_id: cl.label_id,
+    }))
   );
 
   return {

@@ -181,6 +181,7 @@ type State = {
     description: string | null
   ) => Promise<void>;
   updateCardDueDate: (cardId: string, due: string | null) => Promise<void>;
+  archiveCard: (cardId: string) => Promise<void>;
   deleteCard: (cardId: string) => Promise<void>;
 
   addTask: (cardId: string, title: string) => Promise<void>;
@@ -958,6 +959,63 @@ export const useBoard = create<State>((set, get) => ({
       .eq('id', cardId);
     if (error) console.error('updateCardDescription', error);
     else logActivity(cardId, 'described');
+  },
+
+  async archiveCard(cardId) {
+    const state = get();
+    const card = state.cards[cardId];
+    if (!card) return;
+
+    let targetListId: string | null = null;
+    for (const [lid, list] of Object.entries(state.lists)) {
+      if (list.cardIds.includes(cardId)) {
+        targetListId = lid;
+        break;
+      }
+    }
+
+    set((s) => {
+      const newCards = { ...s.cards };
+      delete newCards[cardId];
+      const newAssignees = { ...s.assignees };
+      delete newAssignees[cardId];
+      const newCardLabels = { ...s.cardLabels };
+      delete newCardLabels[cardId];
+      const newLists = targetListId
+        ? {
+            ...s.lists,
+            [targetListId]: {
+              ...s.lists[targetListId],
+              cardIds: s.lists[targetListId].cardIds.filter(
+                (id) => id !== cardId
+              ),
+            },
+          }
+        : s.lists;
+      return {
+        cards: newCards,
+        assignees: newAssignees,
+        cardLabels: newCardLabels,
+        lists: newLists,
+        openCardId: s.openCardId === cardId ? null : s.openCardId,
+      };
+    });
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('cards')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('id', cardId);
+    if (error) console.error('archiveCard', error);
+    else {
+      const bId = get().boardId;
+      if (bId) {
+        notifyBoardEvent(bId, {
+          kind: 'card_archived',
+          cardTitle: card.title,
+        }).catch(() => {});
+      }
+    }
   },
 
   async deleteCard(cardId) {

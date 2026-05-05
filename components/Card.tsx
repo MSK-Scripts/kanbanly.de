@@ -48,7 +48,7 @@ function CardInner({ id, isDragging }: Props) {
   const pulsing = useBoard((s) => !!s.pulsingCards[id]);
   const updateCardTitle = useBoard((s) => s.updateCardTitle);
   const duplicateCard = useBoard((s) => s.duplicateCard);
-  const deleteCard = useBoard((s) => s.deleteCard);
+  const archiveCard = useBoard((s) => s.archiveCard);
   const selected = useBoard((s) => !!s.selectedCardIds[id]);
   const hasSelection = useBoard(
     (s) => Object.keys(s.selectedCardIds).length > 0
@@ -194,17 +194,8 @@ function CardInner({ id, isDragging }: Props) {
                 onSelect: () => void duplicateCard(id),
               },
               {
-                label: 'Löschen',
-                danger: true,
-                onSelect: async () => {
-                  const ok = await confirm({
-                    title: `Karte "${card.title}" löschen?`,
-                    confirmLabel: 'Löschen',
-                    danger: true,
-                  });
-                  if (!ok) return;
-                  void deleteCard(id);
-                },
+                label: 'Archivieren',
+                onSelect: () => void archiveCard(id),
               },
             ]}
           />
