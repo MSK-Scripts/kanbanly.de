@@ -51,9 +51,19 @@ export type CardT = {
   due_date: string | null;
   tasks: TaskT[];
 };
-export type ListT = { id: string; title: string; cardIds: string[] };
+export type ListT = {
+  id: string;
+  title: string;
+  cardIds: string[];
+  wipLimit: number | null;
+};
 
-type RawList = { id: string; title: string; position: number };
+type RawList = {
+  id: string;
+  title: string;
+  position: number;
+  wip_limit?: number | null;
+};
 type RawCard = {
   id: string;
   list_id: string;
@@ -169,6 +179,7 @@ type State = {
   addList: (title: string) => Promise<void>;
   renameList: (listId: string, title: string) => Promise<void>;
   deleteList: (listId: string) => Promise<void>;
+  setWipLimit: (listId: string, limit: number | null) => Promise<void>;
   moveList: (fromIndex: number, toIndex: number) => Promise<void>;
   addCard: (listId: string, title: string) => Promise<void>;
   moveCard: (
@@ -440,6 +451,7 @@ export const useBoard = create<State>((set, get) => ({
         id: l.id,
         title: l.title,
         cardIds: listCards.map((c) => c.id),
+        wipLimit: l.wip_limit ?? null,
       };
     }
 
@@ -664,7 +676,10 @@ export const useBoard = create<State>((set, get) => ({
     const position = listOrder.length;
 
     set((state) => ({
-      lists: { ...state.lists, [id]: { id, title, cardIds: [] } },
+      lists: {
+        ...state.lists,
+        [id]: { id, title, cardIds: [], wipLimit: null },
+      },
       listOrder: [...state.listOrder, id],
     }));
 
@@ -728,6 +743,26 @@ export const useBoard = create<State>((set, get) => ({
     const supabase = createClient();
     const { error } = await supabase.from('lists').delete().eq('id', listId);
     if (error) console.error('deleteList', error);
+  },
+
+  async setWipLimit(listId, limit) {
+    const list = get().lists[listId];
+    if (!list) return;
+    if ((list.wipLimit ?? null) === (limit ?? null)) return;
+
+    set((s) => ({
+      lists: {
+        ...s.lists,
+        [listId]: { ...s.lists[listId], wipLimit: limit },
+      },
+    }));
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('lists')
+      .update({ wip_limit: limit })
+      .eq('id', listId);
+    if (error) console.error('setWipLimit', error);
   },
 
   async moveList(fromIndex, toIndex) {

@@ -13,6 +13,7 @@ type BoardRow = {
     id: string;
     title: string;
     position: number;
+    wip_limit: number | null;
     cards: Array<{
       id: string;
       list_id: string;
@@ -57,7 +58,12 @@ export type BoardData = {
     workspace_slug: string | null;
     background_url: string | null;
   };
-  initialLists: Array<{ id: string; title: string; position: number }>;
+  initialLists: Array<{
+    id: string;
+    title: string;
+    position: number;
+    wip_limit: number | null;
+  }>;
   initialCards: Array<{
     id: string;
     list_id: string;
@@ -88,7 +94,7 @@ const BOARD_QUERY = `
   id, slug, name, workspace_id, background_url,
   workspaces(name, slug),
   lists(
-    id, title, position,
+    id, title, position, wip_limit,
     cards(
       id, list_id, title, description, due_date, position, archived_at,
       tasks(id, card_id, title, done, position),
@@ -127,6 +133,7 @@ export async function fetchBoardData(
     id: l.id,
     title: l.title,
     position: l.position,
+    wip_limit: l.wip_limit,
   }));
 
   const activeCards = (board.lists ?? []).flatMap((l) =>

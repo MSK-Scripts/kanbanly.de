@@ -81,11 +81,29 @@ function ListInner({ listId, index }: Props) {
             viewClassName="text-sm font-semibold tracking-wide text-fg hover:text-accent-hover transition-colors"
             inputClassName="text-sm font-semibold tracking-wide text-fg bg-elev border border-muted rounded px-1 -mx-1 focus:outline-none focus:ring-1 focus:ring-accent-hover/60 min-w-0"
           />
-          <span className="text-[11px] text-subtle tabular-nums font-mono">
-            {filterOn && visibleCardIds.length !== list.cardIds.length
-              ? `${visibleCardIds.length}/${list.cardIds.length}`
-              : list.cardIds.length}
-          </span>
+          {list.wipLimit ? (
+            <span
+              className={`text-[11px] tabular-nums font-mono px-1.5 rounded-sm border ${
+                list.cardIds.length > list.wipLimit
+                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/40'
+                  : list.cardIds.length === list.wipLimit
+                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40'
+                  : 'text-subtle border-line-strong'
+              }`}
+              title={`WIP-Limit: ${list.wipLimit}`}
+            >
+              {filterOn && visibleCardIds.length !== list.cardIds.length
+                ? `${visibleCardIds.length}/${list.cardIds.length}`
+                : list.cardIds.length}
+              <span className="text-faint">/{list.wipLimit}</span>
+            </span>
+          ) : (
+            <span className="text-[11px] text-subtle tabular-nums font-mono">
+              {filterOn && visibleCardIds.length !== list.cardIds.length
+                ? `${visibleCardIds.length}/${list.cardIds.length}`
+                : list.cardIds.length}
+            </span>
+          )}
         </div>
         <ListMenu listId={list.id} />
       </div>

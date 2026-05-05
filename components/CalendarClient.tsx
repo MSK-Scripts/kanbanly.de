@@ -6,7 +6,12 @@ import { CardModal } from './CardModal';
 
 type Props = {
   boardId: string;
-  initialLists: Array<{ id: string; title: string; position: number }>;
+  initialLists: Array<{
+    id: string;
+    title: string;
+    position: number;
+    wip_limit: number | null;
+  }>;
   initialCards: Array<{
     id: string;
     list_id: string;
