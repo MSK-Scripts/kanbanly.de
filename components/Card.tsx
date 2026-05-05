@@ -169,12 +169,14 @@ function CardInner({ id, isDragging }: Props) {
             className="flex-1 bg-elev border border-accent-hover/60 rounded px-1.5 py-0.5 text-sm font-medium text-fg focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
           />
         ) : (
-          <h3
-            className="flex-1 text-sm font-medium text-fg leading-snug break-words cursor-text hover:text-accent-hover"
-            onClick={startEdit}
-            title="Klicken zum Umbenennen"
-          >
-            {card.title}
+          <h3 className="flex-1 text-sm font-medium text-fg leading-snug break-words">
+            <span
+              className="cursor-text hover:text-accent-hover"
+              onClick={startEdit}
+              title="Klicken zum Umbenennen"
+            >
+              {card.title}
+            </span>
           </h3>
         )}
         <div
