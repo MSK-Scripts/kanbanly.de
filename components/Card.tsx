@@ -118,16 +118,16 @@ function CardInner({ id, isDragging }: Props) {
     <div
       onClick={onCardClick}
       style={primaryLabelColor && !isDragging && !selected && !pulsing ? tintStyle : undefined}
-      className={`group rounded-xl border p-3 cursor-pointer transition-all duration-700 ${
+      className={`group rounded-md border p-3 cursor-pointer ${
         isDragging
-          ? 'bg-elev/80 shadow-xl shadow-violet-500/30 border-accent-hover/60 ring-1 ring-accent-hover/40'
+          ? 'bg-elev shadow-md border-accent ring-1 ring-accent'
           : selected
-          ? 'bg-elev/80 border-accent-hover/80 ring-2 ring-accent-hover/60 shadow-md'
+          ? 'bg-elev border-accent ring-1 ring-accent shadow-sm transition-[box-shadow,border-color] duration-150'
           : pulsing
-          ? 'bg-elev/80 border-emerald-400/60 ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-500/20'
+          ? 'bg-elev border-emerald-500 ring-1 ring-emerald-500 shadow-sm transition-colors duration-700'
           : primaryLabelColor
-          ? 'shadow-sm hover:shadow-md'
-          : 'bg-elev/80 border-line-strong/60 shadow-sm hover:border-muted hover:shadow-md'
+          ? 'shadow-sm hover:shadow-md transition-shadow duration-150'
+          : 'bg-elev border-line-strong shadow-sm hover:border-muted hover:shadow-md transition-[box-shadow,border-color] duration-150'
       }`}
     >
       {cardLabelIds.length > 0 && (
@@ -138,7 +138,7 @@ function CardInner({ id, isDragging }: Props) {
             return (
               <span
                 key={lid}
-                className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium border ${labelPill(lbl.color)}`}
+                className={`inline-block rounded-sm px-1.5 py-0.5 text-[10px] font-medium border ${labelPill(lbl.color)}`}
               >
                 {lbl.name}
               </span>
@@ -212,7 +212,7 @@ function CardInner({ id, isDragging }: Props) {
       {dueMeta && (
         <div className="mt-2">
           <span
-            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium font-mono tabular-nums ${TONE_CLASSES[dueMeta.tone]}`}
+            className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[10px] font-medium font-mono tabular-nums ${TONE_CLASSES[dueMeta.tone]}`}
           >
             <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden>
               <path d="M7 3v2H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2h-2V3h-2v2H9V3H7zm12 6v10H5V9h14z" />
@@ -249,9 +249,9 @@ function CardInner({ id, isDragging }: Props) {
           </div>
           {totalTasks > 0 && (
             <>
-              <div className="h-1.5 w-full rounded-full bg-elev-hover/50 overflow-hidden">
+              <div className="h-1.5 w-full rounded-sm bg-elev-hover overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-[width] duration-300"
+                  className="h-full bg-accent transition-[width] duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -269,9 +269,9 @@ function CardInner({ id, isDragging }: Props) {
                   className="w-full flex items-center gap-2 text-left text-[12px] text-fg-soft hover:text-fg"
                 >
                   <span
-                    className={`h-3.5 w-3.5 shrink-0 rounded border transition-colors ${
+                    className={`h-3.5 w-3.5 shrink-0 rounded-sm border transition-colors ${
                       t.done
-                        ? 'bg-emerald-500/80 border-emerald-400'
+                        ? 'bg-emerald-500 border-emerald-500'
                         : 'border-muted'
                     }`}
                   />
