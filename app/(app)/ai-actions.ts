@@ -17,6 +17,7 @@ export async function previewAIBoard(
   formData: FormData
 ): Promise<{ ok: boolean; draft?: AIBoardDraft; error?: string }> {
   const prompt = String(formData.get('prompt') ?? '');
+  const workspaceContext = String(formData.get('workspace_context') ?? '').trim();
 
   const supabase = await createClient();
   const {
@@ -25,7 +26,7 @@ export async function previewAIBoard(
   if (!user) return { ok: false, error: 'Nicht angemeldet.' };
 
   try {
-    const draft = await generateBoard(prompt);
+    const draft = await generateBoard(prompt, workspaceContext || undefined);
     if (draft.lists.length === 0) {
       return { ok: false, error: 'KI hat keine Listen generiert — versuch eine andere Beschreibung.' };
     }

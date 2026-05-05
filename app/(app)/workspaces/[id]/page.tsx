@@ -82,7 +82,10 @@ export default async function WorkspacePage({
               Leg dein erstes Board an, um mit Spalten und Karten zu starten.
             </p>
             <div className="inline-flex">
-              <CreateBoardInline workspaceId={workspace.id} />
+              <CreateBoardInline
+                workspaceId={workspace.id}
+                workspaceName={workspace.name}
+              />
             </div>
           </div>
         ) : (

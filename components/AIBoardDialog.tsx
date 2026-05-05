@@ -10,10 +10,11 @@ import { labelPill } from '@/lib/labelColors';
 
 type Props = {
   workspaceId: string;
+  workspaceName?: string;
   onClose: () => void;
 };
 
-export function AIBoardDialog({ workspaceId, onClose }: Props) {
+export function AIBoardDialog({ workspaceId, workspaceName, onClose }: Props) {
   const [state, action, pending] = useActionState(previewAIBoard, null);
   const [mounted, setMounted] = useState(false);
   const [overrideName, setOverrideName] = useState('');
@@ -69,6 +70,13 @@ export function AIBoardDialog({ workspaceId, onClose }: Props) {
         <div className="flex-1 overflow-y-auto board-scroll p-5 min-h-0">
           {!draft && (
             <form action={action} className="space-y-3">
+              {workspaceName && (
+                <input
+                  type="hidden"
+                  name="workspace_context"
+                  value={workspaceName}
+                />
+              )}
               <div>
                 <label
                   className="block text-xs text-muted mb-1"
@@ -88,6 +96,13 @@ export function AIBoardDialog({ workspaceId, onClose }: Props) {
                 />
                 <p className="text-[11px] text-subtle mt-1">
                   Je konkreter, desto besser — Ziel, Rolle, Zeitraum, Team-Größe.
+                  {workspaceName && (
+                    <>
+                      {' '}Workspace-Kontext{' '}
+                      <strong className="text-fg-soft">{workspaceName}</strong>{' '}
+                      wird mitgeschickt.
+                    </>
+                  )}
                 </p>
               </div>
 

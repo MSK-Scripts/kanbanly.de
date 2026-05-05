@@ -237,7 +237,10 @@ export default async function Dashboard({
                         </span>
                       </Link>
                     ))}
-                    <CreateBoardInline workspaceId={ws.id} />
+                    <CreateBoardInline
+                      workspaceId={ws.id}
+                      workspaceName={ws.name}
+                    />
                   </div>
                 </section>
               ))}

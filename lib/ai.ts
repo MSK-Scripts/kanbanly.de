@@ -129,7 +129,10 @@ const RESPONSE_SCHEMA = {
   required: ['name', 'emoji', 'description', 'labels', 'lists'],
 };
 
-export async function generateBoard(userPrompt: string): Promise<GeneratedBoard> {
+export async function generateBoard(
+  userPrompt: string,
+  workspaceContext?: string
+): Promise<GeneratedBoard> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY fehlt.');
 
@@ -141,6 +144,11 @@ export async function generateBoard(userPrompt: string): Promise<GeneratedBoard>
     throw new Error('Beschreibung ist zu lang (max 2000 Zeichen).');
   }
 
+  const ctx = workspaceContext?.trim().slice(0, 200) ?? '';
+  const promptText = ctx
+    ? `Workspace-Kontext: "${ctx}"\nDie Projekt-Idee gehört zu diesem Workspace — interpretiere sie in dessen Domäne (z.B. "Tuning" in einem FiveM-Workspace = FiveM-Script-Tuning, NICHT Auto-Tuning oder Musik).\n\nProjekt-Idee: ${trimmed}\n\nGeneriere die Board-Struktur.`
+    : `Projekt-Idee: ${trimmed}\n\nGeneriere die Board-Struktur.`;
+
   const body = {
     system_instruction: {
       parts: [{ text: SYSTEM_INSTRUCTION }],
@@ -148,11 +156,7 @@ export async function generateBoard(userPrompt: string): Promise<GeneratedBoard>
     contents: [
       {
         role: 'user',
-        parts: [
-          {
-            text: `Projekt-Idee: ${trimmed}\n\nGeneriere die Board-Struktur.`,
-          },
-        ],
+        parts: [{ text: promptText }],
       },
     ],
     generationConfig: {

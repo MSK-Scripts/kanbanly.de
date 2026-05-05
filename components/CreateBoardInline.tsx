@@ -5,7 +5,13 @@ import { createBoard } from '@/app/(app)/actions';
 import { PlusIcon } from './Icons';
 import { AIBoardDialog } from './AIBoardDialog';
 
-export function CreateBoardInline({ workspaceId }: { workspaceId: string }) {
+export function CreateBoardInline({
+  workspaceId,
+  workspaceName,
+}: {
+  workspaceId: string;
+  workspaceName?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [aiOpen, setAIOpen] = useState(false);
 
@@ -23,6 +29,7 @@ export function CreateBoardInline({ workspaceId }: { workspaceId: string }) {
         {aiOpen && (
           <AIBoardDialog
             workspaceId={workspaceId}
+            workspaceName={workspaceName}
             onClose={() => setAIOpen(false)}
           />
         )}
@@ -81,6 +88,7 @@ export function CreateBoardInline({ workspaceId }: { workspaceId: string }) {
       {aiOpen && (
         <AIBoardDialog
           workspaceId={workspaceId}
+          workspaceName={workspaceName}
           onClose={() => setAIOpen(false)}
         />
       )}
