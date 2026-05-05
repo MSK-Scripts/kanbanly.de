@@ -165,6 +165,85 @@ export async function generateBoard(userPrompt: string): Promise<GeneratedBoard>
   return normalize(parsed);
 }
 
+async function callGeminiText(
+  systemInstruction: string,
+  userPrompt: string,
+  temperature = 0.6
+): Promise<string> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('GEMINI_API_KEY fehlt.');
+
+  const body = {
+    system_instruction: { parts: [{ text: systemInstruction }] },
+    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+    generationConfig: { temperature },
+  };
+
+  const res = await fetch(`${ENDPOINT}?key=${encodeURIComponent(key)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error('KI-Kontingent für heute aufgebraucht. Versuch es später.');
+    }
+    if (res.status === 403) {
+      throw new Error('KI-Zugang blockiert. API-Key prüfen.');
+    }
+    throw new Error(`KI-Fehler (${res.status}).`);
+  }
+
+  type R = {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  const json = (await res.json()) as R;
+  const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Leere Antwort von Gemini.');
+  return text.trim();
+}
+
+const IMPROVE_DESC_INSTRUCTION = `Du hilfst, Kanban-Kartenbeschreibungen klarer und actionable zu machen. Schreibe auf Deutsch. Behalte Tonfall und Information bei, mach es nur lesbarer und strukturierter. Markdown ist erlaubt (kurze Überschriften, Listen, **fett**). Keine Floskeln, keine Wiederholung des Titels. Maximal 6 Zeilen.`;
+
+export async function improveCardDescription(
+  title: string,
+  currentDescription: string
+): Promise<string> {
+  const t = title.trim();
+  if (!t) throw new Error('Karte hat keinen Titel.');
+
+  const userPrompt =
+    currentDescription.trim().length > 0
+      ? `Karten-Titel: "${t}"\n\nAktuelle Beschreibung:\n${currentDescription}\n\nÜberarbeite die Beschreibung.`
+      : `Karten-Titel: "${t}"\n\nDie Karte hat noch keine Beschreibung. Schreibe eine kurze, sinnvolle (1-3 Sätze, optional 2-4 Bullet-Stichpunkte) basierend auf dem Titel.`;
+
+  return callGeminiText(IMPROVE_DESC_INSTRUCTION, userPrompt, 0.4);
+}
+
+const SUGGEST_TASKS_INSTRUCTION = `Du brichst Kanban-Karten in 3-6 konkrete, abhakbare Subtasks runter. Schreibe auf Deutsch. Eine Aufgabe pro Zeile, ohne Aufzählungszeichen, ohne Nummerierung, ohne Fließtext drumrum. Jede Zeile beginnt mit einem Verb. Keine Wiederholungen.`;
+
+export async function suggestCardSubtasks(
+  title: string,
+  description: string
+): Promise<string[]> {
+  const t = title.trim();
+  if (!t) throw new Error('Karte hat keinen Titel.');
+
+  const userPrompt = `Karten-Titel: "${t}"\n\n${
+    description.trim() ? `Beschreibung:\n${description}\n\n` : ''
+  }Schlage konkrete Subtasks vor.`;
+
+  const raw = await callGeminiText(SUGGEST_TASKS_INSTRUCTION, userPrompt, 0.5);
+
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .map((line) => line.replace(/^[-*•\d.\s]+/, '').trim())
+    .filter((line) => line.length > 0 && line.length <= 200)
+    .slice(0, 8);
+}
+
 function normalize(raw: unknown): GeneratedBoard {
   const r = raw as Record<string, unknown>;
   const labels = Array.isArray(r.labels) ? r.labels : [];

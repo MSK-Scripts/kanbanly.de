@@ -7,6 +7,10 @@ import { DescriptionEditor } from './DescriptionEditor';
 import { ActivityLog } from './ActivityLog';
 import { CardComments } from './CardComments';
 import { CustomFieldsSection } from './CustomFieldsSection';
+import {
+  aiImproveDescription,
+  aiSuggestSubtasks,
+} from '@/app/(app)/ai-actions';
 
 export function CardModal() {
   const openCardId = useBoard((s) => s.openCardId);
@@ -30,6 +34,9 @@ export function CardModal() {
   const [description, setDescription] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [aiDescBusy, setAiDescBusy] = useState(false);
+  const [aiTasksBusy, setAiTasksBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (card) {
@@ -203,9 +210,30 @@ export function CardModal() {
             </section>
 
             <section className="p-5 border-b border-line">
-              <h3 className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-2">
-                Beschreibung
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-[11px] font-semibold text-muted uppercase tracking-wide">
+                  Beschreibung
+                </h3>
+                <button
+                  type="button"
+                  disabled={aiDescBusy || !title.trim()}
+                  onClick={async () => {
+                    setAiDescBusy(true);
+                    setAiError(null);
+                    const res = await aiImproveDescription(title, description);
+                    setAiDescBusy(false);
+                    if (res.ok) {
+                      setDescription(res.description);
+                      updateCardDescription(openCardId, res.description);
+                    } else {
+                      setAiError(res.error);
+                    }
+                  }}
+                  className="text-[11px] text-accent-soft hover:text-accent-hover disabled:opacity-50 disabled:cursor-wait"
+                >
+                  {aiDescBusy ? '✨ KI denkt…' : '✨ Mit KI verbessern'}
+                </button>
+              </div>
               <DescriptionEditor
                 value={description}
                 onChange={setDescription}
@@ -219,12 +247,39 @@ export function CardModal() {
                 <h3 className="text-[11px] font-semibold text-muted uppercase tracking-wide">
                   Checkliste
                 </h3>
-                {total > 0 && (
-                  <span className="text-[11px] text-subtle tabular-nums font-mono">
-                    {doneCount}/{total}
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={aiTasksBusy || !title.trim()}
+                    onClick={async () => {
+                      setAiTasksBusy(true);
+                      setAiError(null);
+                      const res = await aiSuggestSubtasks(title, description);
+                      setAiTasksBusy(false);
+                      if (res.ok) {
+                        for (const t of res.tasks) {
+                          await addTask(openCardId, t);
+                        }
+                      } else {
+                        setAiError(res.error);
+                      }
+                    }}
+                    className="text-[11px] text-accent-soft hover:text-accent-hover disabled:opacity-50 disabled:cursor-wait"
+                  >
+                    {aiTasksBusy ? '✨ KI denkt…' : '✨ Subtasks vorschlagen'}
+                  </button>
+                  {total > 0 && (
+                    <span className="text-[11px] text-subtle tabular-nums font-mono">
+                      {doneCount}/{total}
+                    </span>
+                  )}
+                </div>
               </div>
+              {aiError && (
+                <div className="mb-2 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11px] px-2 py-1">
+                  {aiError}
+                </div>
+              )}
 
               {total > 0 && (
                 <div className="h-1.5 w-full rounded-full bg-elev overflow-hidden mb-3">

@@ -3,7 +3,12 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { slugify, withRandomSuffix } from '@/lib/slug';
-import { generateBoard, type GeneratedBoard } from '@/lib/ai';
+import {
+  generateBoard,
+  improveCardDescription,
+  suggestCardSubtasks,
+  type GeneratedBoard,
+} from '@/lib/ai';
 
 export type AIBoardDraft = GeneratedBoard;
 
@@ -161,4 +166,45 @@ export async function createAIBoard(formData: FormData) {
 
   revalidatePath('/dashboard');
   redirect(`/boards/${board.slug}`);
+}
+
+export async function aiImproveDescription(
+  title: string,
+  currentDescription: string
+): Promise<{ ok: true; description: string } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Nicht angemeldet.' };
+
+  try {
+    const description = await improveCardDescription(title, currentDescription);
+    return { ok: true, description };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'KI-Fehler.';
+    return { ok: false, error: msg };
+  }
+}
+
+export async function aiSuggestSubtasks(
+  title: string,
+  description: string
+): Promise<{ ok: true; tasks: string[] } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Nicht angemeldet.' };
+
+  try {
+    const tasks = await suggestCardSubtasks(title, description);
+    if (tasks.length === 0) {
+      return { ok: false, error: 'KI hat keine Subtasks vorgeschlagen.' };
+    }
+    return { ok: true, tasks };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'KI-Fehler.';
+    return { ok: false, error: msg };
+  }
 }
