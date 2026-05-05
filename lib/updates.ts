@@ -6,6 +6,66 @@ export type Update = {
 
 export const updates: Update[] = [
   {
+    date: '2026-05-05',
+    title: 'Karten abonnieren + Aktivitäts-Feed',
+    description:
+      'Im Card-Modal unten links „🔔 Abonnieren" — du kriegst Updates zur Karte, auch ohne Assignee zu sein. Die Glocke oben zeigt jetzt einen Aktivitäts-Feed: Kommentare, Umbenennungen, Verschiebungen, Fälligkeiten, Archivierungen. Live ohne Reload.',
+  },
+  {
+    date: '2026-05-05',
+    title: 'Verknüpfte Karten',
+    description:
+      'Karten miteinander verknüpfen — z. B. Bug ↔ Feature, Brainstorming ↔ Umsetzung. Im Card-Modal über „+ Verknüpfen" suchen und auswählen. Klick auf eine Verknüpfung springt direkt zur Ziel-Karte.',
+  },
+  {
+    date: '2026-05-05',
+    title: 'Tabellen-Ansicht pro Board',
+    description:
+      'Neuer Tab „Tabelle": alle aktiven Karten als sortierbare Liste mit Titel, Spalte, Fälligkeit, Tasks, Labels, Zugewiesene. Sortierung per ?sort=list|due|title.',
+  },
+  {
+    date: '2026-05-05',
+    title: 'KI in Karten — Beschreibung verbessern, Subtasks vorschlagen',
+    description:
+      '✨ im Card-Modal: „Mit KI verbessern" formuliert die Beschreibung um, „Subtasks vorschlagen" generiert 3-6 abhakbare Aufgaben. Powered by Gemini, auf Deutsch.',
+  },
+  {
+    date: '2026-05-05',
+    title: 'Eigene Felder pro Board',
+    description:
+      'Strukturierte Zusatzdaten: Priorität, Story-Points, Kostenstelle — was du brauchst. Im neuen „Felder"-Tab definieren (Text, Zahl, Datum, Auswahl), Werte direkt im Card-Modal eingeben.',
+  },
+  {
+    date: '2026-05-05',
+    title: 'Automation: Wenn-Dann-Regeln (Beta)',
+    description:
+      'Neuer „Automation"-Tab pro Board. Beispiel-Regel: „Wenn Karte in Erledigt landet → archivieren". Aktuelle Actions: Archivieren, Fälligkeit entfernen, Label hinzufügen/entfernen, Zuweisungen leeren.',
+  },
+  {
+    date: '2026-05-05',
+    title: 'WIP-Limits pro Spalte',
+    description:
+      'Klassisches Kanban: jede Spalte kann ein Maximum an Karten haben. Im Spalten-Menü „WIP-Limit setzen". Bei Erreichen wird der Counter amber, bei Überschreitung rosa.',
+  },
+  {
+    date: '2026-05-05',
+    title: 'Karten archivieren statt löschen',
+    description:
+      'Karten verschwinden nicht mehr endgültig — sie wandern ins Archiv (neuer Tab pro Board) und können von dort wiederhergestellt oder erst dann endgültig gelöscht werden.',
+  },
+  {
+    date: '2026-05-05',
+    title: 'Drag-to-Pan im Board',
+    description:
+      'Klick und zieh in den leeren Raum zwischen Spalten — das ganze Board scrollt horizontal mit. Wie in Trello.',
+  },
+  {
+    date: '2026-05-05',
+    title: 'Klassischeres Dashboard mit Sidebar',
+    description:
+      'Linke Spalte zeigt Workspaces und Schnellzugriffe (Meine Karten, Diese Woche, Stats, Vorlagen). Rechts die Boards kompakter — eine Zeile pro Board statt großer Kachel.',
+  },
+  {
     date: '2026-04-19',
     title: 'Discord-Webhooks pro Board',
     description:
