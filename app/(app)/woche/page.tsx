@@ -133,18 +133,13 @@ export default async function WochePage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <div className="flex items-baseline justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
-            Diese Woche
-          </h1>
-          <p className="text-sm text-muted mt-1 capitalize">
-            {weekday}, {now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-          </p>
-        </div>
-        <Link href="/dashboard" className="text-xs text-muted hover:text-fg">
-          ← Dashboard
-        </Link>
+      <div className="mb-8">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
+          Diese Woche
+        </h1>
+        <p className="text-sm text-muted mt-1 capitalize">
+          {weekday}, {now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+        </p>
       </div>
 
       <Section

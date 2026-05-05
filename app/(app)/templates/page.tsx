@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { TemplateCard } from '@/components/TemplateCard';
 
@@ -86,23 +85,15 @@ export default async function TemplatesPage({
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <div className="flex items-start justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
-            Templates
-          </h1>
-          <p className="text-sm text-muted mt-1 max-w-xl">
-            Starte dein nächstes Board mit einer Struktur, die funktioniert.
-            Nimm eins der kuratierten Templates oder teile deins mit der
-            Community.
-          </p>
-        </div>
-        <Link
-          href="/dashboard"
-          className="text-xs text-muted hover:text-fg transition-colors"
-        >
-          ← Dashboard
-        </Link>
+      <div className="mb-8">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
+          Templates
+        </h1>
+        <p className="text-sm text-muted mt-1 max-w-xl">
+          Starte dein nächstes Board mit einer Struktur, die funktioniert.
+          Nimm eins der kuratierten Templates oder teile deins mit der
+          Community.
+        </p>
       </div>
 
       {created && (

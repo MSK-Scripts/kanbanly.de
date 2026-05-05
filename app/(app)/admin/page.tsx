@@ -30,18 +30,13 @@ export default async function AdminPage() {
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <div className="flex items-baseline justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
-            Admin
-          </h1>
-          <p className="text-sm text-muted mt-1">
-            Globale Kanbanly-Zahlen. Service-Role-Zugriff, RLS wird umgangen.
-          </p>
-        </div>
-        <Link href="/dashboard" className="text-xs text-muted hover:text-fg">
-          ← Dashboard
-        </Link>
+      <div className="mb-8">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
+          Admin
+        </h1>
+        <p className="text-sm text-muted mt-1">
+          Globale Kanbanly-Zahlen. Service-Role-Zugriff, RLS wird umgangen.
+        </p>
       </div>
 
       <Section title="Gesamtzahlen">

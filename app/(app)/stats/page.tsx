@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Deine Stats' };
@@ -96,18 +95,13 @@ export default async function StatsPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <div className="flex items-baseline justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
-            Deine Stats
-          </h1>
-          <p className="text-sm text-muted mt-1">
-            Was du insgesamt bei Kanbanly angerichtet hast.
-          </p>
-        </div>
-        <Link href="/dashboard" className="text-xs text-muted hover:text-fg">
-          ← Dashboard
-        </Link>
+      <div className="mb-8">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
+          Deine Stats
+        </h1>
+        <p className="text-sm text-muted mt-1">
+          Was du insgesamt bei Kanbanly angerichtet hast.
+        </p>
       </div>
 
       <Section title="Diese Woche">
