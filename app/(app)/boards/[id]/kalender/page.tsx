@@ -89,6 +89,7 @@ export default async function BoardCalendarPage({
         initialMembers={data.initialMembers}
         initialLabels={data.initialLabels}
         initialCardLabels={data.initialCardLabels}
+        initialAutomations={data.initialAutomations}
       />
     </>
   );

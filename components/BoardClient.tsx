@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useBoard, type MemberProfile } from '@/store/boardStore';
+import type { Automation } from '@/lib/automations';
 import { useBoardSync } from '@/lib/useBoardSync';
 import Board from './Board';
 import { CardModal } from './CardModal';
@@ -40,6 +41,7 @@ type Props = {
     created_at: string;
   }>;
   initialCardLabels: Array<{ card_id: string; label_id: string }>;
+  initialAutomations: Automation[];
   currentUserId: string;
   currentUsername: string | null;
   initialBackgroundUrl: string | null;

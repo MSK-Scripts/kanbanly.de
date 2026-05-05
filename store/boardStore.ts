@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
 import { notifyBoardEvent } from '@/app/(app)/webhook-actions';
+import { runMoveAutomations, type Automation } from '@/lib/automations';
 
 const PULSE_DURATION_MS = 1200;
 const PULSE_SUPPRESS_MS = 1500;
@@ -159,6 +160,8 @@ type State = {
   bulkMove: (targetListId: string) => Promise<void>;
   bulkToggleLabel: (labelId: string) => Promise<void>;
 
+  automations: Automation[];
+
   hydrate: (
     boardId: string,
     lists: RawList[],
@@ -167,7 +170,8 @@ type State = {
     assignees: RawAssignee[],
     members: MemberProfile[],
     labels: RawLabel[],
-    cardLabels: RawCardLabel[]
+    cardLabels: RawCardLabel[],
+    automations: Automation[]
   ) => void;
 
   toggleAssignee: (cardId: string, userId: string) => Promise<void>;
@@ -219,6 +223,7 @@ export const useBoard = create<State>((set, get) => ({
   selectedCardIds: {},
   groupBy: 'none',
   backgroundUrl: null,
+  automations: [],
 
   setGroupBy: (g) => set({ groupBy: g }),
   setBackgroundUrl: (url) => set({ backgroundUrl: url }),
@@ -435,7 +440,8 @@ export const useBoard = create<State>((set, get) => ({
     rawAssignees,
     members,
     rawLabels,
-    rawCardLabels
+    rawCardLabels,
+    automations
   ) {
     const listsObj: Record<string, ListT> = {};
     const cardsObj: Record<string, CardT> = {};
@@ -509,6 +515,7 @@ export const useBoard = create<State>((set, get) => ({
       labels: labelsObj,
       labelOrder,
       cardLabels: cardLabelsObj,
+      automations,
       filters: s.boardId === boardId ? s.filters : { ...EMPTY_FILTERS },
     }));
   },
@@ -891,6 +898,17 @@ export const useBoard = create<State>((set, get) => ({
           fromList: fromTitle,
           toList: toTitle,
         }).catch(() => {});
+      }
+
+      const rules = get().automations;
+      if (rules.length > 0) {
+        const result = await runMoveAutomations(
+          supabase,
+          moved,
+          destination.listId,
+          rules
+        );
+        applyAutomationResultToStore(moved, result);
       }
     }
   },
@@ -1323,3 +1341,73 @@ export const useBoard = create<State>((set, get) => ({
     }
   },
 }));
+
+function applyAutomationResultToStore(
+  cardId: string,
+  result: import('@/lib/automations').RunResult
+) {
+  if (
+    !result.archived &&
+    !result.dueCleared &&
+    !result.assigneesCleared &&
+    result.labelsAdded.length === 0 &&
+    result.labelsRemoved.length === 0
+  ) {
+    return;
+  }
+
+  useBoard.setState((s) => {
+    let cards = s.cards;
+    let lists = s.lists;
+    let assignees = s.assignees;
+    let cardLabels = s.cardLabels;
+    let openCardId = s.openCardId;
+
+    if (result.archived) {
+      const newCards = { ...cards };
+      delete newCards[cardId];
+      cards = newCards;
+      const newAssignees = { ...assignees };
+      delete newAssignees[cardId];
+      assignees = newAssignees;
+      const newCardLabels = { ...cardLabels };
+      delete newCardLabels[cardId];
+      cardLabels = newCardLabels;
+      const newLists: Record<string, ListT> = {};
+      for (const [lid, list] of Object.entries(lists)) {
+        if (list.cardIds.includes(cardId)) {
+          newLists[lid] = {
+            ...list,
+            cardIds: list.cardIds.filter((id) => id !== cardId),
+          };
+        } else {
+          newLists[lid] = list;
+        }
+      }
+      lists = newLists;
+      if (openCardId === cardId) openCardId = null;
+    } else {
+      if (result.dueCleared && cards[cardId]) {
+        cards = {
+          ...cards,
+          [cardId]: { ...cards[cardId], due_date: null },
+        };
+      }
+      if (result.assigneesCleared) {
+        const newAssignees = { ...assignees };
+        delete newAssignees[cardId];
+        assignees = newAssignees;
+      }
+      if (result.labelsAdded.length > 0 || result.labelsRemoved.length > 0) {
+        const current = cardLabels[cardId] ?? [];
+        const added = result.labelsAdded.filter((l) => !current.includes(l));
+        const next = [...current, ...added].filter(
+          (l) => !result.labelsRemoved.includes(l)
+        );
+        cardLabels = { ...cardLabels, [cardId]: next };
+      }
+    }
+
+    return { cards, lists, assignees, cardLabels, openCardId };
+  });
+}

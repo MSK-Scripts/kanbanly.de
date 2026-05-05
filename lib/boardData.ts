@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { MemberProfile } from '@/store/boardStore';
+import type { Automation } from '@/lib/automations';
 import { isUuid } from '@/lib/slug';
 
 type BoardRow = {
@@ -88,6 +89,7 @@ export type BoardData = {
     created_at: string;
   }>;
   initialCardLabels: Array<{ card_id: string; label_id: string }>;
+  initialAutomations: Automation[];
 };
 
 const BOARD_QUERY = `
@@ -124,6 +126,15 @@ export async function fetchBoardData(
   });
 
   const members = (membersData ?? []) as MemberRow[];
+
+  const { data: automationsData } = await supabase
+    .from('board_automations')
+    .select(
+      'id, board_id, name, enabled, trigger_kind, trigger_config, action_kind, action_config'
+    )
+    .eq('board_id', board.id);
+
+  const initialAutomations = (automationsData ?? []) as Automation[];
 
   const workspace = Array.isArray(board.workspaces)
     ? board.workspaces[0]
@@ -192,5 +203,6 @@ export async function fetchBoardData(
     initialMembers: members,
     initialLabels,
     initialCardLabels,
+    initialAutomations,
   };
 }

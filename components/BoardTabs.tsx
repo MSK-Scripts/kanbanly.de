@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-type Tab = 'board' | 'calendar' | 'archive';
+type Tab = 'board' | 'calendar' | 'archive' | 'automation';
 
 type Props = {
   boardSlug: string;
@@ -12,6 +12,11 @@ export function BoardTabs({ boardSlug, active }: Props) {
     { key: 'board', label: 'Board', href: `/boards/${boardSlug}` },
     { key: 'calendar', label: 'Kalender', href: `/boards/${boardSlug}/kalender` },
     { key: 'archive', label: 'Archiv', href: `/boards/${boardSlug}/archiv` },
+    {
+      key: 'automation',
+      label: 'Automation',
+      href: `/boards/${boardSlug}/automation`,
+    },
   ];
 
   return (

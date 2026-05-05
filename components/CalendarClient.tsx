@@ -1,5 +1,6 @@
 'use client';
 import { type MemberProfile } from '@/store/boardStore';
+import type { Automation } from '@/lib/automations';
 import { useBoardSync } from '@/lib/useBoardSync';
 import { Calendar } from './Calendar';
 import { CardModal } from './CardModal';
@@ -36,6 +37,7 @@ type Props = {
     created_at: string;
   }>;
   initialCardLabels: Array<{ card_id: string; label_id: string }>;
+  initialAutomations: Automation[];
 };
 
 export function CalendarClient(props: Props) {

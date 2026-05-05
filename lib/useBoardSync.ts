@@ -13,6 +13,7 @@ type HydrateArgs = {
   initialMembers: MemberProfile[];
   initialLabels: BoardData['initialLabels'];
   initialCardLabels: BoardData['initialCardLabels'];
+  initialAutomations: BoardData['initialAutomations'];
 };
 
 const REALTIME_TABLES = [
@@ -65,7 +66,8 @@ export function useBoardSync(initial: HydrateArgs) {
       initial.initialAssignees,
       initial.initialMembers,
       initial.initialLabels,
-      initial.initialCardLabels
+      initial.initialCardLabels,
+      initial.initialAutomations
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial.boardId]);
@@ -89,7 +91,8 @@ export function useBoardSync(initial: HydrateArgs) {
         data.initialAssignees,
         data.initialMembers,
         data.initialLabels,
-        data.initialCardLabels
+        data.initialCardLabels,
+        data.initialAutomations
       );
     };
 

@@ -107,6 +107,7 @@ export default async function BoardPage({
         initialMembers={data.initialMembers}
         initialLabels={data.initialLabels}
         initialCardLabels={data.initialCardLabels}
+        initialAutomations={data.initialAutomations}
         currentUserId={user.id}
         currentUsername={currentUsername}
         initialBackgroundUrl={board.background_url}
