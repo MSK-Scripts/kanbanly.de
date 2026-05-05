@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd';
 import { useBoard } from '@/store/boardStore';
 import { List } from './List';
@@ -14,10 +14,34 @@ export default function Board() {
   const groupBy = useBoard((s) => s.groupBy);
   const backgroundUrl = useBoard((s) => s.backgroundUrl);
   const [mounted, setMounted] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  function onPanStart(e: React.MouseEvent) {
+    if (e.target !== e.currentTarget) return;
+    if (e.button !== 0) return;
+    const sc = scrollRef.current;
+    if (!sc) return;
+    const startX = e.pageX;
+    const startScrollLeft = sc.scrollLeft;
+
+    function onMove(ev: MouseEvent) {
+      if (!sc) return;
+      sc.scrollLeft = startScrollLeft - (ev.pageX - startX);
+    }
+    function onUp() {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      if (sc) sc.style.cursor = '';
+    }
+
+    sc.style.cursor = 'grabbing';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, type } = result;
@@ -53,7 +77,11 @@ export default function Board() {
   return (
     <>
       <BoardBackground url={backgroundUrl} />
-      <div className="relative flex-1 overflow-x-auto overscroll-x-contain board-scroll p-3 sm:p-6 min-h-0">
+      <div
+        ref={scrollRef}
+        onMouseDown={onPanStart}
+        className="relative flex-1 overflow-x-auto overscroll-x-contain board-scroll p-3 sm:p-6 min-h-0 cursor-grab"
+      >
         {mounted ? (
           listOrder.length === 0 ? (
             <div className="h-full min-h-[60vh] flex items-center justify-center">
@@ -81,6 +109,7 @@ export default function Board() {
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
+                    onMouseDown={onPanStart}
                     className="flex gap-3 sm:gap-4 items-start min-h-full"
                   >
                     {listOrder.map((id, idx) => (
