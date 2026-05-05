@@ -3,6 +3,48 @@ import 'server-only';
 const MODEL = 'gemini-2.5-flash';
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
+/**
+ * fetch wrapper with retry for transient Gemini errors (503/500/504).
+ * Throws a user-friendly Error with a translated message for the
+ * non-retryable HTTP statuses we know.
+ */
+async function geminiFetch(body: unknown, key: string): Promise<Response> {
+  const url = `${ENDPOINT}?key=${encodeURIComponent(key)}`;
+  const init: RequestInit = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  };
+
+  const transient = new Set([500, 502, 503, 504]);
+  const delays = [800, 2200];
+
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, init);
+    if (res.ok) return res;
+    if (attempt < delays.length && transient.has(res.status)) {
+      await new Promise((r) => setTimeout(r, delays[attempt]));
+      continue;
+    }
+
+    if (res.status === 429) {
+      throw new Error(
+        'KI-Kontingent erreicht. Probier es in ein paar Minuten nochmal.'
+      );
+    }
+    if (res.status === 403) {
+      throw new Error('KI-Zugang blockiert. Der API-Key ist ungültig.');
+    }
+    if (transient.has(res.status)) {
+      throw new Error(
+        'Gemini ist gerade überlastet. Versuch es in einer Minute nochmal.'
+      );
+    }
+    const errText = await res.text();
+    throw new Error(`KI-Fehler (${res.status}): ${errText.slice(0, 200)}`);
+  }
+}
+
 const LABEL_COLORS = [
   'rose',
   'orange',
@@ -120,28 +162,7 @@ export async function generateBoard(userPrompt: string): Promise<GeneratedBoard>
     },
   };
 
-  const res = await fetch(`${ENDPOINT}?key=${encodeURIComponent(key)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    if (res.status === 429) {
-      throw new Error(
-        'KI-Kontingent für heute aufgebraucht. Probier es in ein paar Minuten nochmal oder morgen.'
-      );
-    }
-    if (res.status === 403) {
-      throw new Error(
-        'KI-Zugang blockiert. Der API-Key ist ungültig oder hat keinen Zugriff.'
-      );
-    }
-    throw new Error(
-      `KI-Fehler (${res.status}): ${errText.slice(0, 200)}`
-    );
-  }
+  const res = await geminiFetch(body, key);
 
   type GeminiResponse = {
     candidates?: Array<{
@@ -179,21 +200,7 @@ async function callGeminiText(
     generationConfig: { temperature },
   };
 
-  const res = await fetch(`${ENDPOINT}?key=${encodeURIComponent(key)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    if (res.status === 429) {
-      throw new Error('KI-Kontingent für heute aufgebraucht. Versuch es später.');
-    }
-    if (res.status === 403) {
-      throw new Error('KI-Zugang blockiert. API-Key prüfen.');
-    }
-    throw new Error(`KI-Fehler (${res.status}).`);
-  }
+  const res = await geminiFetch(body, key);
 
   type R = {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
