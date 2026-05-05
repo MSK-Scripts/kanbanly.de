@@ -8,6 +8,7 @@ import { ActivityLog } from './ActivityLog';
 import { CardComments } from './CardComments';
 import { CustomFieldsSection } from './CustomFieldsSection';
 import { CardLinksSection } from './CardLinksSection';
+import { CardSubscribeButton } from './CardSubscribeButton';
 import {
   aiImproveDescription,
   aiSuggestSubtasks,
@@ -358,7 +359,8 @@ export function CardModal() {
 
             <CardLinksSection cardId={openCardId} />
 
-            <div className="p-5 flex justify-end">
+            <div className="p-5 flex items-center justify-between">
+              <CardSubscribeButton cardId={openCardId} />
               <button
                 type="button"
                 onClick={() => archiveCard(openCardId)}

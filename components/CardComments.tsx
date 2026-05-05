@@ -7,6 +7,7 @@ import { confirm } from '@/store/confirmStore';
 import { withMentions } from '@/lib/mentions';
 import { useBoard } from '@/store/boardStore';
 import { notifyBoardEvent } from '@/app/(app)/webhook-actions';
+import { notifySubscribers, subscribeUserToCard } from '@/lib/notifications';
 import { Avatar } from './Avatar';
 
 type CommentRow = {
@@ -160,9 +161,15 @@ export function CardComments({ cardId }: { cardId: string }) {
       const state = useBoard.getState();
       const bId = state.boardId;
       const cardTitle = state.cards[cardId]?.title ?? '';
+      const snippet =
+        content.length > 120 ? content.slice(0, 120) + '…' : content;
+      // Commenter abonniert die Karte automatisch.
+      subscribeUserToCard(supabase, cardId, user.id).catch(() => {});
+      notifySubscribers(supabase, cardId, user.id, 'comment_added', {
+        cardTitle,
+        snippet,
+      }).catch(() => {});
       if (bId && cardTitle) {
-        const snippet =
-          content.length > 120 ? content.slice(0, 120) + '…' : content;
         notifyBoardEvent(bId, {
           kind: 'comment_added',
           cardId,

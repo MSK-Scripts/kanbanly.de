@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
 import { notifyBoardEvent } from '@/app/(app)/webhook-actions';
 import { runMoveAutomations, type Automation } from '@/lib/automations';
+import { notifySubscribers, subscribeUserToCard } from '@/lib/notifications';
 
 const PULSE_DURATION_MS = 1200;
 const PULSE_SUPPRESS_MS = 1500;
@@ -664,6 +665,8 @@ export const useBoard = create<State>((set, get) => ({
       if (error) console.error('toggleAssignee add', error);
       else {
         logActivity(cardId, 'assignee_added', { user_id: userId, username });
+        // Auto-subscribe new assignee so they get notified going forward.
+        subscribeUserToCard(supabase, cardId, userId).catch(() => {});
         if (bId && cardTitle) {
           notifyBoardEvent(bId, {
             kind: 'assignee_added',
@@ -890,6 +893,16 @@ export const useBoard = create<State>((set, get) => ({
       logActivity(moved, 'moved', { from: fromTitle, to: toTitle });
       const bId = get().boardId;
       const movedCard = get().cards[moved];
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user && movedCard) {
+        notifySubscribers(supabase, moved, user.id, 'card_moved', {
+          cardTitle: movedCard.title,
+          fromList: fromTitle,
+          toList: toTitle,
+        }).catch(() => {});
+      }
       if (bId && movedCard) {
         notifyBoardEvent(bId, {
           kind: 'card_moved',
@@ -937,6 +950,15 @@ export const useBoard = create<State>((set, get) => ({
     else {
       logActivity(cardId, 'renamed', { from: fromTitle, to: trimmed });
       const bId = get().boardId;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        notifySubscribers(supabase, cardId, user.id, 'card_renamed', {
+          fromTitle,
+          toTitle: trimmed,
+        }).catch(() => {});
+      }
       if (bId) {
         notifyBoardEvent(bId, {
           kind: 'card_renamed',
@@ -972,6 +994,18 @@ export const useBoard = create<State>((set, get) => ({
       logActivity(cardId, next ? 'due_set' : 'due_cleared', { due: next });
       const bId = get().boardId;
       const cardTitle = card.title;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        notifySubscribers(
+          supabase,
+          cardId,
+          user.id,
+          next ? 'card_due_set' : 'card_due_cleared',
+          { due: next, cardTitle }
+        ).catch(() => {});
+      }
       if (bId) {
         if (next) {
           notifyBoardEvent(bId, {
@@ -1062,6 +1096,14 @@ export const useBoard = create<State>((set, get) => ({
     if (error) console.error('archiveCard', error);
     else {
       const bId = get().boardId;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        notifySubscribers(supabase, cardId, user.id, 'card_archived', {
+          cardTitle: card.title,
+        }).catch(() => {});
+      }
       if (bId) {
         notifyBoardEvent(bId, {
           kind: 'card_archived',
