@@ -44,3 +44,8 @@ next-env.d.ts
 /.claude/
 /.vscode/
 /.idea/
+
+# discord bot (separates Node-Projekt unter /bot)
+/bot/node_modules
+/bot/dist
+/bot/.env*

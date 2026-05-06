@@ -55,3 +55,39 @@ If SSH host key changed (server reinstall): `ssh-keygen -R 185.254.96.144` local
 - `pm2 list` empty as root → wrong user, switch to `deploy` first.
 - The user's local `.env.local` was historically wrong (contained another project's vars). Don't copy it to the server blindly. The server's `.env.local` is authoritative.
 - After deploy, browser may show cached old version. Always tell the user to hard-refresh.
+
+# Discord-Bot (`/bot`)
+
+Separates Node-Projekt unter `/bot/` mit eigenem `package.json`, eigenem PM2-Prozess `kanbanly-bot`, eigener `.env`. Stack: discord.js v14, TypeScript, Supabase via Service-Role-Key.
+
+- **PM2-App:** `kanbanly-bot` (parallel zu `kanbanly`)
+- **Pfad auf Server:** `/home/deploy/kanbanly.de/bot`
+- **Env-Datei:** `/home/deploy/kanbanly.de/bot/.env` (eigenständig, nicht die der Next.js-App)
+- **Discord App ID:** `1495358990622920704` ([Developer Portal](https://discord.com/developers/applications/1495358990622920704))
+
+## Bot-Deploy-Workflow
+
+Zusätzlich zum normalen Deploy oben — wenn `bot/` geändert wurde:
+
+```bash
+cd ~/kanbanly.de/bot
+npm install                      # nur wenn bot/package.json geändert
+npm run build
+npm run deploy-commands          # nur wenn Slash-Commands geändert/hinzugefügt
+pm2 restart kanbanly-bot
+pm2 logs kanbanly-bot --lines 20 --nostream
+```
+
+Beim allerersten Deploy stattdessen `pm2 start dist/index.js --name kanbanly-bot && pm2 save`.
+
+## Bot-Verification
+
+- `pm2 list` sollte `kanbanly-bot` als `online` zeigen.
+- Logs müssen `[bot] eingeloggt als <Botname>#<discrim>` enthalten.
+- `/ping` im Test-Server muss antworten.
+
+## Bot-Stolperfallen
+
+- Globale Slash-Commands brauchen bis zu 1h Propagation. Beim Entwickeln `DEV_GUILD_ID` setzen → sofort sichtbar.
+- Privileged Intents (Server Members, Message Content) müssen im Developer Portal aktiviert sein, sonst crasht der Bot beim Login.
+- Der Bot nutzt den **Service-Role-Key** für Supabase und umgeht damit RLS. Niemals diesen Key in die Next.js-App oder in den Browser bringen.
