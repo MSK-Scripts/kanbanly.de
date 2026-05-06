@@ -155,3 +155,54 @@ export async function permanentlyDeleteCard(cardId: string, boardSlug: string) {
   await supabase.from('cards').delete().eq('id', cardId);
   revalidatePath(`/boards/${boardSlug}/archiv`);
 }
+
+const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
+
+export async function renameUsername(
+  formData: FormData
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const next = String(formData.get('username') ?? '').trim();
+  if (!USERNAME_RE.test(next)) {
+    return {
+      ok: false,
+      error: '3–20 Zeichen, nur Buchstaben, Ziffern, _ und -.',
+    };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Nicht angemeldet.' };
+
+  const { data: current } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const cur = (current as { username: string | null } | null)?.username;
+  if (cur && cur === next) return { ok: true };
+  // Case-insensitive: gleicher Name nur Schreibweise ändern → erlaubt.
+  if (cur && cur.toLowerCase() !== next.toLowerCase()) {
+    const { data: taken } = await supabase.rpc('username_exists', { u: next });
+    if (taken === true) {
+      return { ok: false, error: 'Benutzername ist schon vergeben.' };
+    }
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ username: next })
+    .eq('id', user.id);
+  if (error) {
+    if (error.code === '23505') {
+      return { ok: false, error: 'Benutzername ist schon vergeben.' };
+    }
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath('/einstellungen');
+  revalidatePath('/dashboard');
+  return { ok: true };
+}

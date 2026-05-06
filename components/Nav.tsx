@@ -43,9 +43,13 @@ export async function Nav() {
             >
               Meine Karten
             </Link>
-            <span className="text-xs text-muted hidden sm:inline">
+            <Link
+              href="/einstellungen"
+              className="text-xs text-muted hover:text-fg transition-colors hidden sm:inline"
+              title="Einstellungen"
+            >
               {displayName}
-            </span>
+            </Link>
             <NotificationsBell />
             <form action={logout}>
               <button
