@@ -66,7 +66,7 @@ export function translateAuthError(raw: string | null | undefined): string {
   return trimmed;
 }
 
-export const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
+export const USERNAME_RE = /^[a-zA-ZäöüÄÖÜß0-9_ -]{3,20}$/;
 
 export function validateUsername(username: string): string | null {
   if (!username) return 'Bitte wähle einen Benutzernamen.';
@@ -74,10 +74,12 @@ export function validateUsername(username: string): string | null {
     return 'Der Benutzername muss mindestens 3 Zeichen lang sein.';
   if (username.length > 20)
     return 'Der Benutzername darf maximal 20 Zeichen lang sein.';
-  if (/\s/.test(username))
-    return 'Der Benutzername darf keine Leerzeichen enthalten.';
+  if (username.startsWith(' ') || username.endsWith(' '))
+    return 'Der Benutzername darf nicht mit einem Leerzeichen beginnen oder enden.';
+  if (/ {2}/.test(username))
+    return 'Der Benutzername darf keine doppelten Leerzeichen enthalten.';
   if (!USERNAME_RE.test(username))
-    return 'Benutzername: nur Buchstaben, Ziffern, _ und - sind erlaubt. Keine Umlaute oder Sonderzeichen.';
+    return 'Benutzername: nur Buchstaben (auch ä/ö/ü/ß), Ziffern, Leerzeichen, _ und - sind erlaubt.';
   return null;
 }
 

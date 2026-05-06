@@ -156,16 +156,19 @@ export async function permanentlyDeleteCard(cardId: string, boardSlug: string) {
   revalidatePath(`/boards/${boardSlug}/archiv`);
 }
 
-const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
+const USERNAME_RE = /^[a-zA-ZäöüÄÖÜß0-9_ -]{3,20}$/;
 
 export async function renameUsername(
   formData: FormData
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const next = String(formData.get('username') ?? '').trim();
+  const raw = String(formData.get('username') ?? '');
+  // Trim + collapse multiple spaces to single space.
+  const next = raw.trim().replace(/ +/g, ' ');
   if (!USERNAME_RE.test(next)) {
     return {
       ok: false,
-      error: '3–20 Zeichen, nur Buchstaben, Ziffern, _ und -.',
+      error:
+        '3–20 Zeichen: Buchstaben (auch ä/ö/ü/ß), Ziffern, Leerzeichen, _ und -.',
     };
   }
 

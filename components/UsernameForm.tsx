@@ -46,9 +46,9 @@ export function UsernameForm({ currentUsername }: Props) {
           }}
           minLength={3}
           maxLength={20}
-          pattern="[a-zA-Z0-9_-]{3,20}"
-          placeholder="z. B. Felix_F"
-          className="flex-1 rounded-md bg-elev border border-line-strong px-3 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-1 focus:ring-accent font-mono"
+          pattern="[a-zA-ZäöüÄÖÜß0-9_ -]{3,20}"
+          placeholder="z. B. Felix Müller"
+          className="flex-1 rounded-md bg-elev border border-line-strong px-3 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-1 focus:ring-accent"
         />
         <button
           type="submit"
@@ -59,7 +59,8 @@ export function UsernameForm({ currentUsername }: Props) {
         </button>
       </div>
       <p className="text-[11px] text-subtle mt-1">
-        3–20 Zeichen: Buchstaben, Ziffern, _ und -.
+        3–20 Zeichen: Buchstaben (auch ä/ö/ü/ß), Ziffern, Leerzeichen, _ und -.
+        Mit Leerzeichen funktionieren @mentions in Kommentaren nicht.
       </p>
       {error && (
         <div className="mt-2 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs px-3 py-1.5">

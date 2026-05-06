@@ -77,14 +77,14 @@ export default async function ChooseUsernamePage({
             required
             minLength={3}
             maxLength={20}
-            pattern="[a-zA-Z0-9_-]{3,20}"
+            pattern="[a-zA-ZäöüÄÖÜß0-9_ -]{3,20}"
             autoComplete="username"
             defaultValue={suggestion}
             autoFocus
             className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent-hover/60"
           />
           <p className="text-[11px] text-subtle mt-1">
-            3–20 Zeichen: Buchstaben, Ziffern, _ und -.
+            3–20 Zeichen: Buchstaben (auch ä/ö/ü/ß), Ziffern, Leerzeichen, _ und -.
           </p>
         </div>
         <button

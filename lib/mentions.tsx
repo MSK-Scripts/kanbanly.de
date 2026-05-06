@@ -1,6 +1,6 @@
 import React from 'react';
 
-const MENTION_RE = /(@[a-z0-9_-]{3,20})/gi;
+const MENTION_RE = /(@[a-zäöüß0-9_-]{3,20})/gi;
 
 function renderText(text: string, currentUsername: string | null) {
   const parts = text.split(MENTION_RE);
