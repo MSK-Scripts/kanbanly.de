@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ThemeScript } from "@/components/ThemeScript";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -91,6 +92,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans text-fg">
         {children}
         <ConfirmDialog />
+        <div className="fixed bottom-4 right-4 z-[200]">
+          <ThemeToggle />
+        </div>
       </body>
     </html>
   );

@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import { LegalFooter } from '@/components/LegalFooter';
 import { HelpMenu } from '@/components/HelpMenu';
 import { BoardPreview } from '@/components/BoardPreview';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanbanly.de';
 
@@ -104,7 +103,6 @@ export default async function LandingPage() {
               </Link>
             </>
           )}
-          <ThemeToggle />
           <HelpMenu />
         </div>
       </header>

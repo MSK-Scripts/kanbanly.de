@@ -33,7 +33,7 @@ export function ThemeToggle() {
       aria-label={isDark ? 'Zu Light Mode wechseln' : 'Zu Dark Mode wechseln'}
       title={isDark ? 'Light Mode' : 'Dark Mode'}
       suppressHydrationWarning
-      className="h-8 w-8 grid place-items-center rounded-none border border-line hover:border-line-strong bg-elev hover:bg-elev text-muted hover:text-fg transition-colors"
+      className="h-9 w-9 grid place-items-center rounded-md border border-line-strong hover:border-fg-soft bg-surface hover:bg-elev text-muted hover:text-fg shadow-md transition-colors"
     >
       {mounted && (isDark ? <SunIcon /> : <MoonIcon />)}
     </button>
