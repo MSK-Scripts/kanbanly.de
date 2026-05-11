@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { UsernameForm } from '@/components/UsernameForm';
 
@@ -32,6 +33,21 @@ export default async function EinstellungenPage() {
             Profil und Account-Daten.
           </p>
         </div>
+
+        <section className="mb-6">
+          <h2 className="text-sm font-semibold text-fg mb-2">Integrationen</h2>
+          <div className="rounded-md bg-surface border border-line p-5">
+            <Link
+              href="/integrations/discord"
+              className="text-sm text-fg hover:text-accent-hover transition-colors"
+            >
+              Discord-Bot verwalten →
+            </Link>
+            <p className="text-xs text-muted mt-1">
+              Welcome-Messages und Reaction Roles für deine Server konfigurieren.
+            </p>
+          </div>
+        </section>
 
         <section className="mb-6">
           <h2 className="text-sm font-semibold text-fg mb-2">Profil</h2>

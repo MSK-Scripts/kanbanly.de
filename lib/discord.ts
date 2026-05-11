@@ -115,8 +115,8 @@ export type DiscordGuild = {
   permissions: string;
 };
 
-const MANAGE_GUILD = 0x20n;
-const ADMINISTRATOR = 0x8n;
+const MANAGE_GUILD = BigInt(0x20);
+const ADMINISTRATOR = BigInt(0x8);
 
 export function canManageGuild(perms: string): boolean {
   try {

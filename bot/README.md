@@ -47,8 +47,9 @@ DB-Schema: `supabase/migrations/035_bot_*.sql` und folgende.
 ## Roadmap
 
 - [x] **Phase 1:** Skelett, `/ping`, `/help`, Deploy-Pipeline
-- [ ] **Phase 2:** Welcome-Messages, Reaction Roles
+- [x] **Phase 2:** Welcome-Messages (`/welcome`), Reaction Roles (`/reactionroles`)
+- [x] **Phase 6 (Teil 1):** Web-Dashboard unter `/integrations/discord` mit Discord-OAuth, Guild-Liste, Welcome-Editor
 - [ ] **Phase 3:** Leveling/XP
 - [ ] **Phase 4:** Auto-Moderation (Spam, Links, Caps)
 - [ ] **Phase 5:** AI-Features — `/catchup`, kontextuelle Auto-Mod (Gemini)
-- [ ] **Phase 6:** Web-Dashboard in der Next.js-App unter `/bot/dashboard`
+- [ ] **Phase 6 (Teil 2):** Reaction-Roles-Editor und Mod-Log-Settings im Dashboard

@@ -88,6 +88,25 @@ Beim allerersten Deploy stattdessen `pm2 start dist/index.js --name kanbanly-bot
 - Logs müssen `[bot] eingeloggt als <Botname>#<discrim>` enthalten.
 - `/ping` im Test-Server muss antworten.
 
+## Bot-Dashboard (in der Next.js-App)
+
+Unter `/integrations/discord` (verlinkt aus `/einstellungen`) können eingeloggte Kanbanly-User:
+- Ihren Discord-Account via OAuth2 verbinden (Scopes `identify guilds`)
+- Eigene Server sehen (gefiltert auf MANAGE_GUILD)
+- Den Bot einladen (`buildBotInviteUrl` in `lib/discord.ts`)
+- Pro Server: Welcome-Messages konfigurieren (`/integrations/discord/[guildId]`)
+
+Nötige Env-Vars in `.env.local` (Next.js-Hauptapp, nicht `bot/.env`):
+- `DISCORD_CLIENT_ID` — App-ID
+- `DISCORD_CLIENT_SECRET` — OAuth2-Secret (gleiche App)
+- `DISCORD_BOT_TOKEN` — wird gebraucht, um Channels einer Guild zu listen
+
+Redirect-URIs müssen im Developer Portal eingetragen sein:
+- `http://localhost:3000/api/discord/callback` (dev)
+- `https://kanbanly.de/api/discord/callback` (prod)
+
+Tabellen: `bot_user_connections` (Migration 037), `bot_guilds` (035), `bot_reaction_role_messages`/`bot_reaction_roles` (036).
+
 ## Bot-Stolperfallen
 
 - Globale Slash-Commands brauchen bis zu 1h Propagation. Beim Entwickeln `DEV_GUILD_ID` setzen → sofort sichtbar.
