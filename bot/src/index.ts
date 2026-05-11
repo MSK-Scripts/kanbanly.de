@@ -1,12 +1,23 @@
-import { Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import { Client, Events, GatewayIntentBits, MessageFlags, Partials } from 'discord.js';
 import { env } from './env.js';
 import { commandMap } from './commands/index.js';
+import { registerGuildMemberAdd } from './events/guildMemberAdd.js';
+import { registerGuildCreate } from './events/guildCreate.js';
+import { registerReactionEvents } from './events/reactions.js';
 
-// Phase 1: nur Guilds-Intent (genug für Slash-Commands).
-// Phase 2 (Welcome): + GuildMembers (privileged, im Dev-Portal aktivieren).
-// Phase 4 (AutoMod): + GuildMessages, MessageContent (privileged).
+// Intents:
+// - Guilds: Slash-Commands, Channel/Role-Cache
+// - GuildMembers (privileged, im Dev-Portal aktivieren): Welcome
+// - GuildMessageReactions: Reaction-Roles
+// Phase 4 wird zusätzlich GuildMessages + MessageContent (privileged) brauchen.
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessageReactions,
+  ],
+  // Partials: nötig, damit Reaction-Events auch für ältere (nicht gecachte) Messages feuern.
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User],
 });
 
 client.once(Events.ClientReady, (c) => {
@@ -32,6 +43,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 });
+
+registerGuildCreate(client);
+registerGuildMemberAdd(client);
+registerReactionEvents(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

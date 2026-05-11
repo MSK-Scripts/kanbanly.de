@@ -49,3 +49,4 @@ next-env.d.ts
 /bot/node_modules
 /bot/dist
 /bot/.env*
+!/bot/.env.example

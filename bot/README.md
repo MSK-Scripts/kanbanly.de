@@ -4,7 +4,7 @@ Standalone Node-Service. Läuft als eigener PM2-Prozess parallel zur Next.js-App
 
 ## Setup (lokal)
 
-1. Token besorgen im [Discord Developer Portal](https://discord.com/developers/applications/1495358990622920704)
+1. Token besorgen im [Discord Developer Portal](https://discord.com/developers/applications/1503486800146993203)
    – Bot → "Reset Token" → speichern
    – General Information → Public Key
    – Privileged Gateway Intents: **Server Members Intent** und **Message Content Intent** aktivieren

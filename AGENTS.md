@@ -63,7 +63,9 @@ Separates Node-Projekt unter `/bot/` mit eigenem `package.json`, eigenem PM2-Pro
 - **PM2-App:** `kanbanly-bot` (parallel zu `kanbanly`)
 - **Pfad auf Server:** `/home/deploy/kanbanly.de/bot`
 - **Env-Datei:** `/home/deploy/kanbanly.de/bot/.env` (eigenständig, nicht die der Next.js-App)
-- **Discord App ID:** `1495358990622920704` ([Developer Portal](https://discord.com/developers/applications/1495358990622920704))
+- **Discord App ID / Client ID:** `1503486800146993203` ([Developer Portal](https://discord.com/developers/applications/1503486800146993203))
+- **Public Key:** `fedd1ee7f314a53319939767e984b957817fe5f3ca63d1245c0a80ed671a5c0c` (nicht geheim — Webhook-Signatur-Verifizierung)
+- **Bot-Token & Client-Secret:** ausschließlich in `bot/.env` bzw. `.env.local`. Niemals committen, niemals in Chats teilen. Bei Leak im Developer Portal rotieren.
 
 ## Bot-Deploy-Workflow
 
