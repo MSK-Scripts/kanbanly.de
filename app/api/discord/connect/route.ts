@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?next=/integrations/discord', request.url));
   }
 
-  const origin = request.nextUrl.origin;
+  const origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
+    request.nextUrl.origin;
   const state = randomBytes(24).toString('hex');
   const url = buildAuthorizeUrl(origin, state);
 

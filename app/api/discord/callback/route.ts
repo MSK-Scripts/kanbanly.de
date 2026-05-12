@@ -30,7 +30,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const tokens = await exchangeCode(code, getOAuthRedirectUri(url.origin));
+    const origin =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || url.origin;
+    const tokens = await exchangeCode(code, getOAuthRedirectUri(origin));
     const discordUser = await fetchCurrentUser(tokens.access_token);
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
