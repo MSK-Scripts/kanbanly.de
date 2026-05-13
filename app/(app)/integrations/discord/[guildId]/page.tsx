@@ -306,7 +306,15 @@ function GuildSettingsView({
     bannedWords: string[];
   };
 }) {
-  const overviewItems = [
+  const overviewItems: Array<{
+    label: string;
+    icon: string;
+    enabled: boolean;
+    hint: string;
+    target: string;
+    accent: string;
+    summary: string;
+  }> = [
     {
       label: 'Welcome',
       icon: '👋',
@@ -317,6 +325,8 @@ function GuildSettingsView({
           : 'Channel fehlt'
         : 'Begrüße neue Mitglieder',
       target: 'welcome',
+      accent: 'from-amber-500/25 to-orange-500/10 text-amber-500',
+      summary: 'Begrüßungs-Message mit Platzhaltern & Live-Preview.',
     },
     {
       label: 'Auto-Roles',
@@ -326,6 +336,8 @@ function GuildSettingsView({
         ? `${autoRoles.roleIds.length} Rolle${autoRoles.roleIds.length === 1 ? '' : 'n'} bei Join`
         : 'Rolle automatisch vergeben',
       target: 'autoroles',
+      accent: 'from-fuchsia-500/25 to-pink-500/10 text-fuchsia-500',
+      summary: 'Rollen, die jedem neuen Mitglied vergeben werden.',
     },
     {
       label: 'Logging',
@@ -344,6 +356,8 @@ function GuildSettingsView({
               .join(' · ') || 'kein Event aktiv'
           : 'Events in Audit-Channel',
       target: 'logging',
+      accent: 'from-sky-500/25 to-cyan-500/10 text-sky-500',
+      summary: 'Audit-Trail: Joins, Leaves, Message-Edits, Rollen.',
     },
     {
       label: 'Leveling',
@@ -353,6 +367,8 @@ function GuildSettingsView({
         ? `${levelRewards.length} Reward${levelRewards.length === 1 ? '' : 's'}`
         : 'XP-System für Engagement',
       target: 'levels',
+      accent: 'from-yellow-400/25 to-amber-500/10 text-yellow-500',
+      summary: 'XP pro Message, Level-Up-Nachrichten, Rollen-Rewards.',
     },
     {
       label: 'AutoMod',
@@ -369,6 +385,8 @@ function GuildSettingsView({
             .join(' · ') || 'an'
         : 'Spam, Links, Caps filtern',
       target: 'automod',
+      accent: 'from-rose-500/25 to-red-500/10 text-rose-500',
+      summary: 'Spam-, Link-, Caps- und Mention-Filter, Wort-Blacklist.',
     },
     {
       label: 'Reaction-Rollen',
@@ -376,8 +394,12 @@ function GuildSettingsView({
       enabled: false,
       hint: 'Via Slash-Command verwaltet',
       target: 'reactionroles',
+      accent: 'from-violet-500/25 to-purple-500/10 text-violet-500',
+      summary: 'Self-Service: Rolle per Emoji-Reaktion.',
     },
   ];
+
+  const activeModuleCount = overviewItems.filter((i) => i.enabled).length;
 
   const tabs: Tab[] = [
     {
@@ -387,40 +409,73 @@ function GuildSettingsView({
       description: 'Status aller Module auf einen Blick — Karte klicken zum Konfigurieren.',
       noCardWrapper: true,
       content: (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {overviewItems.map((item) => (
-            <a
-              key={item.target}
-              href={`#${item.target}`}
-              className="group relative rounded-md border border-line bg-elev hover:bg-elev-hover hover:border-line-strong transition-all p-4 flex flex-col gap-3 cursor-pointer"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="text-2xl leading-none" aria-hidden>
-                  {item.icon}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 px-1">
+            <div>
+              <h2 className="text-sm font-semibold text-fg">Module</h2>
+              <p className="text-[11px] text-subtle mt-0.5">
+                {activeModuleCount} von {overviewItems.length} aktiv — klick eine Karte zum Konfigurieren.
+              </p>
+            </div>
+            <div className="h-1.5 w-32 rounded-full bg-elev overflow-hidden border border-line">
+              <div
+                className="h-full bg-gradient-to-r from-[#5865F2] to-violet-500 transition-all"
+                style={{
+                  width: `${(activeModuleCount / overviewItems.length) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {overviewItems.map((item) => (
+              <a
+                key={item.target}
+                href={`#${item.target}`}
+                className={`group relative overflow-hidden rounded-lg border bg-surface p-4 flex flex-col gap-3 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg ${
+                  item.enabled
+                    ? 'border-emerald-500/30 hover:border-emerald-500/60 shadow-[0_0_0_1px_rgba(16,185,129,0.05)]'
+                    : 'border-line hover:border-line-strong'
+                }`}
+              >
+                <div
+                  className={`pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${item.accent} opacity-40 blur-2xl transition-opacity group-hover:opacity-70`}
+                  aria-hidden
+                />
+                <div className="relative flex items-start justify-between gap-2">
+                  <div
+                    className={`h-11 w-11 rounded-lg bg-gradient-to-br ${item.accent} grid place-items-center text-2xl leading-none border border-line-strong/40 shadow-inner`}
+                    aria-hidden
+                  >
+                    {item.icon}
+                  </div>
+                  <span
+                    className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border backdrop-blur-sm ${
+                      item.enabled
+                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
+                        : 'bg-elev/60 text-subtle border-line-strong'
+                    }`}
+                  >
+                    {item.enabled ? '● Aktiv' : '○ Aus'}
+                  </span>
                 </div>
-                <span
-                  className={`text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded-sm border ${
-                    item.enabled
-                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                      : 'bg-elev text-subtle border-line-strong'
-                  }`}
-                >
-                  {item.enabled ? '● Aktiv' : '○ Aus'}
-                </span>
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-fg group-hover:text-accent-hover transition-colors">
-                  {item.label}
+                <div className="relative">
+                  <div className="text-base font-semibold text-fg group-hover:text-accent-hover transition-colors">
+                    {item.label}
+                  </div>
+                  <div className="text-[11px] text-muted mt-1 leading-relaxed">
+                    {item.summary}
+                  </div>
                 </div>
-                <div className="text-[11px] text-muted mt-0.5 leading-snug">
-                  {item.hint}
+                <div className="relative flex items-center justify-between text-[11px] mt-auto pt-2 border-t border-line/60">
+                  <span className="text-subtle truncate">{item.hint}</span>
+                  <span className="text-fg-soft/50 group-hover:text-accent-hover group-hover:translate-x-0.5 transition-all">
+                    →
+                  </span>
                 </div>
-              </div>
-              <div className="absolute right-3 bottom-3 text-fg-soft/40 group-hover:text-accent-hover transition-colors text-sm">
-                →
-              </div>
-            </a>
-          ))}
+              </a>
+            ))}
+          </div>
         </div>
       ),
     },
@@ -492,17 +547,29 @@ function GuildSettingsView({
 
   return (
     <>
-      <div className="mb-6 rounded-md bg-gradient-to-br from-[#5865F2]/12 via-surface to-surface border border-line p-5 sm:p-6">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="h-10 w-10 rounded-md bg-[#5865F2]/15 grid place-items-center text-[#5865F2] text-sm font-semibold shrink-0">
+      <div className="relative mb-6 overflow-hidden rounded-lg border border-line bg-surface p-5 sm:p-7">
+        <div
+          className="pointer-events-none absolute -top-24 -left-20 h-72 w-72 rounded-full bg-[#5865F2]/30 blur-3xl"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl"
+          aria-hidden
+        />
+        <div className="relative flex items-center gap-4">
+          <div className="h-14 w-14 rounded-lg bg-gradient-to-br from-[#5865F2] to-violet-600 grid place-items-center text-white text-lg font-bold shrink-0 shadow-lg shadow-[#5865F2]/30 ring-1 ring-white/10">
             {guildName.slice(0, 2).toUpperCase()}
           </div>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-semibold text-fg leading-tight truncate">
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-[#5865F2] font-mono mb-1 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Bot verbunden
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-fg leading-tight truncate tracking-tight">
               {guildName}
             </h1>
-            <p className="text-[11px] text-subtle mt-0.5 font-mono">
-              {guildId}
+            <p className="text-[11px] text-subtle mt-1 font-mono">
+              ID · {guildId}
             </p>
           </div>
         </div>
