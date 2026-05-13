@@ -4,20 +4,31 @@ import { commandMap } from './commands/index.js';
 import { registerGuildMemberAdd } from './events/guildMemberAdd.js';
 import { registerGuildCreate } from './events/guildCreate.js';
 import { registerReactionEvents } from './events/reactions.js';
+import { registerLogger } from './events/logger.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
-// - GuildMembers (privileged, im Dev-Portal aktivieren): Welcome
+// - GuildMembers (privileged, Dev-Portal): Welcome, Auto-Roles, Join/Leave/Role-Logs
 // - GuildMessageReactions: Reaction-Roles
-// Phase 4 wird zusätzlich GuildMessages + MessageContent (privileged) brauchen.
+// - GuildMessages: Message-Edit/Delete-Logs (Events ohne Content)
+// - MessageContent (privileged, Dev-Portal): Inhalt für Edit/Delete-Logs
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
   ],
-  // Partials: nötig, damit Reaction-Events auch für ältere (nicht gecachte) Messages feuern.
-  partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User],
+  // Partials: nötig, damit Reaction-Events und Message-Delete auch für ältere
+  // (nicht gecachte) Messages feuern.
+  partials: [
+    Partials.Message,
+    Partials.Channel,
+    Partials.Reaction,
+    Partials.User,
+    Partials.GuildMember,
+  ],
 });
 
 client.once(Events.ClientReady, (c) => {
@@ -47,6 +58,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 registerGuildCreate(client);
 registerGuildMemberAdd(client);
 registerReactionEvents(client);
+registerLogger(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

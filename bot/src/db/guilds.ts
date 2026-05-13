@@ -12,6 +12,15 @@ export type AutoRolesConfig = {
   roleIds: string[];
 };
 
+export type LogConfig = {
+  channelId: string | null;
+  joins: boolean;
+  leaves: boolean;
+  messageEdits: boolean;
+  messageDeletes: boolean;
+  roleChanges: boolean;
+};
+
 export async function ensureGuild(guild: Guild): Promise<void> {
   const db = getDb();
   const { error } = await db
@@ -86,6 +95,59 @@ export async function setAutoRolesConfig(
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.enabled !== undefined) update.auto_roles_enabled = patch.enabled;
   if (patch.roleIds !== undefined) update.auto_role_ids = patch.roleIds;
+  const { error } = await db.from('bot_guilds').update(update).eq('guild_id', guildId);
+  if (error) throw error;
+}
+
+export async function getLogConfig(guildId: string): Promise<LogConfig> {
+  const db = getDb();
+  const { data, error } = await db
+    .from('bot_guilds')
+    .select(
+      'log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes',
+    )
+    .eq('guild_id', guildId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    return {
+      channelId: null,
+      joins: false,
+      leaves: false,
+      messageEdits: false,
+      messageDeletes: false,
+      roleChanges: false,
+    };
+  }
+  return {
+    channelId: data.log_channel_id ?? null,
+    joins: Boolean(data.log_joins),
+    leaves: Boolean(data.log_leaves),
+    messageEdits: Boolean(data.log_message_edits),
+    messageDeletes: Boolean(data.log_message_deletes),
+    roleChanges: Boolean(data.log_role_changes),
+  };
+}
+
+export async function setLogConfig(
+  guildId: string,
+  patch: Partial<{
+    channelId: string | null;
+    joins: boolean;
+    leaves: boolean;
+    messageEdits: boolean;
+    messageDeletes: boolean;
+    roleChanges: boolean;
+  }>,
+): Promise<void> {
+  const db = getDb();
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.channelId !== undefined) update.log_channel_id = patch.channelId;
+  if (patch.joins !== undefined) update.log_joins = patch.joins;
+  if (patch.leaves !== undefined) update.log_leaves = patch.leaves;
+  if (patch.messageEdits !== undefined) update.log_message_edits = patch.messageEdits;
+  if (patch.messageDeletes !== undefined) update.log_message_deletes = patch.messageDeletes;
+  if (patch.roleChanges !== undefined) update.log_role_changes = patch.roleChanges;
   const { error } = await db.from('bot_guilds').update(update).eq('guild_id', guildId);
   if (error) throw error;
 }

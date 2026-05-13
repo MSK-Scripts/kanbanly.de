@@ -16,6 +16,7 @@ import {
 } from '@/lib/discord';
 import { WelcomeForm } from '@/components/WelcomeForm';
 import { AutoRolesForm } from '@/components/AutoRolesForm';
+import { LogConfigForm } from '@/components/LogConfigForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,14 @@ type LoadResult =
       roles: DiscordRole[];
       welcome: { enabled: boolean; channelId: string | null; message: string | null };
       autoRoles: { enabled: boolean; roleIds: string[] };
+      log: {
+        channelId: string | null;
+        joins: boolean;
+        leaves: boolean;
+        messageEdits: boolean;
+        messageDeletes: boolean;
+        roleChanges: boolean;
+      };
     };
 
 async function load(userId: string, guildId: string): Promise<LoadResult> {
@@ -49,7 +58,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, auto_roles_enabled, auto_role_ids',
+      'welcome_enabled, welcome_channel_id, welcome_message, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -91,6 +100,14 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
       roleIds: autoRoleIds,
+    },
+    log: {
+      channelId: guildRow.log_channel_id ?? null,
+      joins: Boolean(guildRow.log_joins),
+      leaves: Boolean(guildRow.log_leaves),
+      messageEdits: Boolean(guildRow.log_message_edits),
+      messageDeletes: Boolean(guildRow.log_message_deletes),
+      roleChanges: Boolean(guildRow.log_role_changes),
     },
   };
 }
@@ -180,6 +197,17 @@ export default async function GuildSettingsPage({
                     color: r.color,
                   }))}
                   initial={result.autoRoles}
+                />
+              </div>
+            </section>
+
+            <section className="mb-6">
+              <h2 className="text-sm font-semibold text-fg mb-2">Logging</h2>
+              <div className="rounded-md bg-surface border border-line p-5">
+                <LogConfigForm
+                  guildId={result.guild.id}
+                  channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
+                  initial={result.log}
                 />
               </div>
             </section>

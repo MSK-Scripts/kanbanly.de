@@ -25,6 +25,40 @@ async function assertCanManage(guildId: string): Promise<{ userId: string }> {
   return { userId: user.id };
 }
 
+export async function updateLogConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const joins = formData.get('log_joins') === 'on';
+    const leaves = formData.get('log_leaves') === 'on';
+    const messageEdits = formData.get('log_message_edits') === 'on';
+    const messageDeletes = formData.get('log_message_deletes') === 'on';
+    const roleChanges = formData.get('log_role_changes') === 'on';
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        log_channel_id: channelId,
+        log_joins: joins,
+        log_leaves: leaves,
+        log_message_edits: messageEdits,
+        log_message_deletes: messageDeletes,
+        log_role_changes: roleChanges,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
 export async function updateAutoRolesConfig(
   guildId: string,
   formData: FormData,
