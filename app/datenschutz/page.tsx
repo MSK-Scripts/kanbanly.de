@@ -208,7 +208,7 @@ export default function DatenschutzPage() {
               ausschließlich bei einem konkreten betrieblichen Anlass und wird
               nicht in den Aktivitäten des jeweiligen Boards sichtbar. Der
               Administrator nimmt dabei keine Änderungen an Inhalten vor und ist
-              für andere Mitglieder nicht als „anwesend" erkennbar. Rechtliche
+              für andere Mitglieder nicht als „anwesend&quot; erkennbar. Rechtliche
               Grundlage: berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) am
               sicheren und stabilen Betrieb des Dienstes.
             </p>

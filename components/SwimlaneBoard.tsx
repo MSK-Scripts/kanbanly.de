@@ -85,7 +85,7 @@ export function SwimlaneBoard() {
     <div className="flex-1 overflow-auto board-scroll p-3 sm:p-6 min-h-0">
       <div className="inline-flex items-center gap-2 mb-3 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-700 dark:text-amber-300">
         Swimlane-Modus: Drag &amp; Drop ist deaktiviert. Setze die Gruppierung
-        auf „Keine" um Karten zu verschieben.
+        auf „Keine&quot; um Karten zu verschieben.
       </div>
       <div className="flex flex-col gap-6 min-w-min">
         {groups.map((g) => (

@@ -197,7 +197,7 @@ export default async function DiscordIntegrationPage({
 
             {data.manageable.length === 0 ? (
               <div className="rounded-md border border-dashed border-line-strong p-8 text-center text-sm text-subtle">
-                Keine Server gefunden, auf denen du „Server verwalten" darfst.
+                Keine Server gefunden, auf denen du „Server verwalten&quot; darfst.
               </div>
             ) : (
               <ServerList servers={data.manageable} />

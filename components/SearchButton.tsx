@@ -1,15 +1,14 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useMounted } from '@/lib/useMounted';
+
+function detectMac(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+}
 
 export function SearchButton() {
-  const [isMac, setIsMac] = useState(false);
-
-  useEffect(() => {
-    setIsMac(
-      typeof navigator !== 'undefined' &&
-        /Mac|iPhone|iPad|iPod/.test(navigator.platform)
-    );
-  }, []);
+  const mounted = useMounted();
+  const isMac = mounted && detectMac();
 
   return (
     <button

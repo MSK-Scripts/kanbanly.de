@@ -2,6 +2,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { useBoard } from '@/store/boardStore';
+import { useMounted } from '@/lib/useMounted';
 
 type Props = {
   onClose: () => void;
@@ -36,7 +37,7 @@ function isValidHttpUrl(s: string): boolean {
 }
 
 export function BackgroundDialog({ onClose }: Props) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const current = useBoard((s) => s.backgroundUrl);
   const update = useBoard((s) => s.updateBoardBackground);
   const [input, setInput] = useState(current ?? '');
@@ -44,7 +45,6 @@ export function BackgroundDialog({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };

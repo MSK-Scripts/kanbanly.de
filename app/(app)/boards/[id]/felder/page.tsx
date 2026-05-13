@@ -240,7 +240,7 @@ function CreateFieldForm({
       </div>
       <div>
         <label className="block text-xs text-muted mb-1">
-          Optionen (nur bei „Auswahl", eine pro Zeile)
+          Optionen (nur bei „Auswahl&quot;, eine pro Zeile)
         </label>
         <textarea
           name="options"

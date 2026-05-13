@@ -278,7 +278,7 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
               )}
               <p className="text-[11px] text-subtle mt-1 leading-relaxed">
                 In Discord: Channel → Einstellungen → Integrationen → Webhooks
-                → „Neuer Webhook" → URL kopieren.
+                → „Neuer Webhook&quot; → URL kopieren.
               </p>
             </div>
 
@@ -351,7 +351,7 @@ export function WebhooksDialog({ boardId, onClose }: Props) {
                   <span className="text-xs text-fg-soft">
                     Webhook aktiv
                     <span className="block text-[11px] text-subtle">
-                      Bei „aus" bleibt die URL gespeichert, aber nichts wird gesendet.
+                      Bei „aus&quot; bleibt die URL gespeichert, aber nichts wird gesendet.
                     </span>
                   </span>
                 </label>

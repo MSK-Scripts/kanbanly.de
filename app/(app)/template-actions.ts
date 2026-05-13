@@ -135,7 +135,7 @@ export async function saveBoardAsTemplate(formData: FormData) {
       .insert(newLabels)
       .select('id, name, color');
     if (insertedLabels) {
-      labelsRes.data.forEach((old, i) => {
+      labelsRes.data.forEach((old) => {
         const match = insertedLabels.find(
           (nl) => nl.name === old.name && nl.color === old.color
         );

@@ -40,6 +40,9 @@ export function CardModal() {
   const [aiTasksBusy, setAiTasksBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  // Form-Felder neu synchronisieren wenn der User zwischen Karten wechselt.
+  // External trigger (openCardId aus Store) — bewusst gewähltes Sync-Pattern.
   useEffect(() => {
     if (card) {
       setTitle(card.title);
@@ -49,7 +52,8 @@ export function CardModal() {
       setDescription('');
       setNewTaskTitle('');
     }
-  }, [card?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [card?.id]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   useEffect(() => {
     if (!openCardId) return;

@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePresence } from '@/store/presenceStore';
 import { useBoard } from '@/store/boardStore';
+import { useMounted } from '@/lib/useMounted';
 
 const PALETTE = [
   '#f97316',
@@ -27,11 +27,7 @@ function colorFor(userId: string): string {
 export function LiveCursors() {
   const cursors = usePresence((s) => s.cursors);
   const openCardId = useBoard((s) => s.openCardId);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   if (!mounted || !openCardId) return null;
 

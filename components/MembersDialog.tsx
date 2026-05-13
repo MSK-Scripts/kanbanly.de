@@ -74,6 +74,8 @@ export function MembersDialog({ boardId }: { boardId: string }) {
     null
   );
   const [copied, setCopied] = useState(false);
+  // Einmaliger now-Snapshot pro Render-Cycle für Tag-Berechnungen (pure).
+  const [nowMs] = useState(() => Date.now());
 
   const loadPending = useCallback(async () => {
     const supabase = createClient();
@@ -142,6 +144,8 @@ export function MembersDialog({ boardId }: { boardId: string }) {
 
   useEffect(() => {
     if (!open) return;
+    // Reload bei Dialog-Open — external trigger.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActionError(null);
     loadMembers();
     loadPending();
@@ -149,6 +153,8 @@ export function MembersDialog({ boardId }: { boardId: string }) {
 
   useEffect(() => {
     if (inviteState?.ok) {
+      // Reload nach erfolgreichem Server-Action-Result.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadMembers();
       loadPending();
     }
@@ -332,7 +338,7 @@ export function MembersDialog({ boardId }: { boardId: string }) {
                 const daysLeft = Math.max(
                   0,
                   Math.round(
-                    (expires.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                    (expires.getTime() - nowMs) / (1000 * 60 * 60 * 24)
                   )
                 );
                 return (

@@ -139,7 +139,7 @@ export function CardComments({ cardId }: { cardId: string }) {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [cardId]);
+  }, [cardId, memberProfiles]);
 
   const submit = async () => {
     const content = draft.trim();

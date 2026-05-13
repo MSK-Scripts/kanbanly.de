@@ -15,7 +15,6 @@ import { ensureGuild } from '../db/guilds.js';
 import {
   closeTicket,
   createPanel,
-  deletePanel,
   getTicketByChannel,
   listPanelsForGuild,
 } from '../db/tickets.js';
