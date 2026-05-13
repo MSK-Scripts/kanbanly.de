@@ -97,126 +97,220 @@ export default async function DiscordIntegrationPage({
   const { error: errorParam } = await searchParams;
   const data = await loadDashboard(user.id);
 
+  const activeCount =
+    data.status === 'connected' ? data.manageable.filter((g) => g.botPresent).length : 0;
+  const totalCount = data.status === 'connected' ? data.manageable.length : 0;
+
   return (
-    <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-fg">Discord-Bot</h1>
-          <p className="text-sm text-muted mt-1">
-            Verbinde deinen Discord-Account, um den kanbanly-Bot auf deinen Servern zu verwalten.
-          </p>
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-5xl mx-auto p-3 sm:p-6">
+        {/* Hero */}
+        <div className="rounded-md bg-gradient-to-br from-[#5865F2]/15 via-surface to-surface border border-line p-6 sm:p-8 mb-6">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wide text-[#5865F2] font-mono mb-1">
+                Discord-Integration
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
+                Kanbanly Discord-Bot
+              </h1>
+              <p className="text-sm text-muted mt-2 max-w-xl">
+                Welcome-Messages, Auto-Roles, Moderation, AutoMod, Logging,
+                Leveling, Tickets &amp; mehr — komplett über dieses Dashboard
+                konfigurierbar.
+              </p>
+            </div>
+            {data.status === 'connected' && (
+              <div className="grid grid-cols-2 gap-3 shrink-0">
+                <Stat label="Aktiv" value={activeCount} accent />
+                <Stat label="Verwaltbar" value={totalCount} />
+              </div>
+            )}
+          </div>
         </div>
 
         {errorParam && (
-          <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+          <div className="mb-4 rounded-md border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300">
             Verbindung fehlgeschlagen: {errorParam}
           </div>
         )}
 
         {data.status === 'disconnected' ? (
-          <div className="rounded-md bg-surface border border-line p-6">
-            <h2 className="text-base font-semibold text-fg mb-2">Mit Discord verbinden</h2>
-            <p className="text-sm text-muted mb-4">
-              Wir holen nur deinen Benutzernamen und die Liste deiner Server (Scopes:
-              <code className="mx-1 px-1 rounded bg-elev text-fg-soft">identify</code>
-              <code className="px-1 rounded bg-elev text-fg-soft">guilds</code>).
+          <div className="rounded-md bg-surface border border-line p-6 sm:p-8 text-center">
+            <h2 className="text-lg font-semibold text-fg mb-2">
+              Mit Discord verbinden
+            </h2>
+            <p className="text-sm text-muted mb-5 max-w-md mx-auto">
+              Wir holen nur deinen Benutzernamen und die Liste deiner Server
+              (Scopes:{' '}
+              <code className="mx-1 px-1 rounded bg-elev text-fg-soft text-xs">
+                identify
+              </code>
+              <code className="px-1 rounded bg-elev text-fg-soft text-xs">
+                guilds
+              </code>
+              ).
             </p>
             <Link
               href="/api/discord/connect"
-              className="inline-flex items-center gap-2 rounded-md bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm px-4 py-2 transition-colors"
+              className="inline-flex items-center gap-2 rounded-md bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-medium px-5 py-2.5 transition-colors"
             >
               Mit Discord verbinden
             </Link>
           </div>
         ) : (
           <>
-            <div className="rounded-md bg-surface border border-line p-5 mb-6 flex items-center justify-between">
-              <div>
-                <div className="text-xs text-muted">Verbunden als</div>
-                <div className="text-sm text-fg font-medium">{data.discordUsername}</div>
+            <div className="rounded-md bg-surface border border-line p-4 mb-6 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-full bg-[#5865F2]/15 grid place-items-center text-[#5865F2] text-sm font-semibold shrink-0">
+                  {data.discordUsername.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] text-subtle">Verbunden als</div>
+                  <div className="text-sm text-fg font-medium truncate">
+                    {data.discordUsername}
+                  </div>
+                </div>
               </div>
               <form action="/api/discord/disconnect" method="post">
                 <button
                   type="submit"
-                  className="text-xs rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-fg-soft hover:text-fg px-3 py-1.5 transition-colors"
+                  className="text-xs rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev-hover text-fg-soft hover:text-fg px-3 py-1.5 transition-colors"
                 >
-                  Verbindung trennen
+                  Trennen
                 </button>
               </form>
             </div>
 
             {data.apiError && (
-              <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+              <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
                 {data.apiError}
               </div>
             )}
 
-            <h2 className="text-sm font-semibold text-fg mb-2">
-              Deine Server ({data.manageable.length})
+            <h2 className="text-sm font-semibold text-fg mb-3 flex items-center gap-2">
+              <span>Deine Server</span>
+              <span className="text-xs text-subtle font-mono">
+                {totalCount}
+              </span>
             </h2>
+
             {data.manageable.length === 0 ? (
-              <p className="text-sm text-muted">
-                Keine Server gefunden, auf denen du „Server verwalten“ darfst.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {data.manageable.map((g) => {
-                  const icon = guildIconUrl(g);
-                  return (
-                    <div
-                      key={g.id}
-                      className="flex items-center justify-between rounded-md bg-surface border border-line p-3"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-10 w-10 rounded-md bg-elev flex items-center justify-center overflow-hidden shrink-0">
-                          {icon ? (
-                            <Image
-                              src={icon}
-                              alt=""
-                              width={40}
-                              height={40}
-                              className="object-cover"
-                              unoptimized
-                            />
-                          ) : (
-                            <span className="text-xs text-muted">
-                              {g.name.slice(0, 2).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm text-fg truncate">{g.name}</div>
-                          <div className="text-[11px] text-muted">
-                            {g.owner ? 'Owner' : 'Manage Server'}
-                            {g.botPresent ? ' · Bot aktiv' : ' · Bot nicht eingeladen'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="shrink-0">
-                        {g.botPresent ? (
-                          <Link
-                            href={`/integrations/discord/${g.id}`}
-                            className="text-xs rounded-md bg-accent hover:bg-accent-hover text-white px-3 py-1.5 transition-colors"
-                          >
-                            Verwalten
-                          </Link>
-                        ) : (
-                          <a
-                            href={buildBotInviteUrl(g.id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev text-fg-soft hover:text-fg px-3 py-1.5 transition-colors"
-                          >
-                            Bot einladen
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="rounded-md border border-dashed border-line-strong p-8 text-center text-sm text-subtle">
+                Keine Server gefunden, auf denen du „Server verwalten" darfst.
               </div>
+            ) : (
+              <ServerList servers={data.manageable} />
             )}
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-md px-3 py-2 border ${
+        accent
+          ? 'bg-emerald-500/10 border-emerald-500/30'
+          : 'bg-elev border-line-strong'
+      }`}
+    >
+      <div className="text-[10px] uppercase tracking-wide text-subtle">
+        {label}
+      </div>
+      <div
+        className={`text-xl font-semibold font-mono tabular-nums ${
+          accent ? 'text-emerald-700 dark:text-emerald-300' : 'text-fg'
+        }`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ServerList({ servers }: { servers: GuildRow[] }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {servers.map((g) => (
+        <ServerCard key={g.id} guild={g} />
+      ))}
+    </div>
+  );
+}
+
+function ServerCard({ guild }: { guild: GuildRow }) {
+  const icon = guildIconUrl(guild);
+  return (
+    <div
+      className={`relative rounded-md border p-4 transition-colors ${
+        guild.botPresent
+          ? 'bg-surface border-emerald-500/30 hover:border-emerald-500/60'
+          : 'bg-surface border-line hover:border-line-strong'
+      }`}
+    >
+      <div className="flex items-start gap-3 mb-3">
+        <div className="h-12 w-12 rounded-md bg-elev flex items-center justify-center overflow-hidden shrink-0">
+          {icon ? (
+            <Image
+              src={icon}
+              alt=""
+              width={48}
+              height={48}
+              className="object-cover"
+              unoptimized
+            />
+          ) : (
+            <span className="text-sm text-muted font-semibold">
+              {guild.name.slice(0, 2).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm text-fg font-medium leading-snug break-words">
+            {guild.name}
+          </div>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${
+                guild.botPresent ? 'bg-emerald-500' : 'bg-muted/50'
+              }`}
+            />
+            <span className="text-[11px] text-subtle">
+              {guild.owner ? 'Owner' : 'Verwalter'} ·{' '}
+              {guild.botPresent ? 'Bot aktiv' : 'Bot nicht eingeladen'}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        {guild.botPresent ? (
+          <Link
+            href={`/integrations/discord/${guild.id}`}
+            className="flex-1 text-center text-xs font-medium rounded-md bg-accent hover:bg-accent-hover text-white px-3 py-1.5 transition-colors"
+          >
+            Verwalten
+          </Link>
+        ) : (
+          <a
+            href={buildBotInviteUrl(guild.id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-center text-xs font-medium rounded-md bg-[#5865F2] hover:bg-[#4752C4] text-white px-3 py-1.5 transition-colors"
+          >
+            Bot einladen
+          </a>
         )}
       </div>
     </div>
