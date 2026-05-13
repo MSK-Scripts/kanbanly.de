@@ -231,9 +231,14 @@ export async function updateWelcomeConfig(
     const enabled = formData.get('enabled') === 'on';
     const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
     const message = (formData.get('message') as string | null)?.trim() || null;
+    const dmEnabled = formData.get('dm_enabled') === 'on';
+    const dmMessage = (formData.get('dm_message') as string | null)?.trim() || null;
 
     if (enabled && (!channelId || !message)) {
       return { ok: false, error: 'Channel und Nachricht sind nötig, wenn Welcome aktiv ist.' };
+    }
+    if (dmEnabled && !dmMessage) {
+      return { ok: false, error: 'DM-Nachricht fehlt.' };
     }
 
     const admin = createAdminClient();
@@ -243,11 +248,194 @@ export async function updateWelcomeConfig(
         welcome_enabled: enabled,
         welcome_channel_id: channelId,
         welcome_message: message,
+        welcome_dm_enabled: dmEnabled,
+        welcome_dm_message: dmMessage,
         updated_at: new Date().toISOString(),
       })
       .eq('guild_id', guildId);
     if (error) throw error;
     revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updateBoosterConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const message = (formData.get('message') as string | null)?.trim() || null;
+    if (enabled && (!channelId || !message)) {
+      return { ok: false, error: 'Channel und Nachricht sind nötig, wenn Booster-Message aktiv ist.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        booster_enabled: enabled,
+        booster_channel_id: channelId,
+        booster_message: message,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function upsertStickyMessage(
+  guildId: string,
+  channelId: string,
+  content: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const trimmed = content.trim();
+    if (!trimmed || trimmed.length > 1500) {
+      return { ok: false, error: 'Inhalt fehlt oder ist länger als 1500 Zeichen.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_sticky_messages')
+      .upsert(
+        {
+          guild_id: guildId,
+          channel_id: channelId,
+          content: trimmed,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'guild_id,channel_id' },
+      );
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteStickyMessage(
+  guildId: string,
+  channelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_sticky_messages')
+      .delete()
+      .eq('guild_id', guildId)
+      .eq('channel_id', channelId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function upsertChannelMode(
+  guildId: string,
+  channelId: string,
+  mode: 'images_only' | 'text_only',
+  allowVideos: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (mode !== 'images_only' && mode !== 'text_only') {
+      return { ok: false, error: 'Ungültiger Modus.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_channel_modes')
+      .upsert(
+        {
+          guild_id: guildId,
+          channel_id: channelId,
+          mode,
+          allow_videos: allowVideos,
+        },
+        { onConflict: 'guild_id,channel_id' },
+      );
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteChannelMode(
+  guildId: string,
+  channelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_channel_modes')
+      .delete()
+      .eq('guild_id', guildId)
+      .eq('channel_id', channelId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function sendBotEmbed(
+  guildId: string,
+  channelId: string,
+  embed: {
+    title?: string;
+    description?: string;
+    color?: number;
+    footer?: string;
+    image?: string;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const token = process.env.DISCORD_BOT_TOKEN;
+    if (!token) {
+      return { ok: false, error: 'DISCORD_BOT_TOKEN ist nicht gesetzt.' };
+    }
+    const payload = {
+      embeds: [
+        {
+          title: embed.title?.slice(0, 256) || undefined,
+          description: embed.description?.slice(0, 4000) || undefined,
+          color: embed.color,
+          footer: embed.footer ? { text: embed.footer.slice(0, 2048) } : undefined,
+          image: embed.image ? { url: embed.image } : undefined,
+        },
+      ],
+    };
+    const res = await fetch(
+      `https://discord.com/api/v10/channels/${channelId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+    if (!res.ok) {
+      const txt = await res.text();
+      return { ok: false, error: `Discord ${res.status}: ${txt.slice(0, 200)}` };
+    }
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };

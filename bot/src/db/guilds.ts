@@ -5,6 +5,14 @@ export type WelcomeConfig = {
   enabled: boolean;
   channelId: string | null;
   message: string | null;
+  dmEnabled: boolean;
+  dmMessage: string | null;
+};
+
+export type BoosterConfig = {
+  enabled: boolean;
+  channelId: string | null;
+  message: string | null;
 };
 
 export type AutoRolesConfig = {
@@ -41,7 +49,9 @@ export async function getWelcomeConfig(guildId: string): Promise<WelcomeConfig |
   const db = getDb();
   const { data, error } = await db
     .from('bot_guilds')
-    .select('welcome_enabled, welcome_channel_id, welcome_message')
+    .select(
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_dm_enabled, welcome_dm_message',
+    )
     .eq('guild_id', guildId)
     .maybeSingle();
   if (error) throw error;
@@ -50,6 +60,24 @@ export async function getWelcomeConfig(guildId: string): Promise<WelcomeConfig |
     enabled: data.welcome_enabled,
     channelId: data.welcome_channel_id,
     message: data.welcome_message,
+    dmEnabled: Boolean(data.welcome_dm_enabled),
+    dmMessage: data.welcome_dm_message ?? null,
+  };
+}
+
+export async function getBoosterConfig(guildId: string): Promise<BoosterConfig | null> {
+  const db = getDb();
+  const { data, error } = await db
+    .from('bot_guilds')
+    .select('booster_enabled, booster_channel_id, booster_message')
+    .eq('guild_id', guildId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    enabled: Boolean(data.booster_enabled),
+    channelId: data.booster_channel_id ?? null,
+    message: data.booster_message ?? null,
   };
 }
 

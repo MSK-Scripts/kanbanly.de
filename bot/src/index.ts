@@ -11,6 +11,9 @@ import { registerAutoMod } from './events/automod.js';
 import { startReminderScheduler } from './events/reminders.js';
 import { startStatsUpdater } from './events/statsUpdater.js';
 import { registerTicketButtons } from './events/ticketButtons.js';
+import { registerBooster } from './events/booster.js';
+import { registerSticky } from './events/sticky.js';
+import { registerChannelMode } from './events/channelMode.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -71,6 +74,9 @@ registerAutoMod(client);
 startReminderScheduler(client);
 startStatsUpdater(client);
 registerTicketButtons(client);
+registerBooster(client);
+registerSticky(client);
+registerChannelMode(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

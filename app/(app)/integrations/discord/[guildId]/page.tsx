@@ -20,6 +20,10 @@ import { AutoRolesForm } from '@/components/AutoRolesForm';
 import { LogConfigForm } from '@/components/LogConfigForm';
 import { LevelConfigForm } from '@/components/LevelConfigForm';
 import { AutoModForm } from '@/components/AutoModForm';
+import { BoosterForm } from '@/components/BoosterForm';
+import { StickyMessagesForm } from '@/components/StickyMessagesForm';
+import { ChannelModesForm } from '@/components/ChannelModesForm';
+import { EmbedCreatorForm } from '@/components/EmbedCreatorForm';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +42,20 @@ type LoadResult =
       guild: DiscordGuild;
       channels: DiscordChannel[];
       roles: DiscordRole[];
-      welcome: { enabled: boolean; channelId: string | null; message: string | null };
+      welcome: {
+        enabled: boolean;
+        channelId: string | null;
+        message: string | null;
+        dmEnabled: boolean;
+        dmMessage: string | null;
+      };
+      booster: { enabled: boolean; channelId: string | null; message: string | null };
+      stickyMessages: Array<{ channelId: string; content: string }>;
+      channelModes: Array<{
+        channelId: string;
+        mode: 'images_only' | 'text_only';
+        allowVideos: boolean;
+      }>;
       autoRoles: { enabled: boolean; roleIds: string[] };
       log: {
         channelId: string | null;
@@ -85,7 +102,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_dm_enabled, welcome_dm_message, booster_enabled, booster_channel_id, booster_message, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -130,6 +147,25 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     roleId: r.role_id as string,
   }));
 
+  const { data: stickyRaw } = await admin
+    .from('bot_sticky_messages')
+    .select('channel_id, content')
+    .eq('guild_id', guildId);
+  const stickyMessages = (stickyRaw ?? []).map((r) => ({
+    channelId: r.channel_id as string,
+    content: r.content as string,
+  }));
+
+  const { data: modesRaw } = await admin
+    .from('bot_channel_modes')
+    .select('channel_id, mode, allow_videos')
+    .eq('guild_id', guildId);
+  const channelModes = (modesRaw ?? []).map((r) => ({
+    channelId: r.channel_id as string,
+    mode: r.mode as 'images_only' | 'text_only',
+    allowVideos: Boolean(r.allow_videos),
+  }));
+
   return {
     kind: 'ok',
     guild,
@@ -139,7 +175,16 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       enabled: guildRow.welcome_enabled,
       channelId: guildRow.welcome_channel_id,
       message: guildRow.welcome_message,
+      dmEnabled: Boolean(guildRow.welcome_dm_enabled),
+      dmMessage: (guildRow.welcome_dm_message as string | null) ?? null,
     },
+    booster: {
+      enabled: Boolean(guildRow.booster_enabled),
+      channelId: (guildRow.booster_channel_id as string | null) ?? null,
+      message: (guildRow.booster_message as string | null) ?? null,
+    },
+    stickyMessages,
+    channelModes,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
       roleIds: autoRoleIds,
@@ -257,6 +302,9 @@ export default async function GuildSettingsPage({
               color: r.color,
             }))}
             welcome={result.welcome}
+            booster={result.booster}
+            stickyMessages={result.stickyMessages}
+            channelModes={result.channelModes}
             autoRoles={result.autoRoles}
             log={result.log}
             level={result.level}
@@ -275,6 +323,9 @@ function GuildSettingsView({
   channels,
   roles,
   welcome,
+  booster,
+  stickyMessages,
+  channelModes,
   autoRoles,
   log,
   level,
@@ -285,7 +336,20 @@ function GuildSettingsView({
   guildId: string;
   channels: Array<{ id: string; name: string }>;
   roles: Array<{ id: string; name: string; color: number }>;
-  welcome: { enabled: boolean; channelId: string | null; message: string | null };
+  welcome: {
+    enabled: boolean;
+    channelId: string | null;
+    message: string | null;
+    dmEnabled: boolean;
+    dmMessage: string | null;
+  };
+  booster: { enabled: boolean; channelId: string | null; message: string | null };
+  stickyMessages: Array<{ channelId: string; content: string }>;
+  channelModes: Array<{
+    channelId: string;
+    mode: 'images_only' | 'text_only';
+    allowVideos: boolean;
+  }>;
   autoRoles: { enabled: boolean; roleIds: string[] };
   log: {
     channelId: string | null;
@@ -396,6 +460,52 @@ function GuildSettingsView({
       target: 'reactionroles',
       accent: 'from-violet-500/25 to-purple-500/10 text-violet-500',
       summary: 'Self-Service: Rolle per Emoji-Reaktion.',
+    },
+    {
+      label: 'Booster-Message',
+      icon: '🚀',
+      enabled: booster.enabled,
+      hint: booster.enabled
+        ? booster.channelId
+          ? 'Channel gesetzt'
+          : 'Channel fehlt'
+        : 'Bedanke dich bei Boostern',
+      target: 'booster',
+      accent: 'from-pink-500/25 to-fuchsia-500/10 text-pink-500',
+      summary: 'Reagiert automatisch wenn jemand den Server boostet.',
+    },
+    {
+      label: 'Sticky Messages',
+      icon: '📌',
+      enabled: stickyMessages.length > 0,
+      hint:
+        stickyMessages.length > 0
+          ? `${stickyMessages.length} Channel${stickyMessages.length === 1 ? '' : ''}`
+          : 'Wichtige Nachrichten fixieren',
+      target: 'sticky',
+      accent: 'from-amber-500/25 to-yellow-500/10 text-amber-500',
+      summary: 'Re-postet wichtige Nachrichten am Channel-Ende.',
+    },
+    {
+      label: 'Channel-Modes',
+      icon: '🎯',
+      enabled: channelModes.length > 0,
+      hint:
+        channelModes.length > 0
+          ? `${channelModes.length} aktiv`
+          : 'Bilder-Only oder Text-Only',
+      target: 'channelmodes',
+      accent: 'from-cyan-500/25 to-sky-500/10 text-cyan-500',
+      summary: 'Beschränkt Channels auf nur Bilder oder nur Text.',
+    },
+    {
+      label: 'Embed-Creator',
+      icon: '🎨',
+      enabled: false,
+      hint: 'Schöne Embeds bauen',
+      target: 'embed',
+      accent: 'from-purple-500/25 to-indigo-500/10 text-purple-500',
+      summary: 'Baue custom Embeds und sende sie als Bot.',
     },
   ];
 
@@ -542,6 +652,46 @@ function GuildSettingsView({
           im Server verwaltet. Eine UI dafür folgt.
         </p>
       ),
+    },
+    {
+      id: 'booster',
+      label: 'Booster',
+      icon: '🚀',
+      description: 'Dankesnachricht für Server-Booster.',
+      content: <BoosterForm guildId={guildId} channels={channels} initial={booster} />,
+    },
+    {
+      id: 'sticky',
+      label: 'Sticky',
+      icon: '📌',
+      description: 'Wichtige Nachrichten am Channel-Ende fixieren.',
+      content: (
+        <StickyMessagesForm
+          guildId={guildId}
+          channels={channels}
+          initial={stickyMessages}
+        />
+      ),
+    },
+    {
+      id: 'channelmodes',
+      label: 'Channel-Modes',
+      icon: '🎯',
+      description: 'Bilder-Only oder Text-Only-Channels.',
+      content: (
+        <ChannelModesForm
+          guildId={guildId}
+          channels={channels}
+          initial={channelModes}
+        />
+      ),
+    },
+    {
+      id: 'embed',
+      label: 'Embed-Creator',
+      icon: '🎨',
+      description: 'Baue custom Embeds und sende sie als Bot.',
+      content: <EmbedCreatorForm guildId={guildId} channels={channels} />,
     },
   ];
 

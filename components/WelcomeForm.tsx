@@ -7,10 +7,17 @@ import { Switch } from './Switch';
 type Props = {
   guildId: string;
   channels: { id: string; name: string }[];
-  initial: { enabled: boolean; channelId: string | null; message: string | null };
+  initial: {
+    enabled: boolean;
+    channelId: string | null;
+    message: string | null;
+    dmEnabled: boolean;
+    dmMessage: string | null;
+  };
 };
 
 const DEFAULT_TEMPLATE = 'Willkommen {mention} auf **{server}** 🎉 — ihr seid jetzt zu {members}.';
+const DEFAULT_DM_TEMPLATE = 'Hey {user}! Willkommen auf **{server}** 👋 Schau dich um und sag Hallo.';
 
 const PLACEHOLDERS: Array<{ token: string; label: string; sample: string }> = [
   { token: '{user}', label: 'Username', sample: 'NewUser' },
@@ -36,6 +43,8 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [channelId, setChannelId] = useState(initial.channelId ?? '');
   const [message, setMessage] = useState(initial.message ?? DEFAULT_TEMPLATE);
+  const [dmEnabled, setDmEnabled] = useState(initial.dmEnabled);
+  const [dmMessage, setDmMessage] = useState(initial.dmMessage ?? DEFAULT_DM_TEMPLATE);
   const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err'; text?: string }>({ kind: 'idle' });
   const [pending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -62,6 +71,8 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
     if (enabled) fd.set('enabled', 'on');
     fd.set('channel_id', channelId);
     fd.set('message', message);
+    if (dmEnabled) fd.set('dm_enabled', 'on');
+    fd.set('dm_message', dmMessage);
     startTransition(async () => {
       const r = await updateWelcomeConfig(guildId, fd);
       if (r.ok) setStatus({ kind: 'ok', text: 'Gespeichert.' });
@@ -159,6 +170,36 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center justify-between rounded-md border border-line bg-elev/40 px-4 py-3 mt-6">
+        <div>
+          <div className="text-sm font-medium text-fg">Zusätzlich DM senden</div>
+          <div className="text-[11px] text-subtle">
+            Privatnachricht an neue Mitglieder — funktioniert nur, wenn der User
+            DMs vom Server zulässt.
+          </div>
+        </div>
+        <Switch checked={dmEnabled} onChange={setDmEnabled} ariaLabel="DM bei Join aktiv" />
+      </div>
+
+      <div className={dmEnabled ? '' : 'opacity-60 pointer-events-none'}>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-xs font-medium text-muted">DM-Nachricht</label>
+          <span className="text-[10px] text-subtle font-mono tabular-nums">
+            {dmMessage.length}/1000
+          </span>
+        </div>
+        <textarea
+          value={dmMessage}
+          onChange={(e) => setDmMessage(e.target.value)}
+          rows={3}
+          maxLength={1000}
+          className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg font-mono focus:outline-none focus:ring-1 focus:ring-accent resize-y"
+        />
+        <p className="text-[11px] text-subtle mt-1">
+          Gleiche Platzhalter wie oben.
+        </p>
       </div>
 
       <div className="flex items-center gap-3">

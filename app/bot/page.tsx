@@ -147,6 +147,42 @@ const MODULES: Module[] = [
     features: ['Button-Panel', 'Auto-Channel', 'Transcripts'],
     accent: 'from-orange-500/30 to-amber-500/15 text-orange-500',
   },
+  {
+    id: 'booster',
+    icon: '🚀',
+    title: 'Booster-Message',
+    description:
+      'Bedankt sich automatisch wenn jemand den Server boostet — eigener Channel und Template.',
+    features: ['Eigene Message', 'Channel-Pick', 'Platzhalter'],
+    accent: 'from-pink-500/30 to-fuchsia-500/15 text-pink-500',
+  },
+  {
+    id: 'sticky',
+    icon: '📌',
+    title: 'Sticky Messages',
+    description:
+      'Wichtige Nachrichten bleiben am Channel-Ende — der Bot re-postet automatisch.',
+    features: ['Pro Channel', 'Markdown', 'Re-Post-Trigger'],
+    accent: 'from-amber-500/30 to-yellow-500/15 text-amber-500',
+  },
+  {
+    id: 'channelmodes',
+    icon: '🎯',
+    title: 'Channel-Modes',
+    description:
+      'Bilder-Only oder Text-Only-Channels — Bot löscht alles was nicht passt.',
+    features: ['Bilder-Only', 'Text-Only', 'Mod-Bypass'],
+    accent: 'from-cyan-500/30 to-sky-500/15 text-cyan-500',
+  },
+  {
+    id: 'embed',
+    icon: '🎨',
+    title: 'Embed-Creator',
+    description:
+      'Baue benutzerdefinierte Embeds mit Titel, Beschreibung, Farbe, Bild — und sende sie als Bot.',
+    features: ['Live-Preview', '6 Farbpresets', 'Markdown'],
+    accent: 'from-purple-500/30 to-indigo-500/15 text-purple-500',
+  },
 ];
 
 const COMMANDS: Array<{ name: string; description: string }> = [
@@ -164,6 +200,8 @@ const COMMANDS: Array<{ name: string; description: string }> = [
   { name: '/ticket setup', description: 'Ticket-Panel im Channel posten.' },
   { name: '/serverstats setup', description: 'Auto-updating Stat-Channels.' },
   { name: '/reactionroles add', description: 'Reaction-Rolle einrichten.' },
+  { name: '/slowmode 30', description: 'Slowmode im Channel setzen.' },
+  { name: '/roleall @rolle', description: 'Rolle an alle Mitglieder.' },
 ];
 
 export default async function BotLandingPage() {
@@ -273,8 +311,8 @@ export default async function BotLandingPage() {
             </div>
 
             <div className="mt-12 grid grid-cols-3 gap-4 max-w-md mx-auto text-center">
-              <HeroStat value="13" label="Module" />
-              <HeroStat value="17" label="Commands" />
+              <HeroStat value="18" label="Module" />
+              <HeroStat value="19" label="Commands" />
               <HeroStat value="0 €" label="Forever" />
             </div>
           </div>
@@ -344,7 +382,7 @@ export default async function BotLandingPage() {
                 Slash-Commands
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-fg mb-3">
-                17 Befehle ab Tag eins
+                19 Befehle ab Tag eins
               </h2>
               <p className="text-base text-muted">
                 Alle Commands sind Slash-Commands — keine Präfixe zu merken.

@@ -35,19 +35,33 @@ async function applyAutoRoles(member: GuildMember): Promise<void> {
 async function sendWelcome(member: GuildMember): Promise<void> {
   try {
     const cfg = await getWelcomeConfig(member.guild.id);
-    if (!cfg || !cfg.enabled || !cfg.channelId || !cfg.message) return;
-    const channel = await member.guild.channels.fetch(cfg.channelId).catch(() => null);
-    if (!channel || !channel.isTextBased()) return;
-    const text = renderWelcomeTemplate(cfg.message, {
+    if (!cfg) return;
+
+    const tplCtx = {
       username: member.user.username,
       mention: `<@${member.id}>`,
       serverName: member.guild.name,
       memberCount: member.guild.memberCount,
-    });
-    await (channel as TextChannel).send({
-      content: text,
-      allowedMentions: { users: [member.id] },
-    });
+    };
+
+    if (cfg.enabled && cfg.channelId && cfg.message) {
+      const channel = await member.guild.channels.fetch(cfg.channelId).catch(() => null);
+      if (channel && channel.isTextBased()) {
+        const text = renderWelcomeTemplate(cfg.message, tplCtx);
+        await (channel as TextChannel)
+          .send({
+            content: text,
+            allowedMentions: { users: [member.id] },
+          })
+          .catch((err) => console.error('[welcome] channel-send:', err));
+      }
+    }
+
+    if (cfg.dmEnabled && cfg.dmMessage) {
+      const dmText = renderWelcomeTemplate(cfg.dmMessage, tplCtx);
+      // DMs können fehlschlagen, wenn der User sie blockiert hat — schlucken.
+      await member.send({ content: dmText }).catch(() => {});
+    }
   } catch (err) {
     console.error('[welcome] Fehler beim Begrüßen:', err);
   }

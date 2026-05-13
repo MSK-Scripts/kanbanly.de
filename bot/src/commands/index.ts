@@ -16,6 +16,8 @@ import customcmd from './customcmd.js';
 import remind from './remind.js';
 import serverstats from './serverstats.js';
 import ticket from './ticket.js';
+import slowmode from './slowmode.js';
+import roleall from './roleall.js';
 
 export const commands: SlashCommand[] = [
   ping,
@@ -35,5 +37,7 @@ export const commands: SlashCommand[] = [
   remind,
   serverstats,
   ticket,
+  slowmode,
+  roleall,
 ];
 export const commandMap = new Map(commands.map((c) => [c.data.name, c]));

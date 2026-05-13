@@ -20,7 +20,7 @@ const command: SlashCommand = {
         {
           name: '⚒️ Moderation',
           value:
-            '`/warn add|list|clear` · Warnungen\n`/timeout` · stummschalten\n`/kick` · vom Server entfernen\n`/ban` · permanent bannen\n`/clear` · Nachrichten löschen',
+            '`/warn add|list|clear` · Warnungen\n`/timeout` · stummschalten\n`/kick` · vom Server entfernen\n`/ban` · permanent bannen\n`/clear` · Nachrichten löschen\n`/slowmode` · Slowmode setzen\n`/roleall` · Rolle an alle vergeben',
         },
         {
           name: '🏆 Engagement',
