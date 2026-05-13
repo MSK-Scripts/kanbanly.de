@@ -515,7 +515,7 @@ function GuildSettingsView({
         <LevelConfigForm
           guildId={guildId}
           channels={channels}
-          roles={roles.map((r) => ({ id: r.id, name: r.name }))}
+          roles={roles}
           initial={level}
           rewards={levelRewards}
         />

@@ -43,22 +43,46 @@ export function AutoRolesForm({ guildId, roles, initial }: Props) {
   };
 
   return (
-    <form action={submit} className="space-y-4">
-      <label className="flex items-center gap-2 text-sm text-fg-soft cursor-pointer">
+    <form action={submit} className="space-y-5">
+      <div className="flex items-center justify-between rounded-md border border-line bg-elev/40 px-4 py-3">
+        <div>
+          <div className="text-sm font-medium text-fg">Auto-Roles aktiv</div>
+          <div className="text-[11px] text-subtle">
+            Jeder neue Member bekommt die ausgewählten Rollen automatisch.
+          </div>
+        </div>
         <input
           type="checkbox"
           name="enabled"
           checked={enabled}
           onChange={(e) => setEnabled(e.target.checked)}
-          className="h-4 w-4 accent-accent"
+          className="sr-only"
+          id="autoroles-enabled"
         />
-        Auto-Roles aktiv — jeder neue Member kriegt die ausgewählten Rollen.
-      </label>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          onClick={() => setEnabled(!enabled)}
+          className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${
+            enabled ? 'bg-accent border-accent' : 'bg-elev border-line-strong'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+              enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
 
-      <div>
-        <label className="block text-xs text-muted mb-1.5">
-          Rollen ({selected.size} ausgewählt, max 10)
-        </label>
+      <div className={enabled ? '' : 'opacity-60 pointer-events-none'}>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-xs font-medium text-muted">Rollen</label>
+          <span className="text-[10px] font-mono tabular-nums text-subtle">
+            {selected.size} / 10 ausgewählt
+          </span>
+        </div>
         {roles.length === 0 ? (
           <div className="rounded-md border border-dashed border-line-strong p-4 text-xs text-subtle text-center">
             Keine zuweisbaren Rollen. Erstell auf dem Server eine Rolle, dann
