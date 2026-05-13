@@ -3,13 +3,21 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { exchangeCode, fetchCurrentUser, getOAuthRedirectUri } from '@/lib/discord';
 
+function publicBase(request: NextRequest): string {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
+    request.nextUrl.origin
+  );
+}
+
 export async function GET(request: NextRequest) {
+  const base = publicBase(request);
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(`${base}/login`);
   }
 
   const url = request.nextUrl;
@@ -20,19 +28,17 @@ export async function GET(request: NextRequest) {
 
   if (err) {
     return NextResponse.redirect(
-      new URL(`/integrations/discord?error=${encodeURIComponent(err)}`, request.url),
+      `${base}/integrations/discord?error=${encodeURIComponent(err)}`,
     );
   }
   if (!code || !state || !cookieState || state !== cookieState) {
     return NextResponse.redirect(
-      new URL('/integrations/discord?error=invalid_state', request.url),
+      `${base}/integrations/discord?error=invalid_state`,
     );
   }
 
   try {
-    const origin =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || url.origin;
-    const tokens = await exchangeCode(code, getOAuthRedirectUri(origin));
+    const tokens = await exchangeCode(code, getOAuthRedirectUri(base));
     const discordUser = await fetchCurrentUser(tokens.access_token);
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
@@ -55,11 +61,11 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     console.error('[discord/callback] Fehler:', e);
     return NextResponse.redirect(
-      new URL('/integrations/discord?error=oauth_failed', request.url),
+      `${base}/integrations/discord?error=oauth_failed`,
     );
   }
 
-  const res = NextResponse.redirect(new URL('/integrations/discord', request.url));
+  const res = NextResponse.redirect(`${base}/integrations/discord`);
   res.cookies.delete('discord_oauth_state');
   return res;
 }
