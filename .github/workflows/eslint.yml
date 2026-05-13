@@ -5,17 +5,13 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  schedule:
-    - cron: '32 0 * * 2'
 
 jobs:
-  eslint:
-    name: Run eslint scanning
+  lint:
+    name: Run ESLint
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
-      actions: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -29,22 +25,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install SARIF formatter
-        run: npm install --no-save @microsoft/eslint-formatter-sarif@3.1.0
-
       - name: Run ESLint
-        id: eslint
-        env:
-          SARIF_ESLINT_IGNORE_SUPPRESSED: "true"
-        run: |
-          npx eslint . \
-            --format @microsoft/eslint-formatter-sarif \
-            --output-file eslint-results.sarif
-        continue-on-error: true
-
-      - name: Upload analysis results to GitHub
-        if: hashFiles('eslint-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: eslint-results.sarif
-          wait-for-processing: true
+        run: npx eslint .
