@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { saveBoardAsTemplate } from '@/app/(app)/template-actions';
+import { useMounted } from '@/lib/useMounted';
 
 type Props = {
   boardId: string;
@@ -19,11 +20,10 @@ export function SaveAsTemplateDialog({
   defaultTitle,
   onClose,
 }: Props) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [emoji, setEmoji] = useState('📋');
 
   useEffect(() => {
-    setMounted(true);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };

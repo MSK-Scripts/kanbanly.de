@@ -233,6 +233,8 @@ export function NotificationsBell() {
   }, []);
 
   useEffect(() => {
+    // Initial-Load der Notifications beim Mount — async fetch + setState.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
@@ -270,6 +272,8 @@ export function NotificationsBell() {
 
   useEffect(() => {
     if (!open) return;
+    // Reload beim Öffnen des Menüs — bewusst.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
     const onClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {

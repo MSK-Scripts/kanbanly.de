@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { labelPill } from '@/lib/labelColors';
+import { useMounted } from '@/lib/useMounted';
 
 type PreviewTask = { id: string; title: string; done: boolean };
 
@@ -216,13 +217,8 @@ function PreviewCardView({
 export function BoardPreview() {
   const [columns, setColumns] = useState<PreviewColumn[]>(INITIAL_COLUMNS);
   const [cards, setCards] = useState<Record<string, PreviewCard>>(INITIAL_CARDS);
-  const [mounted, setMounted] = useState(false);
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-    setPortalTarget(document.body);
-  }, []);
+  const mounted = useMounted();
+  const portalTarget = mounted ? document.body : null;
 
   const reset = () => {
     setColumns(INITIAL_COLUMNS);
@@ -269,7 +265,7 @@ export function BoardPreview() {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3 px-1">
         <p className="text-[11px] sm:text-xs text-subtle font-mono">
-          Zieh Karten, hak Tasks ab — probier's aus.
+          Zieh Karten, hak Tasks ab — probier&apos;s aus.
         </p>
         <button
           type="button"

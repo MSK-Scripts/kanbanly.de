@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd';
 import { useBoard } from '@/store/boardStore';
+import { useMounted } from '@/lib/useMounted';
 import { List } from './List';
 import { AddListInline } from './AddListInline';
 import { BulkActionBar } from './BulkActionBar';
@@ -13,12 +14,8 @@ export default function Board() {
   const moveList = useBoard((s) => s.moveList);
   const groupBy = useBoard((s) => s.groupBy);
   const backgroundUrl = useBoard((s) => s.backgroundUrl);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   function onPanStart(e: React.MouseEvent) {
     if (e.target !== e.currentTarget) return;
@@ -90,8 +87,8 @@ export default function Board() {
                   Leere Bühne
                 </h3>
                 <p className="text-sm text-muted mb-5">
-                  Leg deine erste Spalte an — z. B. „To-do", „In Arbeit",
-                  „Erledigt".
+                  Leg deine erste Spalte an — z. B. „To-do&quot;, „In Arbeit&quot;,
+                  „Erledigt&quot;.
                 </p>
                 <div className="inline-flex">
                   <AddListInline />

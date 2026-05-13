@@ -3,7 +3,6 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { useBoard } from '@/store/boardStore';
 import { Avatar } from './Avatar';
 import { labelPill, labelHex } from '@/lib/labelColors';
-import { confirm } from '@/store/confirmStore';
 import { KebabMenu } from './KebabMenu';
 
 type Props = { id: string; isDragging: boolean };

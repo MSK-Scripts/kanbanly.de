@@ -1,9 +1,10 @@
 'use client';
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { useBoard } from '@/store/boardStore';
 import { cardMatchesFilters, isFilterActive } from '@/lib/filterCards';
+import { useMounted } from '@/lib/useMounted';
 import { Card } from './Card';
 import { PlusIcon } from './Icons';
 import { InlineEditableText } from './InlineEditableText';
@@ -21,11 +22,8 @@ function ListInner({ listId, index }: Props) {
   const cardLabels = useBoard((s) => s.cardLabels);
   const [newTitle, setNewTitle] = useState('');
   const [adding, setAdding] = useState(false);
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setPortalTarget(document.body);
-  }, []);
+  const mounted = useMounted();
+  const portalTarget = mounted ? document.body : null;
 
   const filterOn = isFilterActive(filters);
   const visibleCardIds = useMemo(() => {

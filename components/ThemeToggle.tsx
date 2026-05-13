@@ -1,18 +1,17 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useMounted } from '@/lib/useMounted';
 
 type Theme = 'light' | 'dark';
 
-export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('dark');
-  const [mounted, setMounted] = useState(false);
+function getInitialTheme(): Theme {
+  if (typeof window === 'undefined') return 'dark';
+  return (document.documentElement.dataset.theme as Theme) || 'dark';
+}
 
-  useEffect(() => {
-    const current =
-      (document.documentElement.dataset.theme as Theme) || 'dark';
-    setTheme(current);
-    setMounted(true);
-  }, []);
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const mounted = useMounted();
 
   const toggle = () => {
     const next: Theme = theme === 'dark' ? 'light' : 'dark';

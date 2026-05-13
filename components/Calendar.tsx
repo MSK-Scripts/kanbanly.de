@@ -90,7 +90,7 @@ export function Calendar() {
             Noch keine Fälligkeiten
           </h3>
           <p className="text-sm text-muted">
-            Setz bei Karten im Modal ein „Fällig am", dann tauchen sie hier
+            Setz bei Karten im Modal ein „Fällig am&quot;, dann tauchen sie hier
             chronologisch auf.
           </p>
         </div>

@@ -41,7 +41,7 @@ export function AutoModForm({ guildId, initial }: Props) {
           onChange={(e) => setEnabled(e.target.checked)}
           className="h-4 w-4 accent-accent"
         />
-        AutoMod aktiv (Moderatoren mit „Nachrichten verwalten" werden nie gefiltert)
+        AutoMod aktiv (Moderatoren mit „Nachrichten verwalten&quot; werden nie gefiltert)
       </label>
 
       <fieldset className="border-t border-line pt-4">
@@ -65,7 +65,7 @@ export function AutoModForm({ guildId, initial }: Props) {
         />
         <p className="text-[11px] text-subtle mt-1">
           Eine Domain pro Zeile. Subdomains werden mit gematcht (z. B.
-          erlaubt „youtube.com" auch „www.youtube.com").
+          erlaubt „youtube.com&quot; auch „www.youtube.com&quot;).
         </p>
       </fieldset>
 

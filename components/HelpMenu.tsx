@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { updates } from '@/lib/updates';
+import { useMounted } from '@/lib/useMounted';
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split('-');
@@ -12,17 +13,13 @@ function formatDate(iso: string) {
 
 export function HelpMenu() {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [pos, setPos] = useState<{ top: number; right: number }>({
     top: 0,
     right: 0,
   });
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useLayoutEffect(() => {
     if (!open || !btnRef.current) return;

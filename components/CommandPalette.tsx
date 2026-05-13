@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import {
@@ -92,14 +92,18 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     ];
   }, [query, results]);
 
-  const activate = (item: Item) => {
-    if (item.kind === 'action') router.push(item.action.href);
-    else if (item.kind === 'board') router.push(`/boards/${item.slug}`);
-    else if (item.kind === 'workspace') router.push(`/workspaces/${item.slug}`);
-    else if (item.kind === 'card')
-      router.push(`/boards/${item.boardSlug}?card=${item.id}`);
-    onClose();
-  };
+  const activate = useCallback(
+    (item: Item) => {
+      if (item.kind === 'action') router.push(item.action.href);
+      else if (item.kind === 'board') router.push(`/boards/${item.slug}`);
+      else if (item.kind === 'workspace')
+        router.push(`/workspaces/${item.slug}`);
+      else if (item.kind === 'card')
+        router.push(`/boards/${item.boardSlug}?card=${item.id}`);
+      onClose();
+    },
+    [router, onClose]
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -122,7 +126,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [items, activeIdx, onClose]);
+  }, [items, activeIdx, activate, onClose]);
 
   useEffect(() => {
     const el = listRef.current?.querySelector<HTMLElement>(

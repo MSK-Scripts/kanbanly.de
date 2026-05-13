@@ -1,14 +1,13 @@
 import 'server-only';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomInt } from 'node:crypto';
 
 // 32 unambiguous chars (no 0/O, 1/I)
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function segment(length: number): string {
-  const bytes = randomBytes(length);
   let out = '';
   for (let i = 0; i < length; i++) {
-    out += ALPHABET[bytes[i] % ALPHABET.length];
+    out += ALPHABET[randomInt(0, ALPHABET.length)];
   }
   return out;
 }

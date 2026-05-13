@@ -139,11 +139,11 @@ export async function loadGhostBoard(
 
   const cardIds = rawCards.map((c) => c.id);
 
-  let tasksByCard = new Map<string, GhostCard['tasks']>();
-  let cardLabelsByCard = new Map<string, string[]>();
-  let assigneesByCard = new Map<string, string[]>();
-  let commentsByCard = new Map<string, GhostCard['comments']>();
-  let creatorsByUserId = new Map<string, string | null>();
+  const tasksByCard = new Map<string, GhostCard['tasks']>();
+  const cardLabelsByCard = new Map<string, string[]>();
+  const assigneesByCard = new Map<string, string[]>();
+  const commentsByCard = new Map<string, GhostCard['comments']>();
+  const creatorsByUserId = new Map<string, string | null>();
 
   if (cardIds.length > 0) {
     const [tasksRes, cardLabelsRes, assigneesRes, commentsRes] =

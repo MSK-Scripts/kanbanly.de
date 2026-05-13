@@ -7,6 +7,7 @@ import {
   type AIBoardDraft,
 } from '@/app/(app)/ai-actions';
 import { labelPill } from '@/lib/labelColors';
+import { useMounted } from '@/lib/useMounted';
 
 type Props = {
   workspaceId: string;
@@ -16,11 +17,10 @@ type Props = {
 
 export function AIBoardDialog({ workspaceId, workspaceName, onClose }: Props) {
   const [state, action, pending] = useActionState(previewAIBoard, null);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [overrideName, setOverrideName] = useState('');
 
   useEffect(() => {
-    setMounted(true);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -29,6 +29,8 @@ export function AIBoardDialog({ workspaceId, workspaceName, onClose }: Props) {
   }, [onClose]);
 
   useEffect(() => {
+    // Server-Action-Result spiegeln in das editierbare Input — externer Trigger.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (state?.ok && state.draft) setOverrideName(state.draft.name);
   }, [state]);
 
