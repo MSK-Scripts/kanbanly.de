@@ -1,0 +1,32 @@
+name: Dependency Review
+
+# Runs on every Pull Request and scans newly added/updated npm packages
+# against the GitHub Advisory Database (known CVEs).
+# Fails the PR if a vulnerable or malicious package is introduced.
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  pull-requests: write  # needed to post a summary comment on the PR
+
+jobs:
+  dependency-review:
+    name: Scan dependencies for vulnerabilities
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v5
+        with:
+          # Fail on any severity: critical, high, moderate, low
+          fail-on-severity: moderate
+          # Post a comment on the PR with a summary of findings
+          comment-summary-in-pr: always
+          # Deny packages with known malware
+          deny-licenses: GPL-2.0, GPL-3.0

@@ -1,0 +1,54 @@
+version: 2
+
+updates:
+  # ─── npm Dependencies ──────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - automated
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: scope
+    groups:
+      # Patch- und Minor-Updates zusammenfassen → weniger PR-Lärm
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # ALLE Major-Updates erst manuell prüfen (Breaking Changes)
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ─── GitHub Actions ────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - github-actions
+      - automated
+    commit-message:
+      prefix: "chore(ci)"
+      include: scope
+    groups:
+      # Auch hier Minor/Patch zusammenfassen
+      actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # GitHub-Action-Majors auch manuell prüfen
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
