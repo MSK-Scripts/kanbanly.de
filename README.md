@@ -146,7 +146,11 @@ kanbanly.de/
 
 ## Lizenz
 
-Kein offizielle Lizenz — der Code steht hier zu Lern- und Audit-Zwecken offen. Bei Interesse an einer Verwendung bitte vorab fragen.
+Lizenziert unter der **MSK Source Available License (MSK-SAL) v1.0** — Copyright © 2026 MSK Scripts, alle Rechte vorbehalten. Lesen, Forken und lokales Ausführen zu privaten, nicht-kommerziellen Studienzwecken ist gestattet; Kopieren, Umverteilen, Derivate und kommerzielle Nutzung sind ohne ausdrückliche schriftliche Zustimmung untersagt.
+
+Volltext: 📄 [LICENSE (EN)](LICENSE.md) · [LIZENZ (DE)](LICENSE_DE.md)
+
+Für Lizenz- oder Nutzungsanfragen bitte vorab Kontakt aufnehmen.
 
 ## Kontakt
 
