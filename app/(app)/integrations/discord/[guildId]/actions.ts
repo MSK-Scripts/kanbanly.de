@@ -25,6 +25,76 @@ async function assertCanManage(guildId: string): Promise<{ userId: string }> {
   return { userId: user.id };
 }
 
+export async function updateLevelConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const announce = formData.get('announce') === 'on';
+    const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        level_enabled: enabled,
+        level_announce: announce,
+        level_up_channel_id: channelId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function addLevelReward(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const level = parseInt(String(formData.get('level') ?? '0'), 10);
+    const roleId = String(formData.get('role_id') ?? '').trim();
+    if (!Number.isFinite(level) || level <= 0) {
+      return { ok: false, error: 'Level muss > 0 sein.' };
+    }
+    if (!roleId) return { ok: false, error: 'Rolle fehlt.' };
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_level_rewards')
+      .upsert(
+        { guild_id: guildId, level, role_id: roleId },
+        { onConflict: 'guild_id,level' },
+      );
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function removeLevelReward(
+  guildId: string,
+  level: number,
+): Promise<void> {
+  await assertCanManage(guildId);
+  const admin = createAdminClient();
+  await admin
+    .from('bot_level_rewards')
+    .delete()
+    .eq('guild_id', guildId)
+    .eq('level', level);
+  revalidatePath(`/integrations/discord/${guildId}`);
+}
+
 export async function updateLogConfig(
   guildId: string,
   formData: FormData,

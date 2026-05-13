@@ -8,6 +8,8 @@ import kick from './kick.js';
 import ban from './ban.js';
 import timeout from './timeout.js';
 import clear from './clear.js';
+import rank from './rank.js';
+import leaderboard from './leaderboard.js';
 
 export const commands: SlashCommand[] = [
   ping,
@@ -19,5 +21,7 @@ export const commands: SlashCommand[] = [
   ban,
   timeout,
   clear,
+  rank,
+  leaderboard,
 ];
 export const commandMap = new Map(commands.map((c) => [c.data.name, c]));

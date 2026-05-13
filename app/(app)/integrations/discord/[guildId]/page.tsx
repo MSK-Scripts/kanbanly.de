@@ -17,6 +17,7 @@ import {
 import { WelcomeForm } from '@/components/WelcomeForm';
 import { AutoRolesForm } from '@/components/AutoRolesForm';
 import { LogConfigForm } from '@/components/LogConfigForm';
+import { LevelConfigForm } from '@/components/LevelConfigForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,12 @@ type LoadResult =
         messageDeletes: boolean;
         roleChanges: boolean;
       };
+      level: {
+        enabled: boolean;
+        announce: boolean;
+        upChannelId: string | null;
+      };
+      levelRewards: Array<{ level: number; roleId: string }>;
     };
 
 async function load(userId: string, guildId: string): Promise<LoadResult> {
@@ -58,7 +65,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes',
+      'welcome_enabled, welcome_channel_id, welcome_message, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -87,6 +94,16 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       )
     : [];
 
+  const { data: rewardsRaw } = await admin
+    .from('bot_level_rewards')
+    .select('level, role_id')
+    .eq('guild_id', guildId)
+    .order('level');
+  const levelRewards = (rewardsRaw ?? []).map((r) => ({
+    level: r.level as number,
+    roleId: r.role_id as string,
+  }));
+
   return {
     kind: 'ok',
     guild,
@@ -109,6 +126,12 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       messageDeletes: Boolean(guildRow.log_message_deletes),
       roleChanges: Boolean(guildRow.log_role_changes),
     },
+    level: {
+      enabled: Boolean(guildRow.level_enabled),
+      announce: Boolean(guildRow.level_announce),
+      upChannelId: guildRow.level_up_channel_id ?? null,
+    },
+    levelRewards,
   };
 }
 
@@ -208,6 +231,21 @@ export default async function GuildSettingsPage({
                   guildId={result.guild.id}
                   channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
                   initial={result.log}
+                />
+              </div>
+            </section>
+
+            <section className="mb-6">
+              <h2 className="text-sm font-semibold text-fg mb-2">
+                Leveling / XP
+              </h2>
+              <div className="rounded-md bg-surface border border-line p-5">
+                <LevelConfigForm
+                  guildId={result.guild.id}
+                  channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
+                  roles={result.roles.map((r) => ({ id: r.id, name: r.name }))}
+                  initial={result.level}
+                  rewards={result.levelRewards}
                 />
               </div>
             </section>
