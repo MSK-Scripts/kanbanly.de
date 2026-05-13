@@ -7,6 +7,8 @@ export type Tab = {
   icon: ReactNode;
   content: ReactNode;
   description?: string;
+  /** true = ohne den Standard-Card-Wrapper, für Tabs deren Inhalt schon Cards/Grids bringt */
+  noCardWrapper?: boolean;
 };
 
 type Props = {
@@ -80,9 +82,13 @@ export function GuildSettingsTabs({ tabs, defaultTab }: Props) {
             <p className="text-xs text-muted mt-1">{current.description}</p>
           )}
         </div>
-        <div className="rounded-md bg-surface border border-line p-5">
-          {current?.content}
-        </div>
+        {current?.noCardWrapper ? (
+          current.content
+        ) : (
+          <div className="rounded-md bg-surface border border-line p-5">
+            {current?.content}
+          </div>
+        )}
       </div>
     </div>
   );

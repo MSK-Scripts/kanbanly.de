@@ -309,24 +309,27 @@ function GuildSettingsView({
   const overviewItems = [
     {
       label: 'Welcome',
+      icon: '👋',
       enabled: welcome.enabled,
       hint: welcome.enabled
         ? welcome.channelId
-          ? 'aktiv'
+          ? 'Channel gesetzt'
           : 'Channel fehlt'
-        : 'inaktiv',
+        : 'Begrüße neue Mitglieder',
       target: 'welcome',
     },
     {
       label: 'Auto-Roles',
+      icon: '🎭',
       enabled: autoRoles.enabled,
       hint: autoRoles.enabled
-        ? `${autoRoles.roleIds.length} Rolle${autoRoles.roleIds.length === 1 ? '' : 'n'}`
-        : 'inaktiv',
+        ? `${autoRoles.roleIds.length} Rolle${autoRoles.roleIds.length === 1 ? '' : 'n'} bei Join`
+        : 'Rolle automatisch vergeben',
       target: 'autoroles',
     },
     {
       label: 'Logging',
+      icon: '📋',
       enabled: log.channelId !== null,
       hint:
         log.channelId !== null
@@ -338,20 +341,22 @@ function GuildSettingsView({
               log.roleChanges && 'Rollen',
             ]
               .filter(Boolean)
-              .join(' · ') || 'kein Event'
-          : 'kein Channel',
+              .join(' · ') || 'kein Event aktiv'
+          : 'Events in Audit-Channel',
       target: 'logging',
     },
     {
       label: 'Leveling',
+      icon: '🏆',
       enabled: level.enabled,
       hint: level.enabled
         ? `${levelRewards.length} Reward${levelRewards.length === 1 ? '' : 's'}`
-        : 'inaktiv',
+        : 'XP-System für Engagement',
       target: 'levels',
     },
     {
       label: 'AutoMod',
+      icon: '🛡️',
       enabled: automod.enabled,
       hint: automod.enabled
         ? [
@@ -362,8 +367,15 @@ function GuildSettingsView({
           ]
             .filter(Boolean)
             .join(' · ') || 'an'
-        : 'inaktiv',
+        : 'Spam, Links, Caps filtern',
       target: 'automod',
+    },
+    {
+      label: 'Reaction-Rollen',
+      icon: '✨',
+      enabled: false,
+      hint: 'Via Slash-Command verwaltet',
+      target: 'reactionroles',
     },
   ];
 
@@ -372,34 +384,44 @@ function GuildSettingsView({
       id: 'overview',
       label: 'Übersicht',
       icon: '🏠',
-      description: 'Status aller Module auf einen Blick.',
+      description: 'Status aller Module auf einen Blick — Karte klicken zum Konfigurieren.',
+      noCardWrapper: true,
       content: (
-        <ul className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {overviewItems.map((item) => (
-            <li
+            <a
               key={item.target}
-              className="flex items-center justify-between px-3 py-2 rounded-md border border-line bg-elev"
+              href={`#${item.target}`}
+              className="group relative rounded-md border border-line bg-elev hover:bg-elev-hover hover:border-line-strong transition-all p-4 flex flex-col gap-3 cursor-pointer"
             >
-              <span className="flex items-center gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-2xl leading-none" aria-hidden>
+                  {item.icon}
+                </div>
                 <span
-                  className={`h-2 w-2 rounded-full ${
-                    item.enabled ? 'bg-emerald-500' : 'bg-muted/40'
+                  className={`text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded-sm border ${
+                    item.enabled
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                      : 'bg-elev text-subtle border-line-strong'
                   }`}
-                />
-                <span className="text-sm text-fg font-medium">{item.label}</span>
-              </span>
-              <span className="flex items-center gap-3">
-                <span className="text-[11px] text-subtle">{item.hint}</span>
-                <a
-                  href={`#${item.target}`}
-                  className="text-[11px] text-accent-soft hover:text-accent-hover"
                 >
-                  öffnen →
-                </a>
-              </span>
-            </li>
+                  {item.enabled ? '● Aktiv' : '○ Aus'}
+                </span>
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-fg group-hover:text-accent-hover transition-colors">
+                  {item.label}
+                </div>
+                <div className="text-[11px] text-muted mt-0.5 leading-snug">
+                  {item.hint}
+                </div>
+              </div>
+              <div className="absolute right-3 bottom-3 text-fg-soft/40 group-hover:text-accent-hover transition-colors text-sm">
+                →
+              </div>
+            </a>
           ))}
-        </ul>
+        </div>
       ),
     },
     {
@@ -470,22 +492,19 @@ function GuildSettingsView({
 
   return (
     <>
-      <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-fg">{guildName}</h1>
-          <p className="text-[11px] text-subtle mt-0.5 font-mono">
-            Server-ID: {guildId}
-          </p>
-        </div>
-        <div className="text-[11px] text-subtle">
-          Direkt-Link:{' '}
-          <code className="px-1.5 py-0.5 rounded bg-elev">
-            #welcome
-          </code>{' '}
-          /{' '}
-          <code className="px-1.5 py-0.5 rounded bg-elev">#automod</code>{' '}
-          /{' '}
-          <code className="px-1.5 py-0.5 rounded bg-elev">#levels</code>
+      <div className="mb-6 rounded-md bg-gradient-to-br from-[#5865F2]/12 via-surface to-surface border border-line p-5 sm:p-6">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="h-10 w-10 rounded-md bg-[#5865F2]/15 grid place-items-center text-[#5865F2] text-sm font-semibold shrink-0">
+            {guildName.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-semibold text-fg leading-tight truncate">
+              {guildName}
+            </h1>
+            <p className="text-[11px] text-subtle mt-0.5 font-mono">
+              {guildId}
+            </p>
+          </div>
         </div>
       </div>
 
