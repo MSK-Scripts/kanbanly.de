@@ -6,6 +6,24 @@ export type Update = {
 
 export const updates: Update[] = [
   {
+    date: '2026-05-13',
+    title: 'Discord-Bot: AutoMod',
+    description:
+      'Pro Server: Link-Filter mit Whitelist, Caps-Filter, Mention-Spam-Limit, verbotene Wörter. Matching ist case-insensitive auf Wort-Grenzen. Moderatoren werden nie gefiltert.',
+  },
+  {
+    date: '2026-05-13',
+    title: 'Discord-Bot: Custom Commands',
+    description:
+      'Eigene Prefix-Befehle pro Server. User schreibt z. B. `!rules` und der Bot antwortet mit dem hinterlegten Text. Prefix ist konfigurierbar.',
+  },
+  {
+    date: '2026-05-13',
+    title: 'Discord-Bot: /tag und /poll',
+    description:
+      '/tag — schnelle FAQ-Antworten mit Nutzungs-Counter. /poll — native Discord-Umfragen mit 2-10 Optionen, Multi-Select möglich, Laufzeit 1-768h.',
+  },
+  {
     date: '2026-05-12',
     title: 'Discord-Bot: XP-System & Levels',
     description:

@@ -25,6 +25,64 @@ async function assertCanManage(guildId: string): Promise<{ userId: string }> {
   return { userId: user.id };
 }
 
+export async function updateAutoModConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const blockLinks = formData.get('block_links') === 'on';
+    const linkAllowlistRaw = String(formData.get('link_allowlist') ?? '');
+    const linkAllowlist = linkAllowlistRaw
+      .split('\n')
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => s.length > 0 && s.length <= 100)
+      .slice(0, 50);
+
+    const capsRaw = String(formData.get('max_caps_pct') ?? '').trim();
+    const maxCapsPct =
+      capsRaw === ''
+        ? null
+        : Math.min(100, Math.max(50, parseInt(capsRaw, 10) || 70));
+
+    const mentionsRaw = String(formData.get('max_mentions') ?? '').trim();
+    const maxMentions =
+      mentionsRaw === ''
+        ? null
+        : Math.min(50, Math.max(1, parseInt(mentionsRaw, 10) || 5));
+
+    const bannedRaw = String(formData.get('banned_words') ?? '');
+    const bannedWords = bannedRaw
+      .split('\n')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && s.length <= 50)
+      .slice(0, 100);
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        automod_enabled: enabled,
+        automod_block_links: blockLinks,
+        automod_link_allowlist: linkAllowlist,
+        automod_max_caps_pct: maxCapsPct,
+        automod_max_mentions: maxMentions,
+        automod_banned_words: bannedWords,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'Unbekannter Fehler.',
+    };
+  }
+}
+
 export async function updateLevelConfig(
   guildId: string,
   formData: FormData,

@@ -19,6 +19,7 @@ import { WelcomeForm } from '@/components/WelcomeForm';
 import { AutoRolesForm } from '@/components/AutoRolesForm';
 import { LogConfigForm } from '@/components/LogConfigForm';
 import { LevelConfigForm } from '@/components/LevelConfigForm';
+import { AutoModForm } from '@/components/AutoModForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,14 @@ type LoadResult =
         upChannelId: string | null;
       };
       levelRewards: Array<{ level: number; roleId: string }>;
+      automod: {
+        enabled: boolean;
+        blockLinks: boolean;
+        linkAllowlist: string[];
+        maxCapsPct: number | null;
+        maxMentions: number | null;
+        bannedWords: string[];
+      };
     };
 
 async function load(userId: string, guildId: string): Promise<LoadResult> {
@@ -75,7 +84,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id',
+      'welcome_enabled, welcome_channel_id, welcome_message, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -148,6 +157,22 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       upChannelId: guildRow.level_up_channel_id ?? null,
     },
     levelRewards,
+    automod: {
+      enabled: Boolean(guildRow.automod_enabled),
+      blockLinks: Boolean(guildRow.automod_block_links),
+      linkAllowlist: Array.isArray(guildRow.automod_link_allowlist)
+        ? (guildRow.automod_link_allowlist as unknown[]).filter(
+            (v): v is string => typeof v === 'string',
+          )
+        : [],
+      maxCapsPct: (guildRow.automod_max_caps_pct as number | null) ?? null,
+      maxMentions: (guildRow.automod_max_mentions as number | null) ?? null,
+      bannedWords: Array.isArray(guildRow.automod_banned_words)
+        ? (guildRow.automod_banned_words as unknown[]).filter(
+            (v): v is string => typeof v === 'string',
+          )
+        : [],
+    },
   };
 }
 
@@ -275,6 +300,16 @@ export default async function GuildSettingsPage({
                   roles={result.roles.map((r) => ({ id: r.id, name: r.name }))}
                   initial={result.level}
                   rewards={result.levelRewards}
+                />
+              </div>
+            </section>
+
+            <section className="mb-6">
+              <h2 className="text-sm font-semibold text-fg mb-2">AutoMod</h2>
+              <div className="rounded-md bg-surface border border-line p-5">
+                <AutoModForm
+                  guildId={result.guild.id}
+                  initial={result.automod}
                 />
               </div>
             </section>

@@ -7,6 +7,7 @@ import { registerReactionEvents } from './events/reactions.js';
 import { registerLogger } from './events/logger.js';
 import { registerXp } from './events/xp.js';
 import { registerCustomCommands } from './events/customCommands.js';
+import { registerAutoMod } from './events/automod.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -63,6 +64,7 @@ registerReactionEvents(client);
 registerLogger(client);
 registerXp(client);
 registerCustomCommands(client);
+registerAutoMod(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);
