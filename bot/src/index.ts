@@ -8,6 +8,9 @@ import { registerLogger } from './events/logger.js';
 import { registerXp } from './events/xp.js';
 import { registerCustomCommands } from './events/customCommands.js';
 import { registerAutoMod } from './events/automod.js';
+import { startReminderScheduler } from './events/reminders.js';
+import { startStatsUpdater } from './events/statsUpdater.js';
+import { registerTicketButtons } from './events/ticketButtons.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -65,6 +68,9 @@ registerLogger(client);
 registerXp(client);
 registerCustomCommands(client);
 registerAutoMod(client);
+startReminderScheduler(client);
+startStatsUpdater(client);
+registerTicketButtons(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

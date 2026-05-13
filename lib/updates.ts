@@ -6,6 +6,24 @@ export type Update = {
 
 export const updates: Update[] = [
   {
+    date: '2026-05-14',
+    title: 'Discord-Bot: Ticket-System',
+    description:
+      '/ticket panel create postet einen Button — User klicken und bekommen einen privaten Channel mit Staff. /ticket close oder Schließen-Button beendet das Ticket (Channel wird gelöscht).',
+  },
+  {
+    date: '2026-05-14',
+    title: 'Discord-Bot: Server-Stats Channels',
+    description:
+      'Voice-/Category-Channels mit Live-Counter — z.B. „👥 Members: 1.234". /serverstats add legt einen an, der Bot updated alle 10 Min. Variablen: {members}, {boosts}, {name}.',
+  },
+  {
+    date: '2026-05-14',
+    title: 'Discord-Bot: /remind',
+    description:
+      'Erinnerungen mit flexibler Zeitangabe (30m, 2h, 1d, oder kombiniert „1d 2h"). Bot postet im Original-Channel oder per DM. /remind list zeigt offene, /remind cancel löscht.',
+  },
+  {
     date: '2026-05-13',
     title: 'Discord-Bot: AutoMod',
     description:
