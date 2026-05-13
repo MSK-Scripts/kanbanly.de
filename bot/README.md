@@ -29,7 +29,7 @@ npm run deploy-commands
 pm2 start dist/index.js --name kanbanly-bot
 pm2 save
 
-# bei Updates (siehe AGENTS.md "Bot-Deploy")
+# bei Updates
 git pull
 cd bot && npm install && npm run build && npm run deploy-commands && pm2 restart kanbanly-bot
 ```
