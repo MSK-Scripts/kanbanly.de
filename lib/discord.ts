@@ -159,6 +159,28 @@ export async function fetchGuildChannels(guildId: string): Promise<DiscordChanne
   return (await res.json()) as DiscordChannel[];
 }
 
+export type DiscordRole = {
+  id: string;
+  name: string;
+  color: number;
+  position: number;
+  managed: boolean;
+  permissions: string;
+};
+
+export async function fetchGuildRoles(guildId: string): Promise<DiscordRole[]> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) throw new Error('DISCORD_BOT_TOKEN fehlt in .env.local');
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
+    headers: { Authorization: `Bot ${token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Discord /guilds/${guildId}/roles: ${res.status}`);
+  const roles = (await res.json()) as DiscordRole[];
+  // @everyone-Rolle hat dieselbe ID wie die Guild — die wollen wir nicht zur Auswahl.
+  return roles.filter((r) => r.id !== guildId && !r.managed);
+}
+
 export function guildIconUrl(guild: { id: string; icon: string | null }): string | null {
   if (!guild.icon) return null;
   const ext = guild.icon.startsWith('a_') ? 'gif' : 'png';

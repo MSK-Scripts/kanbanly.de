@@ -25,6 +25,40 @@ async function assertCanManage(guildId: string): Promise<{ userId: string }> {
   return { userId: user.id };
 }
 
+export async function updateAutoRolesConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+
+    const enabled = formData.get('enabled') === 'on';
+    const roleIdsRaw = formData.getAll('role_ids');
+    const roleIds = roleIdsRaw
+      .filter((v): v is string => typeof v === 'string' && v.length > 0)
+      .slice(0, 10);
+
+    if (enabled && roleIds.length === 0) {
+      return { ok: false, error: 'Wähl mindestens eine Rolle wenn Auto-Roles aktiv ist.' };
+    }
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        auto_roles_enabled: enabled,
+        auto_role_ids: roleIds,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
 export async function updateWelcomeConfig(
   guildId: string,
   formData: FormData,

@@ -9,10 +9,13 @@ import {
   canManageGuild,
   fetchCurrentUserGuilds,
   fetchGuildChannels,
+  fetchGuildRoles,
   type DiscordChannel,
   type DiscordGuild,
+  type DiscordRole,
 } from '@/lib/discord';
 import { WelcomeForm } from '@/components/WelcomeForm';
+import { AutoRolesForm } from '@/components/AutoRolesForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +27,14 @@ type LoadResult =
   | { kind: 'no-conn' }
   | { kind: 'forbidden' }
   | { kind: 'no-bot' }
-  | { kind: 'ok'; guild: DiscordGuild; channels: DiscordChannel[]; welcome: { enabled: boolean; channelId: string | null; message: string | null } };
+  | {
+      kind: 'ok';
+      guild: DiscordGuild;
+      channels: DiscordChannel[];
+      roles: DiscordRole[];
+      welcome: { enabled: boolean; channelId: string | null; message: string | null };
+      autoRoles: { enabled: boolean; roleIds: string[] };
+    };
 
 async function load(userId: string, guildId: string): Promise<LoadResult> {
   const token = await getFreshAccessToken(userId);
@@ -38,7 +48,9 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const admin = createAdminClient();
   const { data: guildRow } = await admin
     .from('bot_guilds')
-    .select('welcome_enabled, welcome_channel_id, welcome_message')
+    .select(
+      'welcome_enabled, welcome_channel_id, welcome_message, auto_roles_enabled, auto_role_ids',
+    )
     .eq('guild_id', guildId)
     .maybeSingle();
   if (!guildRow) return { kind: 'no-bot' };
@@ -52,14 +64,33 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     console.error('[guild-settings] channels:', err);
   }
 
+  let roles: DiscordRole[] = [];
+  try {
+    roles = (await fetchGuildRoles(guildId)).sort((a, b) => b.position - a.position);
+  } catch (err) {
+    console.error('[guild-settings] roles:', err);
+  }
+
+  const autoRoleIdsRaw = guildRow.auto_role_ids as unknown;
+  const autoRoleIds = Array.isArray(autoRoleIdsRaw)
+    ? (autoRoleIdsRaw as unknown[]).filter(
+        (v): v is string => typeof v === 'string',
+      )
+    : [];
+
   return {
     kind: 'ok',
     guild,
     channels,
+    roles,
     welcome: {
       enabled: guildRow.welcome_enabled,
       channelId: guildRow.welcome_channel_id,
       message: guildRow.welcome_message,
+    },
+    autoRoles: {
+      enabled: Boolean(guildRow.auto_roles_enabled),
+      roleIds: autoRoleIds,
     },
   };
 }
@@ -134,6 +165,21 @@ export default async function GuildSettingsPage({
                   guildId={result.guild.id}
                   channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
                   initial={result.welcome}
+                />
+              </div>
+            </section>
+
+            <section className="mb-6">
+              <h2 className="text-sm font-semibold text-fg mb-2">Auto-Roles</h2>
+              <div className="rounded-md bg-surface border border-line p-5">
+                <AutoRolesForm
+                  guildId={result.guild.id}
+                  roles={result.roles.map((r) => ({
+                    id: r.id,
+                    name: r.name,
+                    color: r.color,
+                  }))}
+                  initial={result.autoRoles}
                 />
               </div>
             </section>
