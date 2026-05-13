@@ -5,6 +5,7 @@ import {
   removeLevelReward,
   updateLevelConfig,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { Switch } from './Switch';
 
 type Channel = { id: string; name: string };
 type Role = { id: string; name: string; color?: number };
@@ -74,21 +75,7 @@ export function LevelConfigForm({
             onChange={(e) => setEnabled(e.target.checked)}
             className="sr-only"
           />
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            onClick={() => setEnabled(!enabled)}
-            className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${
-              enabled ? 'bg-accent border-accent' : 'bg-elev border-line-strong'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
+          <Switch checked={enabled} onChange={setEnabled} ariaLabel="XP-System aktiv" />
         </div>
 
         <div className={enabled ? 'space-y-4' : 'space-y-4 opacity-60 pointer-events-none'}>

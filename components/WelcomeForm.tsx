@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { updateWelcomeConfig } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { Switch } from './Switch';
 
 type Props = {
   guildId: string;
@@ -179,24 +180,3 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
   );
 }
 
-function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${
-        checked
-          ? 'bg-accent border-accent'
-          : 'bg-elev border-line-strong'
-      }`}
-    >
-      <span
-        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-          checked ? 'translate-x-[22px]' : 'translate-x-0.5'
-        }`}
-      />
-    </button>
-  );
-}

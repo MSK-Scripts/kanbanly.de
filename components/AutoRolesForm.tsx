@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateAutoRolesConfig } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { Switch } from './Switch';
 
 type Role = { id: string; name: string; color: number };
 
@@ -59,21 +60,7 @@ export function AutoRolesForm({ guildId, roles, initial }: Props) {
           className="sr-only"
           id="autoroles-enabled"
         />
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          onClick={() => setEnabled(!enabled)}
-          className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${
-            enabled ? 'bg-accent border-accent' : 'bg-elev border-line-strong'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-              enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
-            }`}
-          />
-        </button>
+        <Switch checked={enabled} onChange={setEnabled} ariaLabel="Auto-Roles aktiv" />
       </div>
 
       <div className={enabled ? '' : 'opacity-60 pointer-events-none'}>

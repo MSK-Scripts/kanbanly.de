@@ -557,9 +557,6 @@ function GuildSettingsView({
           aria-hidden
         />
         <div className="relative flex items-center gap-4">
-          <div className="h-14 w-14 rounded-lg bg-gradient-to-br from-[#5865F2] to-violet-600 grid place-items-center text-white text-lg font-bold shrink-0 shadow-lg shadow-[#5865F2]/30 ring-1 ring-white/10">
-            {guildName.slice(0, 2).toUpperCase()}
-          </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-[0.18em] text-[#5865F2] font-mono mb-1 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />

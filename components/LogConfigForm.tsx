@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateLogConfig } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { Switch } from './Switch';
 
 type Channel = { id: string; name: string };
 
@@ -194,21 +195,7 @@ function Toggle({
         onChange={(e) => onChange(e.target.checked)}
         className="sr-only"
       />
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative h-5 w-9 shrink-0 rounded-full border transition-colors ${
-          checked ? 'bg-accent border-accent' : 'bg-elev border-line-strong'
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
-            checked ? 'translate-x-[18px]' : 'translate-x-0.5'
-          }`}
-        />
-      </button>
+      <Switch checked={checked} onChange={onChange} size="sm" ariaLabel={label} />
     </label>
   );
 }
