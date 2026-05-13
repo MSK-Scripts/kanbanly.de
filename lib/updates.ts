@@ -6,6 +6,30 @@ export type Update = {
 
 export const updates: Update[] = [
   {
+    date: '2026-05-12',
+    title: 'Discord-Bot: XP-System & Levels',
+    description:
+      'Server-Mitglieder sammeln XP fürs Chatten (15-25 pro Message, 60s Cooldown). /rank zeigt Level und Progressbar, /leaderboard die Top 10. Im Dashboard: Level-Rewards (Rolle ab Level X) konfigurieren.',
+  },
+  {
+    date: '2026-05-12',
+    title: 'Discord-Bot: Logging',
+    description:
+      'Pro Server: Joins, Leaves, gelöschte/bearbeitete Nachrichten und Rollen-Änderungen in einen Log-Channel. Im Dashboard pro Event-Typ einzeln an/aus.',
+  },
+  {
+    date: '2026-05-12',
+    title: 'Discord-Bot: Moderation-Suite',
+    description:
+      '/warn (mit Historie), /kick, /ban, /timeout, /clear. Warnungen werden in der DB gespeichert, /warn list zeigt die ganze Historie pro User.',
+  },
+  {
+    date: '2026-05-12',
+    title: 'Discord-Bot: Auto-Roles',
+    description:
+      'Im Dashboard mehrere Rollen wählen, die jedem neuen Mitglied automatisch beim Server-Join vergeben werden.',
+  },
+  {
     date: '2026-05-05',
     title: 'Karten abonnieren + Aktivitäts-Feed',
     description:

@@ -94,6 +94,7 @@ export default async function Dashboard({
             <SideLink href="/woche">Diese Woche</SideLink>
             <SideLink href="/stats">Statistiken</SideLink>
             <SideLink href="/templates">Vorlagen</SideLink>
+            <SideLink href="/integrations/discord">Discord-Bot</SideLink>
             <SideLink href="/einstellungen">Einstellungen</SideLink>
           </div>
 

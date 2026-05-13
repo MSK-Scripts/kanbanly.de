@@ -163,6 +163,42 @@ export default async function LandingPage() {
           </div>
         </section>
 
+        <section className="px-4 sm:px-6 pb-16 sm:pb-20">
+          <div className="max-w-5xl mx-auto rounded-md bg-surface border border-line p-6 sm:p-10">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center mb-6">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-accent-soft font-mono mb-1">
+                  Inklusive
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
+                  Discord-Bot für deine Community
+                </h3>
+                <p className="text-sm text-muted mt-2 max-w-xl">
+                  Welcome-Messages, Reaction-Roles, Auto-Roles, Moderation,
+                  Logging und ein XP-/Leveling-System. Alles über ein Web-Dashboard
+                  konfigurierbar — keine Slash-Commands raten.
+                </p>
+              </div>
+              <Link
+                href={signedIn ? '/integrations/discord' : '/register'}
+                className="rounded-md bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-medium px-5 py-2.5 transition-colors text-center shrink-0"
+              >
+                {signedIn ? 'Bot einrichten' : 'Jetzt starten'}
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <BotFeature label="Welcome &amp; Reaction-Roles" />
+              <BotFeature label="Auto-Roles beim Join" />
+              <BotFeature label="Moderation /warn /kick /ban" />
+              <BotFeature label="Logging der Events" />
+              <BotFeature label="XP-System &amp; Levels" />
+              <BotFeature label="Level-Rewards (Rollen)" />
+              <BotFeature label="Leaderboard /rank" />
+              <BotFeature label="Pro Server konfigurierbar" />
+            </div>
+          </div>
+        </section>
+
         <section className="px-4 sm:px-6 pb-20 sm:pb-24">
           <div className="max-w-3xl mx-auto rounded-md bg-surface border border-line p-6 sm:p-8 text-center">
             <h3 className="text-xl font-semibold text-fg mb-2">
@@ -191,6 +227,18 @@ function Feature({ title, body }: { title: string; body: string }) {
     <div className="rounded-md bg-surface border border-line p-5">
       <h4 className="text-sm font-semibold text-fg mb-1.5">{title}</h4>
       <p className="text-xs text-muted leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function BotFeature({ label }: { label: string }) {
+  return (
+    <div className="flex items-start gap-2 rounded-md bg-elev border border-line-strong px-3 py-2">
+      <span className="text-emerald-500 text-xs leading-5 shrink-0">✓</span>
+      <span
+        className="text-xs text-fg-soft leading-snug"
+        dangerouslySetInnerHTML={{ __html: label }}
+      />
     </div>
   );
 }
