@@ -6,6 +6,7 @@ import { getFreshAccessToken } from '@/lib/discordConnection';
 import {
   CHANNEL_TYPE_ANNOUNCEMENT,
   CHANNEL_TYPE_TEXT,
+  DiscordRateLimitError,
   canManageGuild,
   fetchCurrentUserGuilds,
   fetchGuildChannels,
@@ -29,6 +30,7 @@ type LoadResult =
   | { kind: 'no-conn' }
   | { kind: 'forbidden' }
   | { kind: 'no-bot' }
+  | { kind: 'rate-limited'; retryAfterSec: number }
   | {
       kind: 'ok';
       guild: DiscordGuild;
@@ -56,7 +58,15 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const token = await getFreshAccessToken(userId);
   if (!token) return { kind: 'no-conn' };
 
-  const guilds = await fetchCurrentUserGuilds(token);
+  let guilds: DiscordGuild[];
+  try {
+    guilds = await fetchCurrentUserGuilds(token);
+  } catch (err) {
+    if (err instanceof DiscordRateLimitError) {
+      return { kind: 'rate-limited', retryAfterSec: err.retryAfterSec };
+    }
+    throw err;
+  }
   const guild = guilds.find((g) => g.id === guildId);
   if (!guild) return { kind: 'forbidden' };
   if (!guild.owner && !canManageGuild(guild.permissions)) return { kind: 'forbidden' };
@@ -77,6 +87,9 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       .filter((c) => c.type === CHANNEL_TYPE_TEXT || c.type === CHANNEL_TYPE_ANNOUNCEMENT)
       .sort((a, b) => a.position - b.position);
   } catch (err) {
+    if (err instanceof DiscordRateLimitError) {
+      return { kind: 'rate-limited', retryAfterSec: err.retryAfterSec };
+    }
     console.error('[guild-settings] channels:', err);
   }
 
@@ -84,6 +97,9 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   try {
     roles = (await fetchGuildRoles(guildId)).sort((a, b) => b.position - a.position);
   } catch (err) {
+    if (err instanceof DiscordRateLimitError) {
+      return { kind: 'rate-limited', retryAfterSec: err.retryAfterSec };
+    }
     console.error('[guild-settings] roles:', err);
   }
 
@@ -188,6 +204,19 @@ export default async function GuildSettingsPage({
             >
               Zur Übersicht — dort findest du den Einladen-Link.
             </Link>
+          </div>
+        )}
+
+        {result.kind === 'rate-limited' && (
+          <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-6">
+            <p className="text-sm text-amber-700 dark:text-amber-300 font-medium mb-1">
+              Discord hat uns kurz ausgebremst (Rate-Limit).
+            </p>
+            <p className="text-xs text-amber-700/80 dark:text-amber-300/80">
+              In ~{result.retryAfterSec} Sekunden nochmal die Seite neu laden.
+              Das passiert wenn schnell hintereinander gespeichert wird —
+              ist kein Fehler in deinen Einstellungen.
+            </p>
           </div>
         )}
 

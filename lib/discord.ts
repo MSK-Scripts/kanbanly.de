@@ -128,12 +128,7 @@ export function canManageGuild(perms: string): boolean {
 }
 
 export async function fetchCurrentUserGuilds(accessToken: string): Promise<DiscordGuild[]> {
-  const res = await fetch(`${DISCORD_API}/users/@me/guilds`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`Discord /users/@me/guilds: ${res.status}`);
-  return (await res.json()) as DiscordGuild[];
+  return discordGet<DiscordGuild[]>('/users/@me/guilds', accessToken, 'Bearer');
 }
 
 export type DiscordChannel = {
@@ -148,15 +143,30 @@ export type DiscordChannel = {
 export const CHANNEL_TYPE_TEXT = 0;
 export const CHANNEL_TYPE_ANNOUNCEMENT = 5;
 
+export class DiscordRateLimitError extends Error {
+  constructor(public readonly retryAfterSec: number, public readonly endpoint: string) {
+    super(`Discord rate-limited (${endpoint}). Retry after ${retryAfterSec}s.`);
+    this.name = 'DiscordRateLimitError';
+  }
+}
+
+async function discordGet<T>(path: string, token: string, tokenKind: 'Bot' | 'Bearer' = 'Bot'): Promise<T> {
+  const res = await fetch(`${DISCORD_API}${path}`, {
+    headers: { Authorization: `${tokenKind} ${token}` },
+    cache: 'no-store',
+  });
+  if (res.status === 429) {
+    const retryAfter = Number(res.headers.get('retry-after') ?? '5');
+    throw new DiscordRateLimitError(Number.isFinite(retryAfter) ? retryAfter : 5, path);
+  }
+  if (!res.ok) throw new Error(`Discord ${path}: ${res.status}`);
+  return (await res.json()) as T;
+}
+
 export async function fetchGuildChannels(guildId: string): Promise<DiscordChannel[]> {
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!token) throw new Error('DISCORD_BOT_TOKEN fehlt in .env.local');
-  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
-    headers: { Authorization: `Bot ${token}` },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`Discord /guilds/${guildId}/channels: ${res.status}`);
-  return (await res.json()) as DiscordChannel[];
+  return discordGet<DiscordChannel[]>(`/guilds/${guildId}/channels`, token);
 }
 
 export type DiscordRole = {
@@ -171,12 +181,7 @@ export type DiscordRole = {
 export async function fetchGuildRoles(guildId: string): Promise<DiscordRole[]> {
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!token) throw new Error('DISCORD_BOT_TOKEN fehlt in .env.local');
-  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
-    headers: { Authorization: `Bot ${token}` },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`Discord /guilds/${guildId}/roles: ${res.status}`);
-  const roles = (await res.json()) as DiscordRole[];
+  const roles = await discordGet<DiscordRole[]>(`/guilds/${guildId}/roles`, token);
   // @everyone-Rolle hat dieselbe ID wie die Guild — die wollen wir nicht zur Auswahl.
   return roles.filter((r) => r.id !== guildId && !r.managed);
 }
