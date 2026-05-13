@@ -45,6 +45,9 @@ next-env.d.ts
 /.vscode/
 /.idea/
 
+# private dev notes — server IP, deploy hints, internal layout
+AGENTS.md
+
 # discord bot (separates Node-Projekt unter /bot)
 /bot/node_modules
 /bot/dist
