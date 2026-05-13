@@ -14,6 +14,7 @@ import tag from './tag.js';
 import poll from './poll.js';
 import customcmd from './customcmd.js';
 import remind from './remind.js';
+import serverstats from './serverstats.js';
 
 export const commands: SlashCommand[] = [
   ping,
@@ -31,5 +32,6 @@ export const commands: SlashCommand[] = [
   poll,
   customcmd,
   remind,
+  serverstats,
 ];
 export const commandMap = new Map(commands.map((c) => [c.data.name, c]));
