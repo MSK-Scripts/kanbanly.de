@@ -30,7 +30,12 @@ const command: SlashCommand = {
         {
           name: '💬 Community',
           value:
-            '`/tag show|list|add|edit|remove` · FAQ-Antworten\n`/customcmd add|remove|list|prefix` · eigene Prefix-Commands',
+            '`/tag show|list|add|edit|remove` · FAQ-Antworten\n`/customcmd add|remove|list|prefix` · eigene Prefix-Commands\n`/remind me|list|cancel` · Erinnerungen',
+        },
+        {
+          name: '🛟 Support & Stats',
+          value:
+            '`/ticket panel create` · Button-Panel zum Ticket-Öffnen\n`/ticket close` · Ticket schließen\n`/serverstats add|remove|list` · Live-Counter in Voice-Channels',
         },
         {
           name: '🌐 Dashboard',
