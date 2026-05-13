@@ -20,6 +20,7 @@ import { AutoRolesForm } from '@/components/AutoRolesForm';
 import { LogConfigForm } from '@/components/LogConfigForm';
 import { LevelConfigForm } from '@/components/LevelConfigForm';
 import { AutoModForm } from '@/components/AutoModForm';
+import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
 
@@ -192,7 +193,7 @@ export default async function GuildSettingsPage({
 
   return (
     <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-4">
           <Link
             href="/integrations/discord"
@@ -246,85 +247,249 @@ export default async function GuildSettingsPage({
         )}
 
         {result.kind === 'ok' && (
-          <>
-            <div className="mb-6">
-              <h1 className="text-2xl font-semibold text-fg">{result.guild.name}</h1>
-              <p className="text-xs text-muted mt-1">Server-ID: {result.guild.id}</p>
-            </div>
-
-            <section className="mb-6">
-              <h2 className="text-sm font-semibold text-fg mb-2">Welcome-Messages</h2>
-              <div className="rounded-md bg-surface border border-line p-5">
-                <WelcomeForm
-                  guildId={result.guild.id}
-                  channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
-                  initial={result.welcome}
-                />
-              </div>
-            </section>
-
-            <section className="mb-6">
-              <h2 className="text-sm font-semibold text-fg mb-2">Auto-Roles</h2>
-              <div className="rounded-md bg-surface border border-line p-5">
-                <AutoRolesForm
-                  guildId={result.guild.id}
-                  roles={result.roles.map((r) => ({
-                    id: r.id,
-                    name: r.name,
-                    color: r.color,
-                  }))}
-                  initial={result.autoRoles}
-                />
-              </div>
-            </section>
-
-            <section className="mb-6">
-              <h2 className="text-sm font-semibold text-fg mb-2">Logging</h2>
-              <div className="rounded-md bg-surface border border-line p-5">
-                <LogConfigForm
-                  guildId={result.guild.id}
-                  channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
-                  initial={result.log}
-                />
-              </div>
-            </section>
-
-            <section className="mb-6">
-              <h2 className="text-sm font-semibold text-fg mb-2">
-                Leveling / XP
-              </h2>
-              <div className="rounded-md bg-surface border border-line p-5">
-                <LevelConfigForm
-                  guildId={result.guild.id}
-                  channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
-                  roles={result.roles.map((r) => ({ id: r.id, name: r.name }))}
-                  initial={result.level}
-                  rewards={result.levelRewards}
-                />
-              </div>
-            </section>
-
-            <section className="mb-6">
-              <h2 className="text-sm font-semibold text-fg mb-2">AutoMod</h2>
-              <div className="rounded-md bg-surface border border-line p-5">
-                <AutoModForm
-                  guildId={result.guild.id}
-                  initial={result.automod}
-                />
-              </div>
-            </section>
-
-            <section className="mb-6">
-              <h2 className="text-sm font-semibold text-fg mb-2">Reaction Roles</h2>
-              <div className="rounded-md bg-surface border border-line p-5 text-sm text-muted">
-                Reaction Roles werden aktuell über den Slash-Command{' '}
-                <code className="px-1 rounded bg-elev text-fg-soft">/reactionroles</code>{' '}
-                im Server verwaltet. Eine UI dafür folgt.
-              </div>
-            </section>
-          </>
+          <GuildSettingsView
+            guildName={result.guild.name}
+            guildId={result.guild.id}
+            channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
+            roles={result.roles.map((r) => ({
+              id: r.id,
+              name: r.name,
+              color: r.color,
+            }))}
+            welcome={result.welcome}
+            autoRoles={result.autoRoles}
+            log={result.log}
+            level={result.level}
+            levelRewards={result.levelRewards}
+            automod={result.automod}
+          />
         )}
       </div>
     </div>
+  );
+}
+
+function GuildSettingsView({
+  guildName,
+  guildId,
+  channels,
+  roles,
+  welcome,
+  autoRoles,
+  log,
+  level,
+  levelRewards,
+  automod,
+}: {
+  guildName: string;
+  guildId: string;
+  channels: Array<{ id: string; name: string }>;
+  roles: Array<{ id: string; name: string; color: number }>;
+  welcome: { enabled: boolean; channelId: string | null; message: string | null };
+  autoRoles: { enabled: boolean; roleIds: string[] };
+  log: {
+    channelId: string | null;
+    joins: boolean;
+    leaves: boolean;
+    messageEdits: boolean;
+    messageDeletes: boolean;
+    roleChanges: boolean;
+  };
+  level: { enabled: boolean; announce: boolean; upChannelId: string | null };
+  levelRewards: Array<{ level: number; roleId: string }>;
+  automod: {
+    enabled: boolean;
+    blockLinks: boolean;
+    linkAllowlist: string[];
+    maxCapsPct: number | null;
+    maxMentions: number | null;
+    bannedWords: string[];
+  };
+}) {
+  const overviewItems = [
+    {
+      label: 'Welcome',
+      enabled: welcome.enabled,
+      hint: welcome.enabled
+        ? welcome.channelId
+          ? 'aktiv'
+          : 'Channel fehlt'
+        : 'inaktiv',
+      target: 'welcome',
+    },
+    {
+      label: 'Auto-Roles',
+      enabled: autoRoles.enabled,
+      hint: autoRoles.enabled
+        ? `${autoRoles.roleIds.length} Rolle${autoRoles.roleIds.length === 1 ? '' : 'n'}`
+        : 'inaktiv',
+      target: 'autoroles',
+    },
+    {
+      label: 'Logging',
+      enabled: log.channelId !== null,
+      hint:
+        log.channelId !== null
+          ? [
+              log.joins && 'Joins',
+              log.leaves && 'Leaves',
+              log.messageEdits && 'Edits',
+              log.messageDeletes && 'Deletes',
+              log.roleChanges && 'Rollen',
+            ]
+              .filter(Boolean)
+              .join(' · ') || 'kein Event'
+          : 'kein Channel',
+      target: 'logging',
+    },
+    {
+      label: 'Leveling',
+      enabled: level.enabled,
+      hint: level.enabled
+        ? `${levelRewards.length} Reward${levelRewards.length === 1 ? '' : 's'}`
+        : 'inaktiv',
+      target: 'levels',
+    },
+    {
+      label: 'AutoMod',
+      enabled: automod.enabled,
+      hint: automod.enabled
+        ? [
+            automod.blockLinks && 'Links',
+            automod.maxCapsPct !== null && 'Caps',
+            automod.maxMentions !== null && 'Mentions',
+            automod.bannedWords.length > 0 && 'Wörter',
+          ]
+            .filter(Boolean)
+            .join(' · ') || 'an'
+        : 'inaktiv',
+      target: 'automod',
+    },
+  ];
+
+  const tabs: Tab[] = [
+    {
+      id: 'overview',
+      label: 'Übersicht',
+      icon: '🏠',
+      description: 'Status aller Module auf einen Blick.',
+      content: (
+        <ul className="space-y-2">
+          {overviewItems.map((item) => (
+            <li
+              key={item.target}
+              className="flex items-center justify-between px-3 py-2 rounded-md border border-line bg-elev"
+            >
+              <span className="flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    item.enabled ? 'bg-emerald-500' : 'bg-muted/40'
+                  }`}
+                />
+                <span className="text-sm text-fg font-medium">{item.label}</span>
+              </span>
+              <span className="flex items-center gap-3">
+                <span className="text-[11px] text-subtle">{item.hint}</span>
+                <a
+                  href={`#${item.target}`}
+                  className="text-[11px] text-accent-soft hover:text-accent-hover"
+                >
+                  öffnen →
+                </a>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    },
+    {
+      id: 'welcome',
+      label: 'Welcome',
+      icon: '👋',
+      description: 'Begrüßungs-Nachricht für neue Mitglieder.',
+      content: (
+        <WelcomeForm guildId={guildId} channels={channels} initial={welcome} />
+      ),
+    },
+    {
+      id: 'autoroles',
+      label: 'Auto-Roles',
+      icon: '🎭',
+      description: 'Rollen, die jedem neuen Mitglied automatisch vergeben werden.',
+      content: (
+        <AutoRolesForm guildId={guildId} roles={roles} initial={autoRoles} />
+      ),
+    },
+    {
+      id: 'logging',
+      label: 'Logging',
+      icon: '📋',
+      description: 'Joins, Leaves, Edits, Deletes und Rollen-Änderungen in einen Audit-Channel.',
+      content: (
+        <LogConfigForm guildId={guildId} channels={channels} initial={log} />
+      ),
+    },
+    {
+      id: 'levels',
+      label: 'Levels',
+      icon: '🏆',
+      description: 'XP-System, Level-Up-Nachrichten und Rollen-Rewards.',
+      content: (
+        <LevelConfigForm
+          guildId={guildId}
+          channels={channels}
+          roles={roles.map((r) => ({ id: r.id, name: r.name }))}
+          initial={level}
+          rewards={levelRewards}
+        />
+      ),
+    },
+    {
+      id: 'automod',
+      label: 'AutoMod',
+      icon: '🛡️',
+      description: 'Spam-/Link-/Caps-/Mention-Filter und verbotene Wörter.',
+      content: <AutoModForm guildId={guildId} initial={automod} />,
+    },
+    {
+      id: 'reactionroles',
+      label: 'Reaction-Rollen',
+      icon: '✨',
+      description: 'Self-Service-Rollen über Emoji-Reaktionen.',
+      content: (
+        <p className="text-sm text-muted">
+          Reaction-Roles werden aktuell über den Slash-Command{' '}
+          <code className="px-1.5 py-0.5 rounded bg-elev text-fg-soft text-xs">
+            /reactionroles
+          </code>{' '}
+          im Server verwaltet. Eine UI dafür folgt.
+        </p>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold text-fg">{guildName}</h1>
+          <p className="text-[11px] text-subtle mt-0.5 font-mono">
+            Server-ID: {guildId}
+          </p>
+        </div>
+        <div className="text-[11px] text-subtle">
+          Direkt-Link:{' '}
+          <code className="px-1.5 py-0.5 rounded bg-elev">
+            #welcome
+          </code>{' '}
+          /{' '}
+          <code className="px-1.5 py-0.5 rounded bg-elev">#automod</code>{' '}
+          /{' '}
+          <code className="px-1.5 py-0.5 rounded bg-elev">#levels</code>
+        </div>
+      </div>
+
+      <GuildSettingsTabs tabs={tabs} />
+    </>
   );
 }
