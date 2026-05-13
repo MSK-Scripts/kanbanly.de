@@ -6,6 +6,7 @@ import { registerGuildCreate } from './events/guildCreate.js';
 import { registerReactionEvents } from './events/reactions.js';
 import { registerLogger } from './events/logger.js';
 import { registerXp } from './events/xp.js';
+import { registerCustomCommands } from './events/customCommands.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -61,6 +62,7 @@ registerGuildMemberAdd(client);
 registerReactionEvents(client);
 registerLogger(client);
 registerXp(client);
+registerCustomCommands(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

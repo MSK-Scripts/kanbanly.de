@@ -12,6 +12,7 @@ import rank from './rank.js';
 import leaderboard from './leaderboard.js';
 import tag from './tag.js';
 import poll from './poll.js';
+import customcmd from './customcmd.js';
 
 export const commands: SlashCommand[] = [
   ping,
@@ -27,5 +28,6 @@ export const commands: SlashCommand[] = [
   leaderboard,
   tag,
   poll,
+  customcmd,
 ];
 export const commandMap = new Map(commands.map((c) => [c.data.name, c]));
