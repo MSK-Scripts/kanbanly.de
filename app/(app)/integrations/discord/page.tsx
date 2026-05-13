@@ -105,19 +105,30 @@ export default async function DiscordIntegrationPage({
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-5xl mx-auto p-3 sm:p-6">
         {/* Hero */}
-        <div className="rounded-md bg-gradient-to-br from-[#5865F2]/15 via-surface to-surface border border-line p-6 sm:p-8 mb-6">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-wide text-[#5865F2] font-mono mb-1">
+        <div className="relative overflow-hidden rounded-lg border border-line bg-surface p-6 sm:p-10 mb-6">
+          <div
+            className="pointer-events-none absolute -top-32 -left-24 h-80 w-80 rounded-full bg-[#5865F2]/30 blur-3xl"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-violet-500/25 blur-3xl"
+            aria-hidden
+          />
+          <div className="relative flex items-start justify-between gap-6 flex-wrap">
+            <div className="min-w-0 max-w-2xl">
+              <div className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[#5865F2] font-mono mb-3 rounded-full border border-[#5865F2]/30 bg-[#5865F2]/10 px-2.5 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#5865F2]" />
                 Discord-Integration
               </div>
-              <h1 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
-                Kanbanly Discord-Bot
+              <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight leading-tight">
+                Kanbanly für{' '}
+                <span className="bg-gradient-to-r from-[#5865F2] to-violet-500 bg-clip-text text-transparent">
+                  Discord
+                </span>
               </h1>
-              <p className="text-sm text-muted mt-2 max-w-xl">
+              <p className="text-sm sm:text-base text-muted mt-3 leading-relaxed">
                 Welcome-Messages, Auto-Roles, Moderation, AutoMod, Logging,
-                Leveling, Tickets &amp; mehr — komplett über dieses Dashboard
-                konfigurierbar.
+                Leveling, Tickets, Reminders &amp; mehr — alles aus einem Dashboard.
               </p>
             </div>
             {data.status === 'connected' && (
