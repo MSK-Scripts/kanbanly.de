@@ -25,6 +25,8 @@ import { startRoleBadgeScheduler } from './events/roleBadgeScheduler.js';
 import { registerAfkRoom } from './events/afkRoom.js';
 import { registerSuggestions } from './events/suggestions.js';
 import { registerInviteTracker } from './events/inviteTracker.js';
+import { registerHelpdesk } from './events/helpdesk.js';
+import { registerTempVoice } from './events/tempVoice.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -101,6 +103,8 @@ startRoleBadgeScheduler(client);
 registerAfkRoom(client);
 registerSuggestions(client);
 registerInviteTracker(client);
+registerHelpdesk(client);
+registerTempVoice(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

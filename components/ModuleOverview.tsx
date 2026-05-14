@@ -25,7 +25,9 @@ export type ModuleKey =
   | 'rolebadges'
   | 'afk'
   | 'suggestions'
-  | 'invitetracker';
+  | 'invitetracker'
+  | 'helpdesk'
+  | 'tempvoice';
 
 type ModuleDef = {
   key: ModuleKey;

@@ -37,6 +37,8 @@ import {
   SuggestionsForm,
   InviteTrackerForm,
 } from '@/components/Phase2FinishForms';
+import { HelpdeskForm } from '@/components/HelpdeskForm';
+import { TempVoiceForm } from '@/components/TempVoiceForm';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
@@ -175,6 +177,30 @@ type LoadResult =
         createdAt: string;
       }>;
       inviteTrackerEnabled: boolean;
+      helpdeskPanels: Array<{
+        id: string;
+        channelId: string;
+        messageId: string | null;
+        title: string;
+        description: string | null;
+        color: number | null;
+        items: Array<{
+          id: string;
+          label: string;
+          emoji: string | null;
+          style: 'primary' | 'secondary' | 'success' | 'danger';
+          answer: string;
+          answerColor: number | null;
+          position: number;
+        }>;
+      }>;
+      tempvoice: {
+        enabled: boolean;
+        creatorChannelId: string | null;
+        categoryId: string | null;
+        nameTemplate: string | null;
+        defaultLimit: number;
+      };
       giveaways: Array<{
         id: string;
         channelId: string;
@@ -224,7 +250,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow, error: guildRowError } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, verify_reply_success, verify_reply_already, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id, birthday_enabled, birthday_channel_id, birthday_message, role_badges_enabled, afk_enabled, afk_channel_id, afk_timeout_minutes, suggestions_enabled, suggestions_channel_id, suggestions_mod_role_id, invite_tracker_enabled',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, verify_reply_success, verify_reply_already, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id, birthday_enabled, birthday_channel_id, birthday_message, role_badges_enabled, afk_enabled, afk_channel_id, afk_timeout_minutes, suggestions_enabled, suggestions_channel_id, suggestions_mod_role_id, invite_tracker_enabled, tempvoice_enabled, tempvoice_creator_channel_id, tempvoice_category_id, tempvoice_name_template, tempvoice_default_limit',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -410,6 +436,58 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     createdAt: r.created_at as string,
   }));
 
+  const { data: hdPanelsRaw } = await admin
+    .from('bot_helpdesk_panels')
+    .select('id, channel_id, message_id, title, description, color')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false });
+  const hdPanelIds = (hdPanelsRaw ?? []).map((p) => p.id as string);
+  const { data: hdItemsRaw } = hdPanelIds.length
+    ? await admin
+        .from('bot_helpdesk_items')
+        .select('id, panel_id, label, emoji, style, answer, answer_color, position')
+        .in('panel_id', hdPanelIds)
+        .order('position')
+    : { data: [] as Array<Record<string, unknown>> };
+  const itemsByPanel = new Map<
+    string,
+    Array<{
+      id: string;
+      label: string;
+      emoji: string | null;
+      style: 'primary' | 'secondary' | 'success' | 'danger';
+      answer: string;
+      answerColor: number | null;
+      position: number;
+    }>
+  >();
+  for (const it of hdItemsRaw ?? []) {
+    const pid = it.panel_id as string;
+    if (!itemsByPanel.has(pid)) itemsByPanel.set(pid, []);
+    itemsByPanel.get(pid)!.push({
+      id: it.id as string,
+      label: it.label as string,
+      emoji: (it.emoji as string | null) ?? null,
+      style: ((it.style as string) ?? 'secondary') as
+        | 'primary'
+        | 'secondary'
+        | 'success'
+        | 'danger',
+      answer: it.answer as string,
+      answerColor: (it.answer_color as number | null) ?? null,
+      position: (it.position as number) ?? 0,
+    });
+  }
+  const helpdeskPanels = (hdPanelsRaw ?? []).map((p) => ({
+    id: p.id as string,
+    channelId: p.channel_id as string,
+    messageId: (p.message_id as string | null) ?? null,
+    title: p.title as string,
+    description: (p.description as string | null) ?? null,
+    color: (p.color as number | null) ?? null,
+    items: itemsByPanel.get(p.id as string) ?? [],
+  }));
+
   const reactionRoleMessages = (rrMsgRaw ?? []).map((m) => ({
     messageId: m.message_id as string,
     channelId: m.channel_id as string,
@@ -499,6 +577,15 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     },
     suggestionsList,
     inviteTrackerEnabled: Boolean(guildRow.invite_tracker_enabled),
+    helpdeskPanels,
+    tempvoice: {
+      enabled: Boolean(guildRow.tempvoice_enabled),
+      creatorChannelId:
+        (guildRow.tempvoice_creator_channel_id as string | null) ?? null,
+      categoryId: (guildRow.tempvoice_category_id as string | null) ?? null,
+      nameTemplate: (guildRow.tempvoice_name_template as string | null) ?? null,
+      defaultLimit: (guildRow.tempvoice_default_limit as number | null) ?? 0,
+    },
     giveaways,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
@@ -649,6 +736,8 @@ export default async function GuildSettingsPage({
             suggestions={result.suggestions}
             suggestionsList={result.suggestionsList}
             inviteTrackerEnabled={result.inviteTrackerEnabled}
+            helpdeskPanels={result.helpdeskPanels}
+            tempvoice={result.tempvoice}
           />
         )}
       </div>
@@ -684,6 +773,8 @@ function GuildSettingsView({
   suggestions,
   suggestionsList,
   inviteTrackerEnabled,
+  helpdeskPanels,
+  tempvoice,
 }: {
   guildName: string;
   guildId: string;
@@ -817,6 +908,30 @@ function GuildSettingsView({
     createdAt: string;
   }>;
   inviteTrackerEnabled: boolean;
+  helpdeskPanels: Array<{
+    id: string;
+    channelId: string;
+    messageId: string | null;
+    title: string;
+    description: string | null;
+    color: number | null;
+    items: Array<{
+      id: string;
+      label: string;
+      emoji: string | null;
+      style: 'primary' | 'secondary' | 'success' | 'danger';
+      answer: string;
+      answerColor: number | null;
+      position: number;
+    }>;
+  }>;
+  tempvoice: {
+    enabled: boolean;
+    creatorChannelId: string | null;
+    categoryId: string | null;
+    nameTemplate: string | null;
+    defaultLimit: number;
+  };
 }) {
   const moduleDefs = [
     {
@@ -982,6 +1097,25 @@ function GuildSettingsView({
       description: 'Wer hat wen eingeladen — mit Leaderboard.',
       tab: 'invitetracker',
       enabled: inviteTrackerEnabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'helpdesk' as const,
+      name: 'Helpdesk',
+      description: 'Button-Panels mit ephemeren FAQ-Antworten — perfekt für Server-Regeln und Common-Questions.',
+      tab: 'helpdesk',
+      enabled: helpdeskPanels.length > 0,
+      toggleable: false,
+      count: helpdeskPanels.length > 0 ? helpdeskPanels.length : undefined,
+      isNew: true,
+    },
+    {
+      key: 'tempvoice' as const,
+      name: 'Temp-Voice',
+      description: 'User joint Creator-Channel → Bot legt persönlichen Voice-Channel an, der bei Verlassen gelöscht wird.',
+      tab: 'tempvoice',
+      enabled: tempvoice.enabled,
       toggleable: true,
       isNew: true,
     },
@@ -1197,6 +1331,26 @@ function GuildSettingsView({
       content: (
         <InviteTrackerForm guildId={guildId} enabled={inviteTrackerEnabled} />
       ),
+    },
+    {
+      id: 'helpdesk',
+      label: 'Helpdesk',
+      icon: '❓',
+      description: 'Button-Panels mit ephemeren FAQ-Antworten.',
+      content: (
+        <HelpdeskForm
+          guildId={guildId}
+          channels={channels}
+          initial={helpdeskPanels}
+        />
+      ),
+    },
+    {
+      id: 'tempvoice',
+      label: 'Temp-Voice',
+      icon: '🔊',
+      description: 'Persönliche Voice-Channels auf Knopfdruck.',
+      content: <TempVoiceForm guildId={guildId} initial={tempvoice} />,
     },
   ];
 

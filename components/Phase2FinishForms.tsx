@@ -203,7 +203,7 @@ export function RoleBadgesForm({
     <div className="space-y-5">
       <FormSection
         title="Rollen-Badges"
-        description="Mitglieder bekommen Rollen automatisch nach X Tagen Mitgliedschaft (z.B. „1-Year-Member"). Check alle 6 Stunden."
+        description='Mitglieder bekommen Rollen automatisch nach X Tagen Mitgliedschaft (z.B. "1-Year-Member"). Check alle 6 Stunden.'
         badge={
           <StatusPill kind={enabled ? 'success' : 'neutral'} dot>
             {enabled ? 'Aktiv' : 'Aus'}

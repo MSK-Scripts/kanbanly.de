@@ -1306,6 +1306,333 @@ export async function updateInviteTrackerEnabled(
   }
 }
 
+// ============== Helpdesk ==============
+
+export type HelpdeskItemInput = {
+  id?: string;
+  label: string;
+  emoji: string | null;
+  style: 'primary' | 'secondary' | 'success' | 'danger';
+  answer: string;
+  answerColor: number | null;
+};
+
+const HD_STYLE_MAP: Record<HelpdeskItemInput['style'], number> = {
+  primary: 1,
+  secondary: 2,
+  success: 3,
+  danger: 4,
+};
+
+function parseHdEmoji(
+  raw: string | null,
+): { id?: string; name?: string; animated?: boolean } | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const customMatch = trimmed.match(/^<(a?):([\w~]+):(\d+)>$/);
+  if (customMatch) {
+    const [, animated, name, id] = customMatch;
+    return { id, name, animated: animated === 'a' };
+  }
+  return { name: trimmed };
+}
+
+async function buildHelpdeskPayload(
+  panelId: string,
+): Promise<{ payload: Record<string, unknown>; channelId: string } | null> {
+  const admin = createAdminClient();
+  const { data: panel } = await admin
+    .from('bot_helpdesk_panels')
+    .select('channel_id, title, description, color')
+    .eq('id', panelId)
+    .maybeSingle();
+  if (!panel) return null;
+  const { data: itemsRaw } = await admin
+    .from('bot_helpdesk_items')
+    .select('id, label, emoji, style')
+    .eq('panel_id', panelId)
+    .order('position');
+
+  const items = itemsRaw ?? [];
+  // Max 25 Buttons (5 Rows × 5 Buttons)
+  const sliced = items.slice(0, 25);
+  const rows: Array<{ type: number; components: Array<Record<string, unknown>> }> = [];
+  for (let i = 0; i < sliced.length; i += 5) {
+    const chunk = sliced.slice(i, i + 5);
+    rows.push({
+      type: 1,
+      components: chunk.map((it) => {
+        const btn: Record<string, unknown> = {
+          type: 2,
+          style:
+            HD_STYLE_MAP[(it.style as HelpdeskItemInput['style']) ?? 'secondary'] ?? 2,
+          custom_id: `hd:btn:${it.id}`,
+          label: (it.label as string).slice(0, 80),
+        };
+        const emoji = parseHdEmoji((it.emoji as string | null) ?? null);
+        if (emoji) btn.emoji = emoji;
+        return btn;
+      }),
+    });
+  }
+  return {
+    channelId: panel.channel_id as string,
+    payload: {
+      embeds: [
+        {
+          title: (panel.title as string | null) ?? 'Helpdesk',
+          description: (panel.description as string | null) ?? undefined,
+          color: (panel.color as number | null) ?? 0x5865f2,
+        },
+      ],
+      components: rows,
+    },
+  };
+}
+
+export async function createHelpdeskPanel(
+  guildId: string,
+  input: {
+    channelId: string;
+    title: string;
+    description: string | null;
+    color: number | null;
+  },
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (!input.title.trim()) return { ok: false, error: 'Titel fehlt.' };
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_helpdesk_panels')
+      .insert({
+        guild_id: guildId,
+        channel_id: input.channelId,
+        title: input.title.trim(),
+        description: input.description?.trim() || null,
+        color: input.color ?? null,
+      })
+      .select('id')
+      .single();
+    if (error || !data) throw error ?? new Error('Insert fehlgeschlagen.');
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: data.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updateHelpdeskPanel(
+  guildId: string,
+  panelId: string,
+  input: {
+    title: string;
+    description: string | null;
+    color: number | null;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_helpdesk_panels')
+      .update({
+        title: input.title.trim(),
+        description: input.description?.trim() || null,
+        color: input.color ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', panelId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteHelpdeskPanel(
+  guildId: string,
+  panelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: panel } = await admin
+      .from('bot_helpdesk_panels')
+      .select('channel_id, message_id')
+      .eq('id', panelId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (panel?.message_id) {
+      await deleteMessage(
+        panel.channel_id as string,
+        panel.message_id as string,
+      ).catch(() => {});
+    }
+    const { error } = await admin
+      .from('bot_helpdesk_panels')
+      .delete()
+      .eq('id', panelId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function upsertHelpdeskItem(
+  guildId: string,
+  panelId: string,
+  item: HelpdeskItemInput,
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (!item.label.trim() || !item.answer.trim()) {
+      return { ok: false, error: 'Label und Antwort sind nötig.' };
+    }
+    const admin = createAdminClient();
+    // Position = max+1 wenn neu
+    let position = 0;
+    if (!item.id) {
+      const { data: maxRows } = await admin
+        .from('bot_helpdesk_items')
+        .select('position')
+        .eq('panel_id', panelId)
+        .order('position', { ascending: false })
+        .limit(1);
+      position = ((maxRows?.[0]?.position as number | null) ?? -1) + 1;
+    }
+    const payload = {
+      panel_id: panelId,
+      label: item.label.trim().slice(0, 80),
+      emoji: item.emoji?.trim() || null,
+      style: item.style,
+      answer: item.answer.trim().slice(0, 4000),
+      answer_color: item.answerColor ?? null,
+    };
+    if (item.id) {
+      const { error } = await admin
+        .from('bot_helpdesk_items')
+        .update(payload)
+        .eq('id', item.id);
+      if (error) throw error;
+      revalidatePath(`/integrations/discord/${guildId}`);
+      return { ok: true, id: item.id };
+    }
+    const { data, error } = await admin
+      .from('bot_helpdesk_items')
+      .insert({ ...payload, position })
+      .select('id')
+      .single();
+    if (error || !data) throw error ?? new Error('Insert fehlgeschlagen.');
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: data.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteHelpdeskItem(
+  guildId: string,
+  itemId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin.from('bot_helpdesk_items').delete().eq('id', itemId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function publishHelpdeskPanel(
+  guildId: string,
+  panelId: string,
+): Promise<{ ok: boolean; error?: string; messageId?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const built = await buildHelpdeskPayload(panelId);
+    if (!built) return { ok: false, error: 'Panel nicht gefunden.' };
+
+    const admin = createAdminClient();
+    const { data: panel } = await admin
+      .from('bot_helpdesk_panels')
+      .select('message_id')
+      .eq('id', panelId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (panel?.message_id) {
+      await deleteMessage(
+        built.channelId,
+        panel.message_id as string,
+      ).catch(() => {});
+    }
+
+    const posted = await postMessage(built.channelId, built.payload);
+    await admin
+      .from('bot_helpdesk_panels')
+      .update({ message_id: posted.id })
+      .eq('id', panelId);
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, messageId: posted.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Temp-Voice ==============
+
+export async function updateTempVoiceConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const creatorChannelId =
+      (formData.get('creator_channel_id') as string | null)?.trim() || null;
+    const categoryId =
+      (formData.get('category_id') as string | null)?.trim() || null;
+    const nameTemplate =
+      (formData.get('name_template') as string | null)?.trim() || null;
+    const defaultLimit = Math.max(
+      0,
+      Math.min(
+        99,
+        parseInt(String(formData.get('default_limit') ?? '0'), 10) || 0,
+      ),
+    );
+    if (enabled && !creatorChannelId) {
+      return { ok: false, error: 'Creator-Channel-ID nötig.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        tempvoice_enabled: enabled,
+        tempvoice_creator_channel_id: creatorChannelId,
+        tempvoice_category_id: categoryId,
+        tempvoice_name_template: nameTemplate,
+        tempvoice_default_limit: defaultLimit,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
 // ============== Modul-Toggle (Übersicht) ==============
 
 type ModuleKey =
@@ -1326,7 +1653,9 @@ type ModuleKey =
   | 'rolebadges'
   | 'afk'
   | 'suggestions'
-  | 'invitetracker';
+  | 'invitetracker'
+  | 'helpdesk'
+  | 'tempvoice';
 
 export async function toggleBotModule(
   guildId: string,
@@ -1374,6 +1703,9 @@ export async function toggleBotModule(
         break;
       case 'invitetracker':
         patch.invite_tracker_enabled = enabled;
+        break;
+      case 'tempvoice':
+        patch.tempvoice_enabled = enabled;
         break;
       default:
         return {
