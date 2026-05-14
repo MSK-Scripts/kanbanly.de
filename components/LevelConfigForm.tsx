@@ -6,6 +6,7 @@ import {
   updateLevelConfig,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { Switch } from './Switch';
+import { ColorPicker } from './ui/ColorPicker';
 
 type Channel = { id: string; name: string };
 type Role = { id: string; name: string; color?: number };
@@ -119,20 +120,15 @@ export function LevelConfigForm({
             </p>
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-elev/40 px-3 py-2">
-            <div className="text-xs text-fg-soft">
-              Level-Up als <strong>{useEmbed ? 'Embed' : 'Plain-Text'}</strong> senden
-            </div>
-            <div className="flex items-center gap-2">
-              {useEmbed && (
-                <input
-                  type="color"
-                  value={embedColor}
-                  onChange={(e) => setEmbedColor(e.target.value)}
-                  className="h-6 w-8 rounded border border-line-strong bg-elev cursor-pointer"
-                  title="Embed-Farbe"
-                />
-              )}
+          <div className="rounded-lg border border-line bg-elev/30 px-3.5 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[12.5px] text-fg-soft">
+                Level-Up als{' '}
+                <span className="font-semibold text-fg">
+                  {useEmbed ? 'Embed' : 'Plain-Text'}
+                </span>{' '}
+                senden
+              </div>
               <Switch
                 checked={useEmbed}
                 onChange={setUseEmbed}
@@ -140,6 +136,14 @@ export function LevelConfigForm({
                 ariaLabel="Level-Up als Embed"
               />
             </div>
+            {useEmbed && (
+              <div className="mt-3 pt-3 border-t border-line/60">
+                <div className="text-[11.5px] font-medium text-muted mb-2">
+                  Embed-Farbe
+                </div>
+                <ColorPicker value={embedColor} onChange={setEmbedColor} />
+              </div>
+            )}
           </div>
           <input type="hidden" name="use_embed" value={useEmbed ? 'on' : ''} />
           <input type="hidden" name="embed_color" value={embedColor} />

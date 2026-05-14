@@ -5,6 +5,7 @@ import { updateWelcomeConfig } from '@/app/(app)/integrations/discord/[guildId]/
 import { toast } from '@/store/toastStore';
 import { Switch } from './Switch';
 import { Button } from './ui/Button';
+import { ColorPicker } from './ui/ColorPicker';
 import { FormSection, FormRow } from './ui/FormSection';
 import { StatusPill } from './ui/Status';
 
@@ -164,23 +165,14 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
             </div>
           </FormRow>
 
-          <div className="flex items-center justify-between rounded-lg border border-line bg-elev/30 px-3.5 py-2.5">
-            <div className="text-[12.5px] text-fg-soft">
-              Format:{' '}
-              <span className="font-semibold text-fg">
-                {useEmbed ? 'Embed' : 'Plain-Text'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              {useEmbed && (
-                <input
-                  type="color"
-                  value={embedColor}
-                  onChange={(e) => setEmbedColor(e.target.value)}
-                  className="h-6 w-9 rounded border border-line-strong bg-elev cursor-pointer"
-                  title="Embed-Farbe"
-                />
-              )}
+          <div className="rounded-lg border border-line bg-elev/30 px-3.5 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[12.5px] text-fg-soft">
+                Format:{' '}
+                <span className="font-semibold text-fg">
+                  {useEmbed ? 'Embed' : 'Plain-Text'}
+                </span>
+              </div>
               <Switch
                 checked={useEmbed}
                 onChange={setUseEmbed}
@@ -188,6 +180,14 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
                 ariaLabel="Als Embed senden"
               />
             </div>
+            {useEmbed && (
+              <div className="mt-3 pt-3 border-t border-line/60">
+                <div className="text-[11.5px] font-medium text-muted mb-2">
+                  Embed-Farbe
+                </div>
+                <ColorPicker value={embedColor} onChange={setEmbedColor} />
+              </div>
+            )}
           </div>
 
           <div>
