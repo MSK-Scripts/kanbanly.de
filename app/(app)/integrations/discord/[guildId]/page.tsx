@@ -24,6 +24,7 @@ import { BoosterForm } from '@/components/BoosterForm';
 import { StickyMessagesForm } from '@/components/StickyMessagesForm';
 import { ChannelModesForm } from '@/components/ChannelModesForm';
 import { EmbedCreatorForm } from '@/components/EmbedCreatorForm';
+import { ReactionRolesManager } from '@/components/ReactionRolesManager';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,18 @@ type LoadResult =
         channelId: string;
         mode: 'images_only' | 'text_only';
         allowVideos: boolean;
+      }>;
+      reactionRoleMessages: Array<{
+        messageId: string;
+        channelId: string;
+        title: string | null;
+        description: string | null;
+        roles: Array<{
+          emojiKey: string;
+          emojiDisplay: string;
+          roleId: string;
+          label: string | null;
+        }>;
       }>;
       autoRoles: { enabled: boolean; roleIds: string[] };
       log: {
@@ -166,6 +179,40 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     allowVideos: Boolean(r.allow_videos),
   }));
 
+  const { data: rrMsgRaw } = await admin
+    .from('bot_reaction_role_messages')
+    .select('message_id, channel_id, title, description, created_at')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false });
+  const rrMessageIds = (rrMsgRaw ?? []).map((m) => m.message_id as string);
+  const { data: rrRolesRaw } = rrMessageIds.length
+    ? await admin
+        .from('bot_reaction_roles')
+        .select('message_id, emoji_key, emoji_display, role_id, label')
+        .in('message_id', rrMessageIds)
+    : { data: [] as Array<Record<string, unknown>> };
+  const rolesByMessage = new Map<
+    string,
+    Array<{ emojiKey: string; emojiDisplay: string; roleId: string; label: string | null }>
+  >();
+  for (const r of rrRolesRaw ?? []) {
+    const mid = r.message_id as string;
+    if (!rolesByMessage.has(mid)) rolesByMessage.set(mid, []);
+    rolesByMessage.get(mid)!.push({
+      emojiKey: r.emoji_key as string,
+      emojiDisplay: r.emoji_display as string,
+      roleId: r.role_id as string,
+      label: (r.label as string | null) ?? null,
+    });
+  }
+  const reactionRoleMessages = (rrMsgRaw ?? []).map((m) => ({
+    messageId: m.message_id as string,
+    channelId: m.channel_id as string,
+    title: (m.title as string | null) ?? null,
+    description: (m.description as string | null) ?? null,
+    roles: rolesByMessage.get(m.message_id as string) ?? [],
+  }));
+
   return {
     kind: 'ok',
     guild,
@@ -185,6 +232,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     },
     stickyMessages,
     channelModes,
+    reactionRoleMessages,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
       roleIds: autoRoleIds,
@@ -305,6 +353,7 @@ export default async function GuildSettingsPage({
             booster={result.booster}
             stickyMessages={result.stickyMessages}
             channelModes={result.channelModes}
+            reactionRoleMessages={result.reactionRoleMessages}
             autoRoles={result.autoRoles}
             log={result.log}
             level={result.level}
@@ -326,6 +375,7 @@ function GuildSettingsView({
   booster,
   stickyMessages,
   channelModes,
+  reactionRoleMessages,
   autoRoles,
   log,
   level,
@@ -349,6 +399,18 @@ function GuildSettingsView({
     channelId: string;
     mode: 'images_only' | 'text_only';
     allowVideos: boolean;
+  }>;
+  reactionRoleMessages: Array<{
+    messageId: string;
+    channelId: string;
+    title: string | null;
+    description: string | null;
+    roles: Array<{
+      emojiKey: string;
+      emojiDisplay: string;
+      roleId: string;
+      label: string | null;
+    }>;
   }>;
   autoRoles: { enabled: boolean; roleIds: string[] };
   log: {
@@ -455,8 +517,11 @@ function GuildSettingsView({
     {
       label: 'Reaction-Rollen',
       icon: '✨',
-      enabled: false,
-      hint: 'Via Slash-Command verwaltet',
+      enabled: reactionRoleMessages.length > 0,
+      hint:
+        reactionRoleMessages.length > 0
+          ? `${reactionRoleMessages.length} Nachricht${reactionRoleMessages.length === 1 ? '' : 'en'}`
+          : 'Rolle per Emoji-Klick',
       target: 'reactionroles',
       accent: 'from-violet-500/25 to-purple-500/10 text-violet-500',
       summary: 'Self-Service: Rolle per Emoji-Reaktion.',
@@ -644,13 +709,12 @@ function GuildSettingsView({
       icon: '✨',
       description: 'Self-Service-Rollen über Emoji-Reaktionen.',
       content: (
-        <p className="text-sm text-muted">
-          Reaction-Roles werden aktuell über den Slash-Command{' '}
-          <code className="px-1.5 py-0.5 rounded bg-elev text-fg-soft text-xs">
-            /reactionroles
-          </code>{' '}
-          im Server verwaltet. Eine UI dafür folgt.
-        </p>
+        <ReactionRolesManager
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initial={reactionRoleMessages}
+        />
       ),
     },
     {

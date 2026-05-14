@@ -5,6 +5,14 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getFreshAccessToken } from '@/lib/discordConnection';
 import { canManageGuild, fetchCurrentUserGuilds } from '@/lib/discord';
+import {
+  addReaction,
+  deleteMessage,
+  editEmbed,
+  postEmbed,
+  removeOwnReaction,
+} from '@/lib/discordBot';
+import { buildReactionRoleEmbed, parseEmoji } from '@/lib/reactionRoles';
 
 async function assertCanManage(guildId: string): Promise<{ userId: string }> {
   const supabase = await createClient();
@@ -436,6 +444,187 @@ export async function sendBotEmbed(
       const txt = await res.text();
       return { ok: false, error: `Discord ${res.status}: ${txt.slice(0, 200)}` };
     }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Reaction-Roles ==============
+
+async function refreshRrEmbed(messageId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data: msg } = await admin
+    .from('bot_reaction_role_messages')
+    .select('channel_id, title, description')
+    .eq('message_id', messageId)
+    .maybeSingle();
+  if (!msg) return;
+  const { data: rolesData } = await admin
+    .from('bot_reaction_roles')
+    .select('emoji_display, role_id, label')
+    .eq('message_id', messageId);
+  const rows = (rolesData ?? []).map((r) => ({
+    emojiDisplay: r.emoji_display as string,
+    roleId: r.role_id as string,
+    label: (r.label as string | null) ?? null,
+  }));
+  const embed = buildReactionRoleEmbed(
+    (msg.title as string | null) ?? null,
+    (msg.description as string | null) ?? null,
+    rows,
+  );
+  await editEmbed(msg.channel_id as string, messageId, embed).catch((err) =>
+    console.error('[rr] editEmbed:', err),
+  );
+}
+
+export async function createReactionRoleMessage(
+  guildId: string,
+  channelId: string,
+  title: string,
+  description: string | null,
+): Promise<{ ok: boolean; error?: string; messageId?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (!title.trim()) return { ok: false, error: 'Titel fehlt.' };
+    const embed = buildReactionRoleEmbed(title.trim(), description?.trim() || null, []);
+    const posted = await postEmbed(channelId, embed);
+    const admin = createAdminClient();
+    const { error } = await admin.from('bot_reaction_role_messages').insert({
+      message_id: posted.id,
+      guild_id: guildId,
+      channel_id: channelId,
+      title: title.trim(),
+      description: description?.trim() || null,
+    });
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, messageId: posted.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteReactionRoleMessage(
+  guildId: string,
+  messageId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: msg } = await admin
+      .from('bot_reaction_role_messages')
+      .select('channel_id')
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (msg) {
+      await deleteMessage(msg.channel_id as string, messageId).catch((err) =>
+        console.error('[rr] deleteMessage:', err),
+      );
+    }
+    const { error } = await admin
+      .from('bot_reaction_role_messages')
+      .delete()
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function addReactionRoleMapping(
+  guildId: string,
+  messageId: string,
+  emojiInput: string,
+  roleId: string,
+  label: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const parsed = parseEmoji(emojiInput);
+    if (!parsed) return { ok: false, error: 'Emoji konnte nicht geparst werden.' };
+
+    const admin = createAdminClient();
+    const { data: msg } = await admin
+      .from('bot_reaction_role_messages')
+      .select('channel_id')
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!msg) return { ok: false, error: 'RR-Nachricht nicht gefunden.' };
+
+    try {
+      await addReaction(msg.channel_id as string, messageId, parsed.urlForm);
+    } catch (err) {
+      return {
+        ok: false,
+        error: `Reaction konnte nicht hinzugefügt werden — ungültiges Emoji oder kein Zugriff. (${
+          err instanceof Error ? err.message : 'unbekannt'
+        })`,
+      };
+    }
+
+    const { error } = await admin.from('bot_reaction_roles').upsert(
+      {
+        message_id: messageId,
+        emoji_key: parsed.key,
+        emoji_display: parsed.display,
+        role_id: roleId,
+        label: label?.trim() || null,
+      },
+      { onConflict: 'message_id,emoji_key' },
+    );
+    if (error) throw error;
+
+    await refreshRrEmbed(messageId);
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function removeReactionRoleMapping(
+  guildId: string,
+  messageId: string,
+  emojiKey: string,
+  emojiDisplay: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: msg } = await admin
+      .from('bot_reaction_role_messages')
+      .select('channel_id')
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+
+    const { error } = await admin
+      .from('bot_reaction_roles')
+      .delete()
+      .eq('message_id', messageId)
+      .eq('emoji_key', emojiKey);
+    if (error) throw error;
+
+    if (msg) {
+      const parsed = parseEmoji(emojiDisplay);
+      if (parsed) {
+        await removeOwnReaction(
+          msg.channel_id as string,
+          messageId,
+          parsed.urlForm,
+        ).catch((err) => console.error('[rr] removeOwnReaction:', err));
+      }
+      await refreshRrEmbed(messageId);
+    }
+
+    revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };

@@ -7,6 +7,12 @@ export type Update = {
 export const updates: Update[] = [
   {
     date: '2026-05-14',
+    title: 'Reaction-Rollen: Web-UI',
+    description:
+      'Reaction-Roles komplett über das Dashboard verwalten — Embed-Nachricht posten, Emoji↔Rolle-Zuordnungen hinzufügen/entfernen, alles mit Live-Discord-Aktionen. Slash-Command bleibt parallel verfügbar.',
+  },
+  {
+    date: '2026-05-14',
     title: 'Discord-Bot: Phase 1 — 7 neue Module',
     description:
       'Booster-Message, DM-bei-Join (im Welcome-Tab), Sticky-Messages, Channel-Modes (Bilder-/Text-Only), Embed-Creator mit Live-Preview, sowie zwei neue Slash-Commands /slowmode und /roleall.',
