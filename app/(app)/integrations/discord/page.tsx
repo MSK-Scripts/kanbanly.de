@@ -199,12 +199,14 @@ export default async function DiscordIntegrationPage({
               </div>
             )}
 
-            <h2 className="text-sm font-semibold text-fg mb-3 flex items-center gap-2">
-              <span>Deine Server</span>
-              <span className="text-xs text-subtle font-mono">
-                {totalCount}
-              </span>
-            </h2>
+            <div className="mb-5">
+              <h2 className="text-xl font-bold text-fg leading-tight">
+                Deine Server
+              </h2>
+              <p className="text-[12.5px] text-muted mt-0.5">
+                {totalCount} insgesamt · {activeCount} mit aktivem Bot
+              </p>
+            </div>
 
             {data.manageable.length === 0 ? (
               <div className="rounded-md border border-dashed border-line-strong p-8 text-center text-sm text-subtle">
@@ -231,18 +233,22 @@ function Stat({
 }) {
   return (
     <div
-      className={`rounded-md px-3 py-2 border ${
+      className={`rounded-lg px-4 py-2.5 border min-w-[100px] ${
         accent
-          ? 'bg-emerald-500/10 border-emerald-500/30'
-          : 'bg-elev border-line-strong'
+          ? 'bg-[var(--success-soft)] border-[var(--success-line)]'
+          : 'bg-elev/50 border-line backdrop-blur-sm'
       }`}
     >
-      <div className="text-[10px] uppercase tracking-wide text-subtle">
+      <div
+        className={`text-[10px] uppercase tracking-[0.15em] font-semibold ${
+          accent ? 'text-[var(--success)]' : 'text-subtle'
+        }`}
+      >
         {label}
       </div>
       <div
-        className={`text-xl font-semibold font-mono tabular-nums ${
-          accent ? 'text-emerald-700 dark:text-emerald-300' : 'text-fg'
+        className={`text-2xl font-bold font-mono tabular-nums mt-0.5 ${
+          accent ? 'text-[var(--success)]' : 'text-fg'
         }`}
       >
         {value}
@@ -252,78 +258,191 @@ function Stat({
 }
 
 function ServerList({ servers }: { servers: GuildRow[] }) {
+  const active = servers.filter((s) => s.botPresent);
+  const inactive = servers.filter((s) => !s.botPresent);
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {servers.map((g) => (
-        <ServerCard key={g.id} guild={g} />
-      ))}
+    <div className="space-y-8">
+      {active.length > 0 && (
+        <section>
+          <SectionLabel
+            title="Bot aktiv"
+            count={active.length}
+            accent="success"
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {active.map((g) => (
+              <ServerCard key={g.id} guild={g} />
+            ))}
+          </div>
+        </section>
+      )}
+      {inactive.length > 0 && (
+        <section>
+          <SectionLabel
+            title="Bot noch nicht eingeladen"
+            count={inactive.length}
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {inactive.map((g) => (
+              <ServerCard key={g.id} guild={g} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function SectionLabel({
+  title,
+  count,
+  accent,
+}: {
+  title: string;
+  count: number;
+  accent?: 'success';
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span
+        className={`h-2 w-2 rounded-full ${
+          accent === 'success' ? 'bg-[var(--success)]' : 'bg-muted/40'
+        }`}
+      />
+      <h3 className="text-[13px] font-semibold uppercase tracking-wider text-fg-soft">
+        {title}
+      </h3>
+      <span className="text-[11px] font-mono tabular-nums text-subtle">
+        {count}
+      </span>
     </div>
   );
 }
 
 function ServerCard({ guild }: { guild: GuildRow }) {
   const icon = guildIconUrl(guild);
-  return (
-    <div
-      className={`relative rounded-md border p-4 transition-colors ${
-        guild.botPresent
-          ? 'bg-surface border-emerald-500/30 hover:border-emerald-500/60'
-          : 'bg-surface border-line hover:border-line-strong'
-      }`}
-    >
-      <div className="flex items-start gap-3 mb-3">
-        <div className="h-12 w-12 rounded-md bg-elev flex items-center justify-center overflow-hidden shrink-0">
+  const isActive = guild.botPresent;
+
+  const cardClass = `group relative flex items-center gap-4 rounded-xl border bg-surface p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
+    isActive
+      ? 'border-line hover:border-[var(--success-line)]'
+      : 'border-line hover:border-line-strong'
+  }`;
+
+  const body = (<>
+      <div className="relative shrink-0">
+        <div className="h-16 w-16 rounded-2xl bg-elev flex items-center justify-center overflow-hidden ring-1 ring-line">
           {icon ? (
             <Image
               src={icon}
               alt=""
-              width={48}
-              height={48}
-              className="object-cover"
+              width={64}
+              height={64}
+              className="h-full w-full object-cover"
               unoptimized
             />
           ) : (
-            <span className="text-sm text-muted font-semibold">
+            <span className="text-base text-muted font-semibold">
               {guild.name.slice(0, 2).toUpperCase()}
             </span>
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm text-fg font-medium leading-snug break-words">
-            {guild.name}
-          </div>
-          <div className="flex items-center gap-1.5 mt-1">
-            <span
-              className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${
-                guild.botPresent ? 'bg-emerald-500' : 'bg-muted/50'
-              }`}
-            />
-            <span className="text-[11px] text-subtle">
-              {guild.owner ? 'Owner' : 'Verwalter'} ·{' '}
-              {guild.botPresent ? 'Bot aktiv' : 'Bot nicht eingeladen'}
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        {guild.botPresent ? (
-          <Link
-            href={`/integrations/discord/${guild.id}`}
-            className="flex-1 text-center text-xs font-medium rounded-md bg-accent hover:bg-accent-hover text-white px-3 py-1.5 transition-colors"
-          >
-            Verwalten
-          </Link>
-        ) : (
-          <a
-            href={buildBotInviteUrl(guild.id)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 text-center text-xs font-medium rounded-md bg-[#5865F2] hover:bg-[#4752C4] text-white px-3 py-1.5 transition-colors"
-          >
-            Bot einladen
-          </a>
+        {isActive && (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-[var(--success)] border-2 border-surface"
+            title="Bot aktiv"
+            aria-hidden
+          />
         )}
       </div>
-    </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="text-[15px] font-semibold text-fg leading-tight break-words">
+          {guild.name}
+        </div>
+        <div className="mt-1.5 flex items-center gap-2 text-[11.5px]">
+          <span className="rounded-md bg-elev border border-line-strong px-1.5 py-0.5 text-fg-soft font-medium">
+            {guild.owner ? 'Owner' : 'Verwalter'}
+          </span>
+          <span
+            className={
+              isActive
+                ? 'text-[var(--success)] font-medium'
+                : 'text-subtle'
+            }
+          >
+            {isActive ? 'Bot aktiv' : 'Nicht eingeladen'}
+          </span>
+        </div>
+      </div>
+
+      <div className="shrink-0">
+        {isActive ? (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-accent/10 text-accent border border-accent/30 px-3 py-1.5 text-xs font-semibold group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-all">
+            Verwalten
+            <ArrowIcon />
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-[#5865F2]/10 text-[#5865F2] border border-[#5865F2]/30 px-3 py-1.5 text-xs font-semibold group-hover:bg-[#5865F2] group-hover:text-white group-hover:border-[#5865F2] transition-all">
+            Einladen
+            <ExternalIcon />
+          </span>
+        )}
+      </div>
+    </>
+  );
+
+  if (isActive) {
+    return (
+      <Link href={`/integrations/discord/${guild.id}`} className={cardClass}>
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <a
+      href={buildBotInviteUrl(guild.id)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cardClass}
+    >
+      {body}
+    </a>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+      aria-hidden
+    >
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+function ExternalIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3 w-3"
+      aria-hidden
+    >
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
   );
 }
