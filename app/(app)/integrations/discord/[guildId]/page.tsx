@@ -41,11 +41,14 @@ import { HelpdeskForm } from '@/components/HelpdeskForm';
 import { TempVoiceForm } from '@/components/TempVoiceForm';
 import { DailyImageForm, TeamlistsForm } from '@/components/QuickWinsForms';
 import { TicketsForm } from '@/components/TicketsForm';
+import { PricelistForm } from '@/components/PricelistForm';
 import {
   listTicketPanels,
   listSuggestionPanels,
+  listPricelistPanels,
   type TicketPanelRow,
   type SuggestionPanelRow,
+  type PricelistPanelRow,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import type { EmbedTemplate, MessagePayloadV2 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
@@ -231,6 +234,7 @@ type LoadResult =
         color: number | null;
       }>;
       ticketPanels: TicketPanelRow[];
+      pricelistPanels: PricelistPanelRow[];
       giveaways: Array<{
         id: string;
         channelId: string;
@@ -527,6 +531,11 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const ticketListRes = await listTicketPanels(guildId);
   const ticketPanels: TicketPanelRow[] = ticketListRes.ok ? ticketListRes.panels ?? [] : [];
 
+  const pricelistRes = await listPricelistPanels(guildId);
+  const pricelistPanels: PricelistPanelRow[] = pricelistRes.ok
+    ? pricelistRes.panels ?? []
+    : [];
+
   const { data: teamlistsRaw } = await admin
     .from('bot_teamlists')
     .select('id, channel_id, message_id, title, role_ids, color')
@@ -694,6 +703,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     },
     teamlists,
     ticketPanels,
+    pricelistPanels,
     giveaways,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
@@ -850,6 +860,7 @@ export default async function GuildSettingsPage({
             dailyImage={result.dailyImage}
             teamlists={result.teamlists}
             ticketPanels={result.ticketPanels}
+            pricelistPanels={result.pricelistPanels}
           />
         )}
       </div>
@@ -891,6 +902,7 @@ function GuildSettingsView({
   dailyImage,
   teamlists,
   ticketPanels,
+  pricelistPanels,
 }: {
   guildName: string;
   guildId: string;
@@ -1069,6 +1081,7 @@ function GuildSettingsView({
     color: number | null;
   }>;
   ticketPanels: TicketPanelRow[];
+  pricelistPanels: PricelistPanelRow[];
 }) {
   const moduleDefs = [
     {
@@ -1283,6 +1296,16 @@ function GuildSettingsView({
       enabled: ticketPanels.length > 0,
       toggleable: false,
       count: ticketPanels.length > 0 ? ticketPanels.length : undefined,
+    },
+    {
+      key: 'pricelist' as const,
+      name: 'Preisliste',
+      description: 'Panel mit Buttons — Klick öffnet privates Detail-Embed (Preis, Beschreibung, Bild).',
+      tab: 'pricelist',
+      enabled: pricelistPanels.length > 0,
+      toggleable: false,
+      count: pricelistPanels.length > 0 ? pricelistPanels.length : undefined,
+      isNew: true,
     },
   ];
 
@@ -1553,6 +1576,19 @@ function GuildSettingsView({
           channels={channels}
           roles={roles}
           initialPanels={ticketPanels}
+        />
+      ),
+    },
+    {
+      id: 'pricelist',
+      label: 'Preisliste',
+      icon: '📋',
+      description: 'Panel mit Buttons — Klick zeigt Detail-Embed pro Eintrag.',
+      content: (
+        <PricelistForm
+          guildId={guildId}
+          channels={channels}
+          initialPanels={pricelistPanels}
         />
       ),
     },

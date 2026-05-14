@@ -2879,7 +2879,8 @@ type ModuleKey =
   | 'tempvoice'
   | 'dailyimage'
   | 'teamlist'
-  | 'tickets';
+  | 'tickets'
+  | 'pricelist';
 
 export async function toggleBotModule(
   guildId: string,
@@ -3813,6 +3814,406 @@ export async function sendTestSuggestionPanel(
       embeds: embeds as unknown as EmbedPayload[],
       components: payload.components as Record<string, unknown>[],
     });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Preisliste ==============
+
+export type PricelistItemRow = {
+  id: string;
+  label: string;
+  emoji: string | null;
+  style: TicketButtonStyleAct;
+  detailTitle: string;
+  detailDescription: string;
+  detailPrice: string | null;
+  detailColor: number | null;
+  detailImageUrl: string | null;
+  position: number;
+};
+
+export type PricelistPanelRow = {
+  id: string;
+  channelId: string;
+  messageId: string | null;
+  title: string;
+  description: string;
+  color: number | null;
+  imageUrl: string | null;
+  thumbnailUrl: string | null;
+  footer: string | null;
+  items: PricelistItemRow[];
+};
+
+function buildPricelistPayload(panel: PricelistPanelRow): Record<string, unknown> {
+  const embed: Record<string, unknown> = {
+    title: panel.title.slice(0, 256),
+    color: panel.color ?? 0x380d52,
+  };
+  if (panel.description) embed.description = panel.description.slice(0, 4000);
+  if (panel.imageUrl) embed.image = { url: panel.imageUrl };
+  if (panel.thumbnailUrl) embed.thumbnail = { url: panel.thumbnailUrl };
+  if (panel.footer) embed.footer = { text: panel.footer.slice(0, 2048) };
+
+  const items = panel.items.slice(0, 25);
+  const rows: Array<Record<string, unknown>> = [];
+  for (let i = 0; i < items.length; i += 5) {
+    const chunk = items.slice(i, i + 5);
+    rows.push({
+      type: 1,
+      components: chunk.map((it) => {
+        const btn: Record<string, unknown> = {
+          type: 2,
+          style: TICKET_STYLE_MAP[it.style] ?? 2,
+          custom_id: `pl:item:${it.id}`,
+          label: it.label.slice(0, 80),
+        };
+        const emoji = parseSugEmoji(it.emoji);
+        if (emoji) btn.emoji = emoji;
+        return btn;
+      }),
+    });
+  }
+  return { embeds: [embed], components: rows };
+}
+
+async function loadPricelistPanel(
+  guildId: string,
+  panelId: string,
+): Promise<PricelistPanelRow | null> {
+  const admin = createAdminClient();
+  const { data: panel } = await admin
+    .from('bot_pricelist_panels')
+    .select(
+      'id, channel_id, message_id, title, description, color, image_url, thumbnail_url, footer',
+    )
+    .eq('id', panelId)
+    .eq('guild_id', guildId)
+    .maybeSingle();
+  if (!panel) return null;
+  const { data: items } = await admin
+    .from('bot_pricelist_items')
+    .select(
+      'id, label, emoji, style, detail_title, detail_description, detail_price, detail_color, detail_image_url, position',
+    )
+    .eq('panel_id', panelId)
+    .order('position');
+  return {
+    id: panel.id as string,
+    channelId: panel.channel_id as string,
+    messageId: (panel.message_id as string | null) ?? null,
+    title: (panel.title as string) ?? 'Preisliste',
+    description: (panel.description as string) ?? '',
+    color: (panel.color as number | null) ?? null,
+    imageUrl: (panel.image_url as string | null) ?? null,
+    thumbnailUrl: (panel.thumbnail_url as string | null) ?? null,
+    footer: (panel.footer as string | null) ?? null,
+    items: (items ?? []).map((r) => ({
+      id: r.id as string,
+      label: r.label as string,
+      emoji: (r.emoji as string | null) ?? null,
+      style: ((r.style as TicketButtonStyleAct | null) ?? 'secondary'),
+      detailTitle: (r.detail_title as string) ?? '',
+      detailDescription: (r.detail_description as string | null) ?? '',
+      detailPrice: (r.detail_price as string | null) ?? null,
+      detailColor: (r.detail_color as number | null) ?? null,
+      detailImageUrl: (r.detail_image_url as string | null) ?? null,
+      position: (r.position as number) ?? 0,
+    })),
+  };
+}
+
+export async function listPricelistPanels(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; panels?: PricelistPanelRow[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: panels, error } = await admin
+      .from('bot_pricelist_panels')
+      .select(
+        'id, channel_id, message_id, title, description, color, image_url, thumbnail_url, footer',
+      )
+      .eq('guild_id', guildId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const ids = (panels ?? []).map((p) => p.id as string);
+    const { data: items } = ids.length
+      ? await admin
+          .from('bot_pricelist_items')
+          .select(
+            'id, panel_id, label, emoji, style, detail_title, detail_description, detail_price, detail_color, detail_image_url, position',
+          )
+          .in('panel_id', ids)
+          .order('position')
+      : { data: [] as Array<Record<string, unknown>> };
+    const byPanel = new Map<string, PricelistItemRow[]>();
+    for (const r of items ?? []) {
+      const pid = r.panel_id as string;
+      const list = byPanel.get(pid) ?? [];
+      list.push({
+        id: r.id as string,
+        label: r.label as string,
+        emoji: (r.emoji as string | null) ?? null,
+        style: ((r.style as TicketButtonStyleAct | null) ?? 'secondary'),
+        detailTitle: (r.detail_title as string) ?? '',
+        detailDescription: (r.detail_description as string | null) ?? '',
+        detailPrice: (r.detail_price as string | null) ?? null,
+        detailColor: (r.detail_color as number | null) ?? null,
+        detailImageUrl: (r.detail_image_url as string | null) ?? null,
+        position: (r.position as number) ?? 0,
+      });
+      byPanel.set(pid, list);
+    }
+    return {
+      ok: true,
+      panels: (panels ?? []).map((p) => ({
+        id: p.id as string,
+        channelId: p.channel_id as string,
+        messageId: (p.message_id as string | null) ?? null,
+        title: (p.title as string) ?? 'Preisliste',
+        description: (p.description as string) ?? '',
+        color: (p.color as number | null) ?? null,
+        imageUrl: (p.image_url as string | null) ?? null,
+        thumbnailUrl: (p.thumbnail_url as string | null) ?? null,
+        footer: (p.footer as string | null) ?? null,
+        items: byPanel.get(p.id as string) ?? [],
+      })),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export type PricelistPanelInput = {
+  channelId: string;
+  title: string;
+  description: string;
+  color: number | null;
+  imageUrl: string | null;
+  thumbnailUrl: string | null;
+  footer: string | null;
+};
+
+export type PricelistItemInput = {
+  label: string;
+  emoji: string | null;
+  style: TicketButtonStyleAct;
+  detailTitle: string;
+  detailDescription: string;
+  detailPrice: string | null;
+  detailColor: number | null;
+  detailImageUrl: string | null;
+};
+
+export async function createPricelistPanelWeb(
+  guildId: string,
+  input: PricelistPanelInput,
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    const { userId } = await assertCanManage(guildId);
+    if (!input.channelId || !input.title.trim()) {
+      return { ok: false, error: 'Channel und Titel sind nötig.' };
+    }
+    const admin = createAdminClient();
+    const { data: panel, error } = await admin
+      .from('bot_pricelist_panels')
+      .insert({
+        guild_id: guildId,
+        channel_id: input.channelId,
+        title: input.title.trim().slice(0, 256),
+        description: input.description.trim().slice(0, 4000),
+        color: input.color,
+        image_url: input.imageUrl?.trim() || null,
+        thumbnail_url: input.thumbnailUrl?.trim() || null,
+        footer: input.footer?.trim() || null,
+        created_by: userId,
+      })
+      .select('id')
+      .single();
+    if (error || !panel) throw error ?? new Error('Insert fehlgeschlagen.');
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: panel.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updatePricelistPanelWeb(
+  guildId: string,
+  panelId: string,
+  input: PricelistPanelInput,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_pricelist_panels')
+      .update({
+        channel_id: input.channelId,
+        title: input.title.trim().slice(0, 256),
+        description: input.description.trim().slice(0, 4000),
+        color: input.color,
+        image_url: input.imageUrl?.trim() || null,
+        thumbnail_url: input.thumbnailUrl?.trim() || null,
+        footer: input.footer?.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', panelId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deletePricelistPanelWeb(
+  guildId: string,
+  panelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: row } = await admin
+      .from('bot_pricelist_panels')
+      .select('channel_id, message_id')
+      .eq('id', panelId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (row?.message_id) {
+      await deleteMessage(
+        row.channel_id as string,
+        row.message_id as string,
+      ).catch(() => {});
+    }
+    const { error } = await admin
+      .from('bot_pricelist_panels')
+      .delete()
+      .eq('id', panelId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function upsertPricelistItem(
+  guildId: string,
+  panelId: string,
+  itemId: string | null,
+  input: PricelistItemInput,
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (!input.label.trim() || !input.detailTitle.trim()) {
+      return { ok: false, error: 'Label und Detail-Titel sind nötig.' };
+    }
+    const admin = createAdminClient();
+    if (itemId) {
+      const { error } = await admin
+        .from('bot_pricelist_items')
+        .update({
+          label: input.label.trim().slice(0, 80),
+          emoji: input.emoji?.trim() || null,
+          style: input.style,
+          detail_title: input.detailTitle.trim().slice(0, 256),
+          detail_description: input.detailDescription.trim().slice(0, 4000),
+          detail_price: input.detailPrice?.trim() || null,
+          detail_color: input.detailColor,
+          detail_image_url: input.detailImageUrl?.trim() || null,
+        })
+        .eq('id', itemId);
+      if (error) throw error;
+      revalidatePath(`/integrations/discord/${guildId}`);
+      return { ok: true, id: itemId };
+    }
+    const { count } = await admin
+      .from('bot_pricelist_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('panel_id', panelId);
+    const position = count ?? 0;
+    const { data, error } = await admin
+      .from('bot_pricelist_items')
+      .insert({
+        panel_id: panelId,
+        label: input.label.trim().slice(0, 80),
+        emoji: input.emoji?.trim() || null,
+        style: input.style,
+        detail_title: input.detailTitle.trim().slice(0, 256),
+        detail_description: input.detailDescription.trim().slice(0, 4000),
+        detail_price: input.detailPrice?.trim() || null,
+        detail_color: input.detailColor,
+        detail_image_url: input.detailImageUrl?.trim() || null,
+        position,
+      })
+      .select('id')
+      .single();
+    if (error || !data) throw error ?? new Error('Insert fehlgeschlagen.');
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: data.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deletePricelistItem(
+  guildId: string,
+  itemId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin.from('bot_pricelist_items').delete().eq('id', itemId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function publishPricelistPanel(
+  guildId: string,
+  panelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const panel = await loadPricelistPanel(guildId, panelId);
+    if (!panel) return { ok: false, error: 'Panel nicht gefunden.' };
+    if (panel.items.length === 0) {
+      return { ok: false, error: 'Mindestens einen Eintrag anlegen.' };
+    }
+    const payload = buildPricelistPayload(panel);
+    const admin = createAdminClient();
+    if (panel.messageId) {
+      try {
+        await editMessage(
+          panel.channelId,
+          panel.messageId,
+          payload as { embeds: EmbedPayload[]; components: Record<string, unknown>[] },
+        );
+        revalidatePath(`/integrations/discord/${guildId}`);
+        return { ok: true };
+      } catch {
+        // Message weg → neu posten.
+      }
+    }
+    const posted = await postMessage(
+      panel.channelId,
+      payload as { embeds: EmbedPayload[]; components: Record<string, unknown>[] },
+    );
+    await admin
+      .from('bot_pricelist_panels')
+      .update({ message_id: posted.id })
+      .eq('id', panelId);
+    revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };

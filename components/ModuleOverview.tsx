@@ -30,7 +30,8 @@ export type ModuleKey =
   | 'tempvoice'
   | 'dailyimage'
   | 'teamlist'
-  | 'tickets';
+  | 'tickets'
+  | 'pricelist';
 
 type ModuleDef = {
   key: ModuleKey;
