@@ -27,6 +27,8 @@ type ModuleDef = {
   enabled: boolean;
   /** Toggle-State live editierbar (Boolean-Spalte) */
   toggleable: boolean;
+  /** Anzahl konfigurierter Einträge für nicht-toggleable Module (z.B. Sticky-Channels) */
+  count?: number;
   isNew?: boolean;
 };
 
@@ -92,10 +94,7 @@ export function ModuleOverview({ guildId, modules }: Props) {
   };
 
   const onToggle = async (mod: ModuleDef, next: boolean) => {
-    if (!mod.toggleable) {
-      navigate(mod.tab);
-      return;
-    }
+    if (!mod.toggleable) return;
     // Optimistisches Update — UI reagiert sofort.
     setOptimisticState((prev) => ({ ...prev, [mod.key]: next }));
     setBusyKeys((prev) => {
@@ -177,9 +176,6 @@ export function ModuleOverview({ guildId, modules }: Props) {
                       {m.isNew && (
                         <StatusPill kind="success">Neu</StatusPill>
                       )}
-                      {!m.toggleable && (
-                        <StatusPill kind="info">Tool</StatusPill>
-                      )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {busyKeys.has(m.key) && (
@@ -187,12 +183,22 @@ export function ModuleOverview({ guildId, modules }: Props) {
                           <Spinner size="xs" />
                         </span>
                       )}
-                      <Switch
-                        checked={live}
-                        onChange={(next) => onToggle(m, next)}
-                        size="sm"
-                        ariaLabel={`${m.name} umschalten`}
-                      />
+                      {m.toggleable ? (
+                        <Switch
+                          checked={live}
+                          onChange={(next) => onToggle(m, next)}
+                          size="sm"
+                          ariaLabel={`${m.name} umschalten`}
+                        />
+                      ) : (
+                        <StatusPill kind={m.enabled ? 'success' : 'neutral'} dot>
+                          {m.count !== undefined
+                            ? `${m.count} aktiv`
+                            : m.enabled
+                            ? 'Konfiguriert'
+                            : 'Tool'}
+                        </StatusPill>
+                      )}
                     </div>
                   </div>
                   <p className="text-[12.5px] text-muted leading-relaxed line-clamp-2">
