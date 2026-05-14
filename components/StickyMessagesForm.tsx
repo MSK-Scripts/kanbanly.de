@@ -6,6 +6,11 @@ import {
   deleteStickyMessage,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { confirm } from '@/store/confirmStore';
+import { toast } from '@/store/toastStore';
+import { Switch } from './Switch';
+import { Button } from './ui/Button';
+import { FormSection } from './ui/FormSection';
+import { StatusBanner } from './ui/Status';
 
 type Props = {
   guildId: string;
@@ -19,7 +24,6 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
   const [newContent, setNewContent] = useState('');
   const [newUseEmbed, setNewUseEmbed] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   const channelById = new Map(channels.map((c) => [c.id, c.name]));
   const occupiedIds = new Set(items.map((i) => i.channelId));
@@ -27,7 +31,6 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
 
   const addSticky = () => {
     if (!newChannelId || !newContent.trim()) return;
-    setMsg(null);
     startTransition(async () => {
       const r = await upsertStickyMessage(guildId, newChannelId, newContent, newUseEmbed);
       if (r.ok) {
@@ -38,26 +41,23 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
         setNewChannelId('');
         setNewContent('');
         setNewUseEmbed(false);
-        setMsg({ kind: 'ok', text: 'Sticky angelegt.' });
+        toast.success('Sticky-Message angelegt');
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Anlegen fehlgeschlagen', r.error);
       }
     });
   };
 
   const updateSticky = (channelId: string, content: string, useEmbed: boolean) => {
-    setMsg(null);
     startTransition(async () => {
       const r = await upsertStickyMessage(guildId, channelId, content, useEmbed);
       if (r.ok) {
         setItems((prev) =>
-          prev.map((i) =>
-            i.channelId === channelId ? { ...i, content, useEmbed } : i,
-          ),
+          prev.map((i) => (i.channelId === channelId ? { ...i, content, useEmbed } : i)),
         );
-        setMsg({ kind: 'ok', text: 'Aktualisiert.' });
+        toast.success('Sticky-Message aktualisiert');
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Speichern fehlgeschlagen', r.error);
       }
     });
   };
@@ -70,25 +70,23 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
       danger: true,
     });
     if (!ok) return;
-    setMsg(null);
     startTransition(async () => {
       const r = await deleteStickyMessage(guildId, channelId);
       if (r.ok) {
         setItems((prev) => prev.filter((i) => i.channelId !== channelId));
-        setMsg({ kind: 'ok', text: 'Entfernt.' });
+        toast.success('Sticky-Message entfernt');
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Entfernen fehlgeschlagen', r.error);
       }
     });
   };
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-subtle">
-        Sticky-Messages werden vom Bot regelmäßig erneut gepostet, damit sie am
-        Ende des Channels sichtbar bleiben. Re-Post nach 3 Nachrichten oder 5
-        Sekunden.
-      </p>
+      <StatusBanner kind="info">
+        Sticky-Messages werden vom Bot erneut gepostet, damit sie am Channel-Ende
+        sichtbar bleiben. Re-Post nach 3 Nachrichten oder 5 Sekunden.
+      </StatusBanner>
 
       {items.length > 0 ? (
         <ul className="space-y-3">
@@ -108,67 +106,86 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
           ))}
         </ul>
       ) : (
-        <div className="rounded-md border border-dashed border-line-strong p-6 text-center text-xs text-subtle">
-          Noch keine Sticky-Messages.
+        <div className="rounded-xl border border-dashed border-line-strong p-10 text-center">
+          <div className="text-3xl mb-2">📌</div>
+          <div className="text-sm text-fg-soft mb-1">Noch keine Sticky-Messages</div>
+          <div className="text-[12px] text-subtle">
+            Lege unten deine erste Sticky-Message für einen Channel an.
+          </div>
         </div>
       )}
 
-      <div className="rounded-md border border-line bg-elev/40 p-4 space-y-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-          Neu hinzufügen
-        </div>
-        <select
-          value={newChannelId}
-          onChange={(e) => setNewChannelId(e.target.value)}
-          className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-accent"
-        >
-          <option value="">— Channel wählen —</option>
-          {availableChannels.map((c) => (
-            <option key={c.id} value={c.id}>
-              #{c.name}
+      <FormSection
+        title="Neue Sticky-Message"
+        description="Eine Sticky pro Channel — der Bot postet sie am Ende erneut."
+      >
+        <div>
+          <label className="block text-[12.5px] font-medium text-fg-soft mb-1.5">
+            Channel
+          </label>
+          <select
+            value={newChannelId}
+            onChange={(e) => setNewChannelId(e.target.value)}
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+            disabled={availableChannels.length === 0}
+          >
+            <option value="">
+              {availableChannels.length === 0
+                ? 'Alle Channels haben bereits Sticky-Messages'
+                : '— Channel wählen —'}
             </option>
-          ))}
-        </select>
-        <textarea
-          value={newContent}
-          onChange={(e) => setNewContent(e.target.value)}
-          rows={3}
-          maxLength={1500}
-          placeholder="Inhalt der Sticky-Message (Markdown ok)…"
-          className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle font-mono focus:outline-none focus:ring-1 focus:ring-accent resize-y"
-        />
-        <label className="flex items-center justify-between gap-3 text-xs text-fg-soft">
-          <span>
-            Als <strong>{newUseEmbed ? 'Embed' : 'Plain-Text'}</strong> senden
-          </span>
-          <input
-            type="checkbox"
-            checked={newUseEmbed}
-            onChange={(e) => setNewUseEmbed(e.target.checked)}
-            className="h-4 w-4 accent-accent"
-          />
-        </label>
-        <button
-          type="button"
-          onClick={addSticky}
-          disabled={pending || !newChannelId || !newContent.trim()}
-          className="rounded-md bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-medium px-4 py-2 transition-colors"
-        >
-          {pending ? 'Speichert…' : 'Hinzufügen'}
-        </button>
-      </div>
-
-      {msg && (
-        <div
-          className={`text-xs ${
-            msg.kind === 'ok'
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-rose-600 dark:text-rose-400'
-          }`}
-        >
-          {msg.text}
+            {availableChannels.map((c) => (
+              <option key={c.id} value={c.id}>
+                #{c.name}
+              </option>
+            ))}
+          </select>
         </div>
-      )}
+
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[12.5px] font-medium text-fg-soft">Inhalt</label>
+            <span className="text-[10px] text-subtle font-mono tabular-nums">
+              {newContent.length}/1500
+            </span>
+          </div>
+          <textarea
+            value={newContent}
+            onChange={(e) => setNewContent(e.target.value)}
+            rows={3}
+            maxLength={1500}
+            placeholder="Wichtige Info, die am Channel-Ende bleiben soll. Markdown ok."
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle font-mono focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-y transition-all"
+          />
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border border-line bg-elev/30 px-3.5 py-2.5">
+          <div className="text-[12.5px] text-fg-soft">
+            Format:{' '}
+            <span className="font-semibold text-fg">
+              {newUseEmbed ? 'Embed' : 'Plain-Text'}
+            </span>
+          </div>
+          <Switch
+            checked={newUseEmbed}
+            onChange={setNewUseEmbed}
+            size="sm"
+            ariaLabel="Als Embed senden"
+          />
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button
+            type="button"
+            onClick={addSticky}
+            loading={pending}
+            disabled={!newChannelId || !newContent.trim()}
+            variant="primary"
+          >
+            {pending ? 'Anlegen…' : 'Hinzufügen'}
+          </Button>
+        </div>
+      </FormSection>
     </div>
   );
 }
@@ -194,49 +211,74 @@ function StickyRow({
   const [useEmbed, setUseEmbed] = useState(initialUseEmbed);
   const dirty = content !== initialContent || useEmbed !== initialUseEmbed;
   return (
-    <li className="rounded-md border border-line bg-elev/40 p-4">
-      <div className="flex items-baseline justify-between mb-2">
-        <div className="text-sm font-medium text-fg">
-          📌 <span className="text-accent">#{channelName}</span>
+    <li className="rounded-xl border border-line bg-surface overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-line bg-elev/30">
+        <div className="flex items-center gap-2 min-w-0">
+          <span aria-hidden>📌</span>
+          <span className="text-[13.5px] font-semibold text-accent">
+            #{channelName}
+          </span>
         </div>
-        <span className="text-[10px] font-mono text-subtle">{channelId}</span>
-      </div>
-      <textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        rows={3}
-        maxLength={1500}
-        className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg font-mono focus:outline-none focus:ring-1 focus:ring-accent resize-y"
-      />
-      <label className="flex items-center justify-between gap-3 text-xs text-fg-soft mt-2">
-        <span>
-          Format: <strong>{useEmbed ? 'Embed' : 'Plain-Text'}</strong>
+        <span className="text-[10px] font-mono text-subtle hidden sm:inline">
+          {channelId}
         </span>
-        <input
-          type="checkbox"
-          checked={useEmbed}
-          onChange={(e) => setUseEmbed(e.target.checked)}
-          className="h-4 w-4 accent-accent"
-        />
-      </label>
-      <div className="flex items-center gap-2 mt-2">
-        <button
-          type="button"
-          onClick={() => onSave(content, useEmbed)}
-          disabled={pending || !dirty || !content.trim()}
-          className="rounded-md bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 transition-colors"
-        >
-          Speichern
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={pending}
-          className="text-xs text-subtle hover:text-rose-500 px-2 py-1.5 transition-colors"
-        >
-          Entfernen
-        </button>
-        {dirty && <span className="text-[11px] text-amber-500 ml-auto">● ungespeichert</span>}
+      </div>
+      <div className="p-4 space-y-3">
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[11.5px] font-medium text-muted">Inhalt</label>
+            <span className="text-[10px] text-subtle font-mono tabular-nums">
+              {content.length}/1500
+            </span>
+          </div>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={3}
+            maxLength={1500}
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg font-mono focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-y transition-all"
+          />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-line bg-elev/30 px-3 py-2">
+          <div className="text-[12px] text-fg-soft">
+            Format:{' '}
+            <span className="font-semibold text-fg">
+              {useEmbed ? 'Embed' : 'Plain-Text'}
+            </span>
+          </div>
+          <Switch
+            checked={useEmbed}
+            onChange={setUseEmbed}
+            size="sm"
+            ariaLabel="Als Embed senden"
+          />
+        </div>
+        <div className="flex items-center gap-2 pt-1">
+          <Button
+            type="button"
+            onClick={() => onSave(content, useEmbed)}
+            loading={pending && dirty}
+            disabled={!dirty || !content.trim()}
+            size="sm"
+            variant="primary"
+          >
+            Speichern
+          </Button>
+          <Button
+            type="button"
+            onClick={onRemove}
+            disabled={pending}
+            size="sm"
+            variant="ghost"
+          >
+            Entfernen
+          </Button>
+          {dirty && (
+            <span className="text-[11px] text-[var(--warning)] ml-auto">
+              ● ungespeichert
+            </span>
+          )}
+        </div>
       </div>
     </li>
   );

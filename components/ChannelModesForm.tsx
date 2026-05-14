@@ -6,6 +6,10 @@ import {
   deleteChannelMode,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { confirm } from '@/store/confirmStore';
+import { toast } from '@/store/toastStore';
+import { Button } from './ui/Button';
+import { FormSection } from './ui/FormSection';
+import { StatusPill, StatusBanner } from './ui/Status';
 
 type Mode = 'images_only' | 'text_only';
 
@@ -31,7 +35,6 @@ export function ChannelModesForm({ guildId, channels, initial }: Props) {
   const [newMode, setNewMode] = useState<Mode>('images_only');
   const [newAllowVideos, setNewAllowVideos] = useState(true);
   const [pending, startTransition] = useTransition();
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   const channelById = new Map(channels.map((c) => [c.id, c.name]));
   const occupiedIds = new Set(items.map((i) => i.channelId));
@@ -39,7 +42,6 @@ export function ChannelModesForm({ guildId, channels, initial }: Props) {
 
   const add = () => {
     if (!newChannelId) return;
-    setMsg(null);
     startTransition(async () => {
       const r = await upsertChannelMode(guildId, newChannelId, newMode, newAllowVideos);
       if (r.ok) {
@@ -48,9 +50,9 @@ export function ChannelModesForm({ guildId, channels, initial }: Props) {
           { channelId: newChannelId, mode: newMode, allowVideos: newAllowVideos },
         ]);
         setNewChannelId('');
-        setMsg({ kind: 'ok', text: 'Hinzugefügt.' });
+        toast.success('Channel-Mode hinzugefügt');
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Anlegen fehlgeschlagen', r.error);
       }
     });
   };
@@ -63,125 +65,146 @@ export function ChannelModesForm({ guildId, channels, initial }: Props) {
       danger: true,
     });
     if (!ok) return;
-    setMsg(null);
     startTransition(async () => {
       const r = await deleteChannelMode(guildId, channelId);
       if (r.ok) {
         setItems((prev) => prev.filter((i) => i.channelId !== channelId));
-        setMsg({ kind: 'ok', text: 'Entfernt.' });
+        toast.success('Channel-Mode entfernt');
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Entfernen fehlgeschlagen', r.error);
       }
     });
   };
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-subtle">
+      <StatusBanner kind="info">
         Beschränkt einen Channel auf nur Bilder oder nur Text. Moderatoren werden
         nicht gefiltert. Nicht-konforme Nachrichten werden gelöscht, der User
         bekommt eine DM-Notiz.
-      </p>
+      </StatusBanner>
 
       {items.length > 0 ? (
-        <ul className="rounded-md border border-line bg-elev/40 divide-y divide-line">
+        <ul className="rounded-xl border border-line bg-surface divide-y divide-line/60 overflow-hidden">
           {items.map((item) => (
             <li
               key={item.channelId}
-              className="flex items-center justify-between gap-3 px-4 py-3"
+              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-elev/30 transition-colors"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span className="text-lg" aria-hidden>
-                  {MODE_ICON[item.mode]}
-                </span>
+                <div className="h-9 w-9 rounded-lg bg-elev border border-line grid place-items-center shrink-0">
+                  <span className="text-lg" aria-hidden>
+                    {MODE_ICON[item.mode]}
+                  </span>
+                </div>
                 <div className="min-w-0">
-                  <div className="text-sm text-fg">
+                  <div className="text-[13.5px] font-semibold text-fg">
                     #{channelById.get(item.channelId) ?? item.channelId}
                   </div>
-                  <div className="text-[11px] text-subtle">
+                  <div className="text-[11.5px] text-muted">
                     {MODE_LABEL[item.mode]}
                     {item.mode === 'images_only' &&
                       (item.allowVideos ? ' · inkl. Videos' : ' · keine Videos')}
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => remove(item.channelId)}
-                disabled={pending}
-                className="text-[11px] text-subtle hover:text-rose-500 px-2 py-1 transition-colors"
-              >
-                Entfernen
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <StatusPill kind="success" dot>
+                  Aktiv
+                </StatusPill>
+                <Button
+                  type="button"
+                  onClick={() => remove(item.channelId)}
+                  disabled={pending}
+                  size="sm"
+                  variant="ghost"
+                >
+                  Entfernen
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
       ) : (
-        <div className="rounded-md border border-dashed border-line-strong p-6 text-center text-xs text-subtle">
-          Noch keine Channel-Modes konfiguriert.
+        <div className="rounded-xl border border-dashed border-line-strong p-10 text-center">
+          <div className="text-3xl mb-2">🎯</div>
+          <div className="text-sm text-fg-soft mb-1">
+            Noch keine Channel-Modes konfiguriert
+          </div>
+          <div className="text-[12px] text-subtle">
+            Lege unten den ersten Filter für einen Channel an.
+          </div>
         </div>
       )}
 
-      <div className="rounded-md border border-line bg-elev/40 p-4 space-y-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-          Neu hinzufügen
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <select
-            value={newChannelId}
-            onChange={(e) => setNewChannelId(e.target.value)}
-            className="rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-accent"
-          >
-            <option value="">— Channel wählen —</option>
-            {availableChannels.map((c) => (
-              <option key={c.id} value={c.id}>
-                #{c.name}
+      <FormSection
+        title="Neuer Channel-Mode"
+        description="Wähle Channel + Modus. Optional: Videos in Bilder-Channels erlauben."
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[12.5px] font-medium text-fg-soft mb-1.5">
+              Channel
+            </label>
+            <select
+              value={newChannelId}
+              onChange={(e) => setNewChannelId(e.target.value)}
+              disabled={availableChannels.length === 0}
+              className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+            >
+              <option value="">
+                {availableChannels.length === 0
+                  ? 'Alle Channels haben bereits einen Mode'
+                  : '— Channel wählen —'}
               </option>
-            ))}
-          </select>
-          <select
-            value={newMode}
-            onChange={(e) => setNewMode(e.target.value as Mode)}
-            className="rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-accent"
-          >
-            <option value="images_only">🖼️ Bilder-Only</option>
-            <option value="text_only">💬 Text-Only</option>
-          </select>
+              {availableChannels.map((c) => (
+                <option key={c.id} value={c.id}>
+                  #{c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[12.5px] font-medium text-fg-soft mb-1.5">
+              Modus
+            </label>
+            <select
+              value={newMode}
+              onChange={(e) => setNewMode(e.target.value as Mode)}
+              className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+            >
+              <option value="images_only">🖼️ Bilder-Only</option>
+              <option value="text_only">💬 Text-Only</option>
+            </select>
+          </div>
         </div>
 
         {newMode === 'images_only' && (
-          <label className="flex items-center gap-2 text-sm text-fg-soft cursor-pointer">
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-line bg-elev/30 px-3.5 py-2.5 cursor-pointer">
+            <div className="text-[12.5px] text-fg-soft">
+              Videos auch erlauben
+            </div>
             <input
               type="checkbox"
               checked={newAllowVideos}
               onChange={(e) => setNewAllowVideos(e.target.checked)}
               className="h-4 w-4 accent-accent"
             />
-            Videos auch erlauben
           </label>
         )}
 
-        <button
-          type="button"
-          onClick={add}
-          disabled={pending || !newChannelId}
-          className="rounded-md bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-medium px-4 py-2 transition-colors"
-        >
-          {pending ? 'Speichert…' : 'Hinzufügen'}
-        </button>
-      </div>
-
-      {msg && (
-        <div
-          className={`text-xs ${
-            msg.kind === 'ok'
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-rose-600 dark:text-rose-400'
-          }`}
-        >
-          {msg.text}
+        <div className="flex justify-end pt-2">
+          <Button
+            type="button"
+            onClick={add}
+            disabled={!newChannelId}
+            loading={pending}
+            variant="primary"
+          >
+            {pending ? 'Anlegen…' : 'Hinzufügen'}
+          </Button>
         </div>
-      )}
+      </FormSection>
     </div>
   );
 }
