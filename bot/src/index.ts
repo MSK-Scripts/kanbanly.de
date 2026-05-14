@@ -14,6 +14,7 @@ import { registerTicketButtons } from './events/ticketButtons.js';
 import { registerBooster } from './events/booster.js';
 import { registerSticky } from './events/sticky.js';
 import { registerChannelMode } from './events/channelMode.js';
+import { startChannelModeRealtime } from './db/channelModes.js';
 import { registerRrInteractions } from './events/rrInteractions.js';
 
 // Intents:
@@ -79,6 +80,7 @@ registerBooster(client);
 registerSticky(client);
 registerChannelMode(client);
 registerRrInteractions(client);
+startChannelModeRealtime();
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

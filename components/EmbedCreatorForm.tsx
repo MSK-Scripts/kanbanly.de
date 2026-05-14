@@ -1,11 +1,20 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { sendBotEmbed } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import {
+  sendBotEmbed,
+  saveEmbedTemplate,
+  deleteEmbedTemplate,
+  type EmbedTemplate,
+} from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { toast } from '@/store/toastStore';
+import { confirm } from '@/store/confirmStore';
+import { Button } from './ui/Button';
 
 type Props = {
   guildId: string;
   channels: { id: string; name: string }[];
+  initialTemplates?: EmbedTemplate[];
 };
 
 const COLOR_PRESETS: Array<{ label: string; hex: string; value: number }> = [
@@ -27,26 +36,105 @@ function hexToColor(hex: string): number | null {
   return parseInt(m[1], 16);
 }
 
-export function EmbedCreatorForm({ guildId, channels }: Props) {
+export function EmbedCreatorForm({ guildId, channels, initialTemplates = [] }: Props) {
   const [channelId, setChannelId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState<number>(0x5865f2);
   const [footer, setFooter] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [templates, setTemplates] = useState<EmbedTemplate[]>(initialTemplates);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [templateName, setTemplateName] = useState('');
+  const [savingTpl, setSavingTpl] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  const loadTemplate = (tpl: EmbedTemplate) => {
+    setTitle(tpl.title ?? '');
+    setDescription(tpl.description ?? '');
+    setColor(tpl.color ?? 0x5865f2);
+    setFooter(tpl.footer ?? '');
+    setImageUrl(tpl.imageUrl ?? '');
+    setActiveTemplateId(tpl.id);
+    setTemplateName(tpl.name);
+    toast.info(`Vorlage „${tpl.name}" geladen`);
+  };
+
+  const newTemplate = () => {
+    setTitle('');
+    setDescription('');
+    setColor(0x5865f2);
+    setFooter('');
+    setImageUrl('');
+    setActiveTemplateId(null);
+    setTemplateName('');
+  };
+
+  const saveCurrentAs = async (asNew: boolean) => {
+    const name = templateName.trim();
+    if (!name) {
+      toast.error('Name fehlt', 'Gib der Vorlage einen Namen.');
+      return;
+    }
+    setSavingTpl(true);
+    const r = await saveEmbedTemplate(guildId, {
+      id: asNew ? undefined : activeTemplateId ?? undefined,
+      name,
+      title: title.trim() || null,
+      description: description.trim() || null,
+      color,
+      footer: footer.trim() || null,
+      imageUrl: imageUrl.trim() || null,
+    });
+    setSavingTpl(false);
+    if (r.ok && r.id) {
+      const saved: EmbedTemplate = {
+        id: r.id,
+        name,
+        title: title.trim() || null,
+        description: description.trim() || null,
+        color,
+        footer: footer.trim() || null,
+        imageUrl: imageUrl.trim() || null,
+      };
+      setTemplates((prev) => {
+        const without = prev.filter((t) => t.id !== r.id);
+        return [saved, ...without];
+      });
+      setActiveTemplateId(r.id);
+      toast.success(asNew ? 'Als neue Vorlage gespeichert' : 'Vorlage aktualisiert');
+    } else {
+      toast.error('Speichern fehlgeschlagen', r.error);
+    }
+  };
+
+  const removeTemplate = async (tpl: EmbedTemplate) => {
+    const ok = await confirm({
+      title: 'Vorlage löschen?',
+      description: `„${tpl.name}" wird endgültig entfernt.`,
+      confirmLabel: 'Löschen',
+      danger: true,
+    });
+    if (!ok) return;
+    const r = await deleteEmbedTemplate(guildId, tpl.id);
+    if (r.ok) {
+      setTemplates((prev) => prev.filter((t) => t.id !== tpl.id));
+      if (activeTemplateId === tpl.id) newTemplate();
+      toast.success('Vorlage gelöscht');
+    } else {
+      toast.error('Löschen fehlgeschlagen', r.error);
+    }
+  };
 
   const submit = () => {
     if (!channelId) {
-      setMsg({ kind: 'err', text: 'Channel wählen.' });
+      toast.error('Channel wählen');
       return;
     }
     if (!title.trim() && !description.trim()) {
-      setMsg({ kind: 'err', text: 'Titel oder Beschreibung nötig.' });
+      toast.error('Titel oder Beschreibung nötig');
       return;
     }
-    setMsg(null);
     startTransition(async () => {
       const r = await sendBotEmbed(guildId, channelId, {
         title: title.trim() || undefined,
@@ -55,8 +143,8 @@ export function EmbedCreatorForm({ guildId, channels }: Props) {
         footer: footer.trim() || undefined,
         image: imageUrl.trim() || undefined,
       });
-      if (r.ok) setMsg({ kind: 'ok', text: 'Embed gesendet.' });
-      else setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+      if (r.ok) toast.success('Embed gesendet');
+      else toast.error('Senden fehlgeschlagen', r.error);
     });
   };
 
@@ -234,25 +322,14 @@ export function EmbedCreatorForm({ guildId, channels }: Props) {
       </div>
 
       <div className="flex items-center gap-3 border-t border-line pt-4">
-        <button
+        <Button
           type="button"
           onClick={submit}
-          disabled={pending}
-          className="rounded-md bg-[#5865F2] hover:bg-[#4752C4] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 transition-colors"
+          loading={pending}
+          variant="primary"
         >
           {pending ? 'Sende…' : 'Embed senden'}
-        </button>
-        {msg && (
-          <span
-            className={`text-xs ${
-              msg.kind === 'ok'
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-rose-600 dark:text-rose-400'
-            }`}
-          >
-            {msg.text}
-          </span>
-        )}
+        </Button>
       </div>
     </div>
   );

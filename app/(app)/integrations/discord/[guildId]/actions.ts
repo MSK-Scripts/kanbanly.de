@@ -557,6 +557,119 @@ export async function toggleBotModule(
   }
 }
 
+// ============== Embed-Templates ==============
+
+export type EmbedTemplate = {
+  id: string;
+  name: string;
+  title: string | null;
+  description: string | null;
+  color: number | null;
+  footer: string | null;
+  imageUrl: string | null;
+};
+
+export async function listEmbedTemplates(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; templates?: EmbedTemplate[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_embed_templates')
+      .select('id, name, title, description, color, footer, image_url')
+      .eq('guild_id', guildId)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    return {
+      ok: true,
+      templates: (data ?? []).map((r) => ({
+        id: r.id as string,
+        name: r.name as string,
+        title: (r.title as string | null) ?? null,
+        description: (r.description as string | null) ?? null,
+        color: (r.color as number | null) ?? null,
+        footer: (r.footer as string | null) ?? null,
+        imageUrl: (r.image_url as string | null) ?? null,
+      })),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function saveEmbedTemplate(
+  guildId: string,
+  template: {
+    id?: string;
+    name: string;
+    title?: string | null;
+    description?: string | null;
+    color?: number | null;
+    footer?: string | null;
+    imageUrl?: string | null;
+  },
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (!template.name.trim() || template.name.length > 80) {
+      return { ok: false, error: 'Name fehlt oder ist zu lang (max 80).' };
+    }
+    const admin = createAdminClient();
+    const payload = {
+      guild_id: guildId,
+      name: template.name.trim(),
+      title: template.title?.trim() || null,
+      description: template.description?.trim() || null,
+      color: template.color ?? null,
+      footer: template.footer?.trim() || null,
+      image_url: template.imageUrl?.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (template.id) {
+      const { error } = await admin
+        .from('bot_embed_templates')
+        .update(payload)
+        .eq('id', template.id)
+        .eq('guild_id', guildId);
+      if (error) throw error;
+      revalidatePath(`/integrations/discord/${guildId}`);
+      return { ok: true, id: template.id };
+    }
+    const { data, error } = await admin
+      .from('bot_embed_templates')
+      .insert(payload)
+      .select('id')
+      .single();
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: data.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteEmbedTemplate(
+  guildId: string,
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_embed_templates')
+      .delete()
+      .eq('id', id)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
 // ============== Reaction-Roles ==============
 
 async function refreshRrEmbed(
