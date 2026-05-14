@@ -3,7 +3,6 @@ import { getChannelMode } from '../db/channelModes.js';
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
 const VIDEO_EXT = /\.(mp4|mov|webm|mkv|avi|m4v)$/i;
-const URL_REGEX = /\bhttps?:\/\/\S+\.\S+\b/i;
 
 function hasImageAttachment(message: Message, allowVideos: boolean): boolean {
   for (const a of message.attachments.values()) {
@@ -18,14 +17,6 @@ function hasImageAttachment(message: Message, allowVideos: boolean): boolean {
     if (allowVideos && e.video) return true;
   }
   return false;
-}
-
-function hasNonImageContent(message: Message): boolean {
-  const text = message.content?.trim() ?? '';
-  if (text.length === 0) return false;
-  // Reiner Bild-URL als Text-Inhalt ist ok.
-  if (URL_REGEX.test(text) && IMAGE_EXT.test(text)) return false;
-  return true;
 }
 
 export function registerChannelMode(client: Client): void {
