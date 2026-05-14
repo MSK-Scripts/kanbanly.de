@@ -64,6 +64,17 @@ export async function bypassUrl(input: string): Promise<BypassActionResult> {
     if (!dest) {
       return { ok: false, error: 'Der Bypass-Service hat kein Ziel zurückgegeben.' };
     }
+    // bypass.vip retourniert seit 2026 Shutdown-Werbung als „Ziel" für die
+    // kostenlose API. Abfangen, sonst landet das im Ergebnis.
+    const looksLikeShutdownNotice =
+      /shut\s*down|leechers|join here|working bypasses|bypass\.vip\/discord/i.test(dest);
+    if (looksLikeShutdownNotice || !parseUrl(dest)) {
+      return {
+        ok: false,
+        error: 'Die Free-API von bypass.vip ist abgeschaltet.',
+        hint: 'Aktuell gibt es keinen kostenlosen Bypass-Provider, der zuverlässig läuft. Wir suchen einen Ersatz.',
+      };
+    }
     return { ok: true, original: parsed.toString(), destination: dest };
   } catch (err) {
     if ((err as Error).name === 'AbortError') {
