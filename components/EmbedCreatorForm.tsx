@@ -155,6 +155,95 @@ export function EmbedCreatorForm({ guildId, channels, initialTemplates = [] }: P
         Channel. Ideal für Regelwerke, Ankündigungen, FAQ.
       </p>
 
+      {/* Vorlagen-Bar */}
+      <div className="rounded-xl border border-line bg-surface p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[13px] font-semibold text-fg">Vorlagen</div>
+            <div className="text-[11.5px] text-subtle mt-0.5">
+              {templates.length === 0
+                ? 'Speichere deine Embeds als wiederverwendbare Vorlage.'
+                : `${templates.length} gespeichert${
+                    activeTemplateId ? ' · 1 ausgewählt' : ''
+                  }`}
+            </div>
+          </div>
+          {activeTemplateId && (
+            <Button type="button" variant="ghost" size="sm" onClick={newTemplate}>
+              + Neu
+            </Button>
+          )}
+        </div>
+
+        {templates.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {templates.map((tpl) => {
+              const active = tpl.id === activeTemplateId;
+              return (
+                <div
+                  key={tpl.id}
+                  className={`group inline-flex items-center gap-1 rounded-md border text-[12px] transition-all ${
+                    active
+                      ? 'bg-accent/15 border-accent text-fg'
+                      : 'bg-elev border-line-strong text-fg-soft hover:border-fg-soft/40'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => loadTemplate(tpl)}
+                    className="px-2.5 py-1 truncate max-w-[160px]"
+                    title={tpl.name}
+                  >
+                    {tpl.name}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeTemplate(tpl)}
+                    className="px-1.5 py-1 text-subtle hover:text-[var(--danger)] opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Löschen"
+                    aria-label={`${tpl.name} löschen`}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="text"
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value.slice(0, 80))}
+            placeholder="Name für die Vorlage…"
+            className="flex-1 rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-[12.5px] text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
+          />
+          {activeTemplateId && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              loading={savingTpl}
+              onClick={() => saveCurrentAs(false)}
+              disabled={!templateName.trim()}
+            >
+              Aktualisieren
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            loading={savingTpl}
+            onClick={() => saveCurrentAs(true)}
+            disabled={!templateName.trim()}
+          >
+            {activeTemplateId ? 'Als neu' : 'Speichern'}
+          </Button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Builder */}
         <div className="space-y-4">
