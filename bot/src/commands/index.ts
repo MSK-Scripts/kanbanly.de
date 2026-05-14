@@ -22,6 +22,7 @@ import giveaway from './giveaway.js';
 import birthday from './birthday.js';
 import suggest from './suggest.js';
 import guess from './guess.js';
+import bypass from './bypass.js';
 
 export const commands: SlashCommand[] = [
   ping,
@@ -47,5 +48,6 @@ export const commands: SlashCommand[] = [
   birthday,
   suggest,
   guess,
+  bypass,
 ];
 export const commandMap = new Map(commands.map((c) => [c.data.name, c]));

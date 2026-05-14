@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getFreshAccessToken } from '@/lib/discordConnection';
-import { canManageGuild, fetchCurrentUserGuilds } from '@/lib/discord';
+import { canManageGuild, fetchCurrentUser, fetchCurrentUserGuilds } from '@/lib/discord';
 import {
   addReaction,
   deleteMessage,
@@ -1511,6 +1511,39 @@ export async function updateAfkConfig(
 
 // ============== Vorschlags-System ==============
 
+const SUGGESTION_FIELD_KEYS = ['id', 'status', 'upvotes', 'downvotes', 'banner'] as const;
+type SuggestionFieldKey = (typeof SUGGESTION_FIELD_KEYS)[number];
+
+function parseHexColor(raw: string | null): number | null {
+  if (!raw) return null;
+  const t = raw.trim().replace(/^#/, '');
+  if (!/^[0-9a-f]{6}$/i.test(t)) return null;
+  return parseInt(t, 16);
+}
+
+function parseStringArray(raw: string | null): string[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function parseFieldOrder(raw: string | null): SuggestionFieldKey[] {
+  const out: SuggestionFieldKey[] = [];
+  const seen = new Set<SuggestionFieldKey>();
+  for (const tok of parseStringArray(raw)) {
+    if ((SUGGESTION_FIELD_KEYS as readonly string[]).includes(tok) && !seen.has(tok as SuggestionFieldKey)) {
+      out.push(tok as SuggestionFieldKey);
+      seen.add(tok as SuggestionFieldKey);
+    }
+  }
+  for (const k of SUGGESTION_FIELD_KEYS) {
+    if (!seen.has(k)) out.push(k);
+  }
+  return out;
+}
+
 export async function updateSuggestionsConfig(
   guildId: string,
   formData: FormData,
@@ -1523,6 +1556,35 @@ export async function updateSuggestionsConfig(
     if (enabled && !channelId) {
       return { ok: false, error: 'Vorschlags-Channel nötig.' };
     }
+    const embedTitle =
+      ((formData.get('embed_title') as string | null) ?? '').trim().slice(0, 256) ||
+      'Neuer Vorschlag';
+    const embedMessage =
+      ((formData.get('embed_message') as string | null) ?? '').slice(0, 3500) ||
+      '{user} hat einen neuen Vorschlag gepostet\n\n{suggestion}';
+    const embedColor = parseHexColor(formData.get('embed_color') as string | null) ?? 0x5865f2;
+    const footerText =
+      ((formData.get('footer_text') as string | null) ?? '').trim().slice(0, 1024) || null;
+    const bannerUrl =
+      ((formData.get('banner_url') as string | null) ?? '').trim().slice(0, 1024) || null;
+    const thumbnailUrl =
+      ((formData.get('thumbnail_url') as string | null) ?? '').trim().slice(0, 1024) || null;
+    const upvoteEmoji =
+      ((formData.get('upvote_emoji') as string | null) ?? '').trim().slice(0, 120) || null;
+    const downvoteEmoji =
+      ((formData.get('downvote_emoji') as string | null) ?? '').trim().slice(0, 120) || null;
+    const statusOpenEmoji =
+      ((formData.get('status_open_emoji') as string | null) ?? '').trim().slice(0, 120) || null;
+    const statusEndedEmoji =
+      ((formData.get('status_ended_emoji') as string | null) ?? '').trim().slice(0, 120) || null;
+    const endMessage =
+      ((formData.get('end_message') as string | null) ?? '').trim().slice(0, 1024) ||
+      'Dieser Vorschlag wurde beendet.';
+    const allowedRoleIds = parseStringArray(
+      formData.get('allowed_role_ids') as string | null,
+    ).slice(0, 50);
+    const fieldOrder = parseFieldOrder(formData.get('field_order') as string | null);
+
     const admin = createAdminClient();
     const { error } = await admin
       .from('bot_guilds')
@@ -1530,6 +1592,19 @@ export async function updateSuggestionsConfig(
         suggestions_enabled: enabled,
         suggestions_channel_id: channelId,
         suggestions_mod_role_id: modRoleId,
+        suggestions_embed_title: embedTitle,
+        suggestions_embed_message: embedMessage,
+        suggestions_embed_color: embedColor,
+        suggestions_footer_text: footerText,
+        suggestions_banner_url: bannerUrl,
+        suggestions_thumbnail_url: thumbnailUrl,
+        suggestions_upvote_emoji: upvoteEmoji,
+        suggestions_downvote_emoji: downvoteEmoji,
+        suggestions_status_open_emoji: statusOpenEmoji,
+        suggestions_status_ended_emoji: statusEndedEmoji,
+        suggestions_allowed_role_ids: allowedRoleIds,
+        suggestions_end_message: endMessage,
+        suggestions_field_order: fieldOrder,
         updated_at: new Date().toISOString(),
       })
       .eq('guild_id', guildId);
@@ -3217,6 +3292,257 @@ export async function removeReactionRoleMapping(
     }
 
     revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Test-Embed senden ==============
+
+type TestCtx = {
+  username: string;
+  mention: string;
+  serverName: string;
+  memberCount: number;
+};
+
+async function getTestContext(guildId: string): Promise<TestCtx> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Nicht eingeloggt.');
+  const token = await getFreshAccessToken(user.id);
+  let username = 'TestUser';
+  let mention = '<@0>';
+  if (token) {
+    try {
+      const u = await fetchCurrentUser(token);
+      username = u.global_name ?? u.username;
+      mention = `<@${u.id}>`;
+    } catch {
+      // fallback bleibt
+    }
+  }
+  const admin = createAdminClient();
+  const { data: g } = await admin
+    .from('bot_guilds')
+    .select('name')
+    .eq('guild_id', guildId)
+    .maybeSingle();
+  return {
+    username,
+    mention,
+    serverName: (g?.name as string | null) ?? 'Server',
+    memberCount: 100,
+  };
+}
+
+function renderTestTemplate(text: string, ctx: TestCtx): string {
+  return text
+    .replaceAll('{user}', ctx.username)
+    .replaceAll('{mention}', ctx.mention)
+    .replaceAll('{server}', ctx.serverName)
+    .replaceAll('{members}', String(ctx.memberCount));
+}
+
+const TEST_FOOTER = '⋅ Test-Vorschau (kanbanly Dashboard)';
+
+function buildTestPayload(args: {
+  text: string;
+  useEmbed: boolean;
+  color: number | null;
+  title?: string;
+}): { content?: string; embeds?: EmbedPayload[] } {
+  if (args.useEmbed) {
+    const embed: EmbedPayload = {
+      description: args.text,
+      footer: { text: TEST_FOOTER },
+    };
+    if (args.title) embed.title = args.title;
+    if (typeof args.color === 'number') embed.color = args.color;
+    return { embeds: [embed] };
+  }
+  return { content: `${args.text}\n\n_${TEST_FOOTER}_` };
+}
+
+export async function sendTestWelcome(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: cfg } = await admin
+      .from('bot_guilds')
+      .select(
+        'welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color',
+      )
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!cfg || !cfg.welcome_channel_id || !cfg.welcome_message) {
+      return { ok: false, error: 'Welcome-Channel und Nachricht konfigurieren + speichern.' };
+    }
+    const ctx = await getTestContext(guildId);
+    const text = renderTestTemplate(cfg.welcome_message as string, ctx);
+    const payload = buildTestPayload({
+      text,
+      useEmbed: Boolean(cfg.welcome_use_embed),
+      color: (cfg.welcome_embed_color as number | null) ?? null,
+    });
+    await postMessage(cfg.welcome_channel_id as string, payload);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function sendTestBooster(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: cfg } = await admin
+      .from('bot_guilds')
+      .select(
+        'booster_channel_id, booster_message, booster_use_embed, booster_embed_color',
+      )
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!cfg || !cfg.booster_channel_id || !cfg.booster_message) {
+      return { ok: false, error: 'Booster-Channel und Nachricht konfigurieren + speichern.' };
+    }
+    const ctx = await getTestContext(guildId);
+    const text = renderTestTemplate(cfg.booster_message as string, ctx);
+    const payload = buildTestPayload({
+      text,
+      useEmbed: Boolean(cfg.booster_use_embed),
+      color: (cfg.booster_embed_color as number | null) ?? null,
+    });
+    await postMessage(cfg.booster_channel_id as string, payload);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function sendTestLevelUp(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: cfg } = await admin
+      .from('bot_guilds')
+      .select('level_up_channel_id, level_use_embed, level_embed_color')
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!cfg || !cfg.level_up_channel_id) {
+      return { ok: false, error: 'Level-Up Channel konfigurieren + speichern.' };
+    }
+    const ctx = await getTestContext(guildId);
+    const text = `🎉 ${ctx.mention} ist auf **Level 5** aufgestiegen!`;
+    const payload = buildTestPayload({
+      text,
+      useEmbed: Boolean(cfg.level_use_embed),
+      color: (cfg.level_embed_color as number | null) ?? null,
+      title: 'Level-Up',
+    });
+    await postMessage(cfg.level_up_channel_id as string, payload);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function sendTestBirthday(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: cfg } = await admin
+      .from('bot_guilds')
+      .select('birthday_channel_id, birthday_message')
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!cfg || !cfg.birthday_channel_id || !cfg.birthday_message) {
+      return { ok: false, error: 'Birthday-Channel und Nachricht konfigurieren + speichern.' };
+    }
+    const ctx = await getTestContext(guildId);
+    const text = renderTestTemplate(cfg.birthday_message as string, ctx);
+    const payload = buildTestPayload({ text, useEmbed: false, color: null });
+    await postMessage(cfg.birthday_channel_id as string, payload);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function sendTestHelpdeskPanel(
+  guildId: string,
+  panelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const built = await buildHelpdeskPayload(panelId);
+    if (!built) return { ok: false, error: 'Panel nicht gefunden.' };
+    const embeds = (built.payload.embeds as Array<Record<string, unknown>> | undefined) ?? [];
+    if (embeds[0]) embeds[0].footer = { text: TEST_FOOTER };
+    const components =
+      (built.payload.components as Record<string, unknown>[] | undefined) ?? [];
+    await postMessage(built.channelId, {
+      embeds: embeds as unknown as EmbedPayload[],
+      components,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function sendTestReactionRoles(
+  guildId: string,
+  messageId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: msg } = await admin
+      .from('bot_reaction_role_messages')
+      .select('channel_id, title, description, mode')
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!msg) return { ok: false, error: 'RR-Panel nicht gefunden.' };
+    const { data: rolesData } = await admin
+      .from('bot_reaction_roles')
+      .select('emoji_key, emoji_display, role_id, label')
+      .eq('message_id', messageId);
+    const rows = (rolesData ?? []).map((r) => ({
+      emojiKey: r.emoji_key as string,
+      emojiDisplay: r.emoji_display as string,
+      roleId: r.role_id as string,
+      label: (r.label as string | null) ?? null,
+    }));
+    const embed = buildReactionRoleEmbed(
+      (msg.title as string | null) ?? null,
+      (msg.description as string | null) ?? null,
+      rows,
+    );
+    const embedObj = embed as unknown as Record<string, unknown>;
+    embedObj.footer = { text: TEST_FOOTER };
+    const mode = ((msg.mode as RrMode | null) ?? 'reactions') as RrMode;
+    // Test-IDs damit Klicks keinen echten Toggle auslösen.
+    const components =
+      mode === 'reactions'
+        ? []
+        : buildRrComponents(mode, `test-${messageId}`, rows, new Map());
+    await postMessage(msg.channel_id as string, {
+      embeds: [embedObj as unknown as EmbedPayload],
+      components: components as Record<string, unknown>[],
+    });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };

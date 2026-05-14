@@ -3,11 +3,11 @@
 import { useEffect, useState, useTransition } from 'react';
 import {
   updateBirthdayConfig,
+  sendTestBirthday,
   updateRoleBadgesEnabled,
   addRoleBadge,
   removeRoleBadge,
   updateAfkConfig,
-  updateSuggestionsConfig,
   updateInviteTrackerEnabled,
   listInviteLeaderboard,
   type InviteLeaderRow,
@@ -16,6 +16,7 @@ import { confirm } from '@/store/confirmStore';
 import { toast } from '@/store/toastStore';
 import { Switch } from './Switch';
 import { Button } from './ui/Button';
+import { TestSendButton } from './ui/TestSendButton';
 import { FormSection, FormRow } from './ui/FormSection';
 import { Spinner } from './ui/Spinner';
 import { StatusPill, StatusBanner } from './ui/Status';
@@ -122,7 +123,8 @@ export function BirthdayForm({
         )}
       </FormSection>
 
-      <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex items-center justify-end">
+      <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex items-center justify-end gap-2">
+        <TestSendButton onSend={() => sendTestBirthday(guildId)} />
         <Button type="submit" loading={pending} variant="primary">
           {pending ? 'Speichern…' : 'Speichern'}
         </Button>
@@ -364,152 +366,7 @@ export function AfkForm({
   );
 }
 
-// ============== Suggestions ==============
-
-const SUG_STATUS_KIND: Record<
-  'open' | 'approved' | 'rejected' | 'implemented',
-  'info' | 'success' | 'danger' | 'neutral'
-> = {
-  open: 'info',
-  approved: 'success',
-  rejected: 'danger',
-  implemented: 'neutral',
-};
-const SUG_STATUS_LABEL: Record<
-  'open' | 'approved' | 'rejected' | 'implemented',
-  string
-> = {
-  open: 'Offen',
-  approved: 'Angenommen',
-  rejected: 'Abgelehnt',
-  implemented: 'Umgesetzt',
-};
-
-export function SuggestionsForm({
-  guildId,
-  channels,
-  roles,
-  initial,
-  list,
-}: {
-  guildId: string;
-  channels: Channel[];
-  roles: Role[];
-  initial: { enabled: boolean; channelId: string | null; modRoleId: string | null };
-  list: Array<{
-    id: string;
-    userId: string;
-    content: string;
-    status: 'open' | 'approved' | 'rejected' | 'implemented';
-    upvotes: number;
-    downvotes: number;
-    createdAt: string;
-  }>;
-}) {
-  const [enabled, setEnabled] = useState(initial.enabled);
-  const [channelId, setChannelId] = useState(initial.channelId ?? '');
-  const [modRoleId, setModRoleId] = useState(initial.modRoleId ?? '');
-  const [pending, startTransition] = useTransition();
-
-  const submit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData();
-    if (enabled) fd.set('enabled', 'on');
-    fd.set('channel_id', channelId);
-    fd.set('mod_role_id', modRoleId);
-    startTransition(async () => {
-      const r = await updateSuggestionsConfig(guildId, fd);
-      if (r.ok) toast.success('Vorschläge gespeichert');
-      else toast.error('Fehler', r.error);
-    });
-  };
-
-  return (
-    <form onSubmit={submit} className="space-y-5">
-      <FormSection
-        title="Vorschlags-System"
-        description="User reichen Vorschläge mit /suggest ein (Modal-Popup). Andere stimmen ab, Mods setzen Status."
-        badge={
-          <StatusPill kind={enabled ? 'success' : 'neutral'} dot>
-            {enabled ? 'Aktiv' : 'Aus'}
-          </StatusPill>
-        }
-        action={<Switch checked={enabled} onChange={setEnabled} />}
-      >
-        <div className={enabled ? 'space-y-4' : 'space-y-4 opacity-50 pointer-events-none'}>
-          <FormRow label="Vorschlags-Channel" required>
-            <select
-              value={channelId}
-              onChange={(e) => setChannelId(e.target.value)}
-              className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
-            >
-              <option value="">— Channel wählen —</option>
-              {channels.map((c) => (
-                <option key={c.id} value={c.id}>#{c.name}</option>
-              ))}
-            </select>
-          </FormRow>
-
-          <FormRow
-            label="Mod-Rolle (optional)"
-            hint="Wird aktuell nicht erzwungen — Discord-Permission 'Manage Guild' reicht. Feld für später."
-          >
-            <select
-              value={modRoleId}
-              onChange={(e) => setModRoleId(e.target.value)}
-              className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
-            >
-              <option value="">— Keine —</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
-          </FormRow>
-        </div>
-      </FormSection>
-
-      <FormSection
-        title="Letzte Vorschläge"
-        description="Maximal 50 neueste."
-        badge={<StatusPill>{list.length}</StatusPill>}
-      >
-        {list.length === 0 ? (
-          <div className="text-[12.5px] text-subtle text-center py-4">
-            Noch keine Vorschläge.
-          </div>
-        ) : (
-          <ul className="space-y-2 max-h-96 overflow-y-auto">
-            {list.map((s) => (
-              <li
-                key={s.id}
-                className="rounded-md border border-line bg-surface p-3"
-              >
-                <div className="flex items-baseline justify-between gap-2 mb-1">
-                  <StatusPill kind={SUG_STATUS_KIND[s.status]} dot>
-                    {SUG_STATUS_LABEL[s.status]}
-                  </StatusPill>
-                  <span className="text-[10.5px] text-subtle font-mono">
-                    👍 {s.upvotes} · 👎 {s.downvotes}
-                  </span>
-                </div>
-                <p className="text-[13px] text-fg-soft line-clamp-2">{s.content}</p>
-                <div className="text-[10.5px] text-subtle mt-1">
-                  von <code>{s.userId}</code>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </FormSection>
-
-      <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex justify-end">
-        <Button type="submit" loading={pending} variant="primary">
-          {pending ? 'Speichern…' : 'Speichern'}
-        </Button>
-      </div>
-    </form>
-  );
-}
+// SuggestionsForm wurde nach components/SuggestionsForm.tsx ausgelagert (v2 mit Live-Preview).
 
 // ============== Invite-Tracker ==============
 

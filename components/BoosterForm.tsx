@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { updateBoosterConfig } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import {
+  updateBoosterConfig,
+  sendTestBooster,
+} from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { TestSendButton } from './ui/TestSendButton';
 import { toast } from '@/store/toastStore';
 import { Switch } from './Switch';
 import { Button } from './ui/Button';
@@ -127,7 +131,8 @@ export function BoosterForm({ guildId, channels, initial }: Props) {
         </div>
       </FormSection>
 
-      <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex items-center justify-end">
+      <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex items-center justify-end gap-2">
+        <TestSendButton onSend={() => sendTestBooster(guildId)} />
         <Button type="submit" loading={pending} variant="primary">
           {pending ? 'Speichern…' : 'Speichern'}
         </Button>

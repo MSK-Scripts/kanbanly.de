@@ -34,9 +34,9 @@ import {
   BirthdayForm,
   RoleBadgesForm,
   AfkForm,
-  SuggestionsForm,
   InviteTrackerForm,
 } from '@/components/Phase2FinishForms';
+import { SuggestionsForm } from '@/components/SuggestionsForm';
 import { HelpdeskForm } from '@/components/HelpdeskForm';
 import { TempVoiceForm } from '@/components/TempVoiceForm';
 import { DailyImageForm, TeamlistsForm } from '@/components/QuickWinsForms';
@@ -165,6 +165,19 @@ type LoadResult =
         enabled: boolean;
         channelId: string | null;
         modRoleId: string | null;
+        embedTitle: string;
+        embedMessage: string;
+        embedColor: number;
+        footerText: string | null;
+        bannerUrl: string | null;
+        thumbnailUrl: string | null;
+        upvoteEmoji: string | null;
+        downvoteEmoji: string | null;
+        statusOpenEmoji: string | null;
+        statusEndedEmoji: string | null;
+        allowedRoleIds: string[];
+        endMessage: string;
+        fieldOrder: Array<'id' | 'status' | 'upvotes' | 'downvotes' | 'banner'>;
       };
       suggestionsList: Array<{
         id: string;
@@ -264,7 +277,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow, error: guildRowError } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, verify_reply_success, verify_reply_already, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id, birthday_enabled, birthday_channel_id, birthday_message, role_badges_enabled, afk_enabled, afk_channel_id, afk_timeout_minutes, suggestions_enabled, suggestions_channel_id, suggestions_mod_role_id, invite_tracker_enabled, tempvoice_enabled, tempvoice_creator_channel_id, tempvoice_category_id, tempvoice_name_template, tempvoice_default_limit, daily_image_enabled, daily_image_channel_id, daily_image_hour, daily_image_urls',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, verify_reply_success, verify_reply_already, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id, birthday_enabled, birthday_channel_id, birthday_message, role_badges_enabled, afk_enabled, afk_channel_id, afk_timeout_minutes, suggestions_enabled, suggestions_channel_id, suggestions_mod_role_id, suggestions_embed_title, suggestions_embed_message, suggestions_embed_color, suggestions_footer_text, suggestions_banner_url, suggestions_thumbnail_url, suggestions_upvote_emoji, suggestions_downvote_emoji, suggestions_status_open_emoji, suggestions_status_ended_emoji, suggestions_allowed_role_ids, suggestions_end_message, suggestions_field_order, invite_tracker_enabled, tempvoice_enabled, tempvoice_creator_channel_id, tempvoice_category_id, tempvoice_name_template, tempvoice_default_limit, daily_image_enabled, daily_image_channel_id, daily_image_hour, daily_image_urls',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -608,6 +621,46 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       enabled: Boolean(guildRow.suggestions_enabled),
       channelId: (guildRow.suggestions_channel_id as string | null) ?? null,
       modRoleId: (guildRow.suggestions_mod_role_id as string | null) ?? null,
+      embedTitle:
+        ((guildRow.suggestions_embed_title as string | null) ?? 'Neuer Vorschlag'),
+      embedMessage:
+        ((guildRow.suggestions_embed_message as string | null) ??
+          '{user} hat einen neuen Vorschlag gepostet\n\n{suggestion}'),
+      embedColor: (guildRow.suggestions_embed_color as number | null) ?? 0x5865f2,
+      footerText: (guildRow.suggestions_footer_text as string | null) ?? null,
+      bannerUrl: (guildRow.suggestions_banner_url as string | null) ?? null,
+      thumbnailUrl: (guildRow.suggestions_thumbnail_url as string | null) ?? null,
+      upvoteEmoji: (guildRow.suggestions_upvote_emoji as string | null) ?? null,
+      downvoteEmoji: (guildRow.suggestions_downvote_emoji as string | null) ?? null,
+      statusOpenEmoji:
+        (guildRow.suggestions_status_open_emoji as string | null) ?? null,
+      statusEndedEmoji:
+        (guildRow.suggestions_status_ended_emoji as string | null) ?? null,
+      allowedRoleIds: Array.isArray(guildRow.suggestions_allowed_role_ids)
+        ? (guildRow.suggestions_allowed_role_ids as unknown[]).filter(
+            (v): v is string => typeof v === 'string',
+          )
+        : [],
+      endMessage:
+        ((guildRow.suggestions_end_message as string | null) ??
+          'Dieser Vorschlag wurde beendet.'),
+      fieldOrder: (() => {
+        const raw = guildRow.suggestions_field_order;
+        const valid = ['id', 'status', 'upvotes', 'downvotes', 'banner'] as const;
+        type K = (typeof valid)[number];
+        const seen = new Set<K>();
+        const out: K[] = [];
+        if (Array.isArray(raw)) {
+          for (const v of raw as unknown[]) {
+            if (typeof v === 'string' && (valid as readonly string[]).includes(v) && !seen.has(v as K)) {
+              out.push(v as K);
+              seen.add(v as K);
+            }
+          }
+        }
+        for (const k of valid) if (!seen.has(k)) out.push(k);
+        return out;
+      })(),
     },
     suggestionsList,
     inviteTrackerEnabled: Boolean(guildRow.invite_tracker_enabled),
@@ -941,6 +994,19 @@ function GuildSettingsView({
     enabled: boolean;
     channelId: string | null;
     modRoleId: string | null;
+    embedTitle: string;
+    embedMessage: string;
+    embedColor: number;
+    footerText: string | null;
+    bannerUrl: string | null;
+    thumbnailUrl: string | null;
+    upvoteEmoji: string | null;
+    downvoteEmoji: string | null;
+    statusOpenEmoji: string | null;
+    statusEndedEmoji: string | null;
+    allowedRoleIds: string[];
+    endMessage: string;
+    fieldOrder: Array<'id' | 'status' | 'upvotes' | 'downvotes' | 'banner'>;
   };
   suggestionsList: Array<{
     id: string;

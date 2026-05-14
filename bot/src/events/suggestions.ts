@@ -54,14 +54,16 @@ async function handleModal(interaction: ModalSubmitInteraction): Promise<void> {
     content,
   });
 
-  const authorTag = `${interaction.user.username}`;
-  const embed = buildSuggestionEmbed(suggestion, authorTag);
-  const components = buildSuggestionButtons(suggestion.id, false);
+  const authorTag = interaction.user.username;
+  const embed = buildSuggestionEmbed(suggestion, cfg, authorTag);
+  const components = buildSuggestionButtons(suggestion, cfg);
 
   try {
     const sent = await channel.send({ embeds: [embed], components });
     await setSuggestionMessageId(suggestion.id, sent.id);
-    await interaction.editReply(`✓ Dein Vorschlag wurde in <#${cfg.channelId}> gepostet.`);
+    await interaction.editReply(
+      `✓ Dein Vorschlag wurde in <#${cfg.channelId}> gepostet (ID: #${suggestion.publicId}).`,
+    );
   } catch (err) {
     console.error('[suggest] post', err);
     await interaction.editReply('Konnte den Vorschlag nicht posten.');
@@ -74,15 +76,15 @@ async function refreshMessage(
 ): Promise<void> {
   const s = await getSuggestion(suggestionId);
   if (!s || !s.messageId || !interaction.guild) return;
+  const cfg = await getSuggestionConfig(interaction.guild.id);
   const channel = (await interaction.guild.channels
     .fetch(s.channelId)
     .catch(() => null)) as TextChannel | null;
   if (!channel) return;
   const msg = await channel.messages.fetch(s.messageId).catch(() => null);
   if (!msg) return;
-  const ended = s.status !== 'open';
-  const embed = buildSuggestionEmbed(s, interaction.user.username);
-  const components = buildSuggestionButtons(s.id, ended);
+  const embed = buildSuggestionEmbed(s, cfg, interaction.user.username);
+  const components = buildSuggestionButtons(s, cfg);
   await msg.edit({ embeds: [embed], components }).catch(() => {});
 }
 
@@ -91,17 +93,44 @@ async function handleVote(
   suggestionId: string,
   vote: 'up' | 'down',
 ): Promise<void> {
+  const s = await getSuggestion(suggestionId);
+  if (!s || s.status !== 'open') {
+    await interaction.reply({
+      content: 'Dieser Vorschlag ist beendet.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
   const result = await castVote(suggestionId, interaction.user.id, vote);
   await recomputeSuggestionVotes(suggestionId);
   await interaction.reply({
     content: result.removed
       ? '✓ Stimme entfernt.'
       : vote === 'up'
-      ? '👍 Yay-Stimme gespeichert.'
-      : '👎 Nay-Stimme gespeichert.',
+      ? '👍 Upvote gespeichert.'
+      : '👎 Downvote gespeichert.',
     flags: MessageFlags.Ephemeral,
   });
   refreshMessage(interaction, suggestionId).catch(() => {});
+}
+
+function memberHasAllowedRole(
+  interaction: ButtonInteraction,
+  allowedRoleIds: string[],
+): boolean {
+  if (allowedRoleIds.length === 0) return false;
+  const member = interaction.member;
+  if (!member) return false;
+  const roles = member.roles as { cache?: Map<string, unknown> } | string[] | undefined;
+  if (Array.isArray(roles)) {
+    return roles.some((r) => allowedRoleIds.includes(r));
+  }
+  if (roles && typeof roles === 'object' && 'cache' in roles && roles.cache) {
+    for (const id of roles.cache.keys()) {
+      if (allowedRoleIds.includes(id)) return true;
+    }
+  }
+  return false;
 }
 
 async function handleMod(
@@ -110,21 +139,23 @@ async function handleMod(
   status: SuggestionStatus,
 ): Promise<void> {
   if (!interaction.guild) return;
+  const cfg = await getSuggestionConfig(interaction.guild.id);
   const member = interaction.member;
-  if (
-    !member ||
-    typeof member.permissions === 'string' ||
-    !member.permissions.has(PermissionFlagsBits.ManageGuild)
-  ) {
+  const hasManage =
+    member &&
+    typeof member.permissions !== 'string' &&
+    member.permissions.has(PermissionFlagsBits.ManageGuild);
+  const hasAllowedRole = memberHasAllowedRole(interaction, cfg.allowedRoleIds);
+  if (!hasManage && !hasAllowedRole) {
     await interaction.reply({
-      content: 'Nur für Mods (Manage Guild).',
+      content: 'Du darfst Vorschläge nicht beenden.',
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
   await updateSuggestionStatus(suggestionId, status, null);
   await interaction.reply({
-    content: `✓ Status auf **${status}** gesetzt.`,
+    content: status === 'open' ? '✓ Wieder geöffnet.' : '✓ Vorschlag beendet.',
     flags: MessageFlags.Ephemeral,
   });
   refreshMessage(interaction, suggestionId).catch(() => {});
@@ -145,6 +176,7 @@ export function registerSuggestions(client: Client): void {
           return;
         }
         const statusMap: Record<string, SuggestionStatus> = {
+          end: 'implemented',
           approve: 'approved',
           reject: 'rejected',
           done: 'implemented',

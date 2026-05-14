@@ -4,7 +4,9 @@ import {
   addLevelReward,
   removeLevelReward,
   updateLevelConfig,
+  sendTestLevelUp,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { TestSendButton } from './ui/TestSendButton';
 import { toast } from '@/store/toastStore';
 import { confirm } from '@/store/confirmStore';
 import { Switch } from './Switch';
@@ -270,7 +272,8 @@ export function LevelConfigForm({
           </form>
         </FormSection>
 
-        <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex items-center justify-end">
+        <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex items-center justify-end gap-2">
+          <TestSendButton onSend={() => sendTestLevelUp(guildId)} />
           <Button type="submit" loading={pending} variant="primary">
             {pending ? 'Speichern…' : 'Einstellungen speichern'}
           </Button>
