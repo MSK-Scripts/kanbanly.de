@@ -1,27 +1,6 @@
 'use server';
 
-const SUPPORTED_HOSTS = [
-  'linkvertise.com',
-  'link-to.net',
-  'link-hub.net',
-  'direct-link.net',
-  'boost.ink',
-  'sub2unlock.com',
-  'sub2unlock.net',
-  'mboost.me',
-  'rekonise.com',
-  'social-unlock.com',
-  'lootlinks.co',
-  'loot-link.com',
-  'lootdest.com',
-  'lootdest.org',
-  'adfoc.us',
-  'adf.ly',
-  'shorte.st',
-  'ouo.io',
-  'bit.ly',
-  'tinyurl.com',
-];
+import { SUPPORTED_HOSTS } from './hosts';
 
 export type BypassActionResult =
   | { ok: true; original: string; destination: string }
@@ -96,4 +75,3 @@ export async function bypassUrl(input: string): Promise<BypassActionResult> {
   }
 }
 
-export { SUPPORTED_HOSTS };

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { LegalFooter } from '@/components/LegalFooter';
 import { BypassClient } from './BypassClient';
-import { SUPPORTED_HOSTS } from './actions';
+import { SUPPORTED_HOSTS } from './hosts';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanbanly.de';
 
