@@ -50,7 +50,40 @@ type ModuleDef = {
 type Props = {
   guildId: string;
   modules: ModuleDef[];
+  premium?: boolean;
 };
+
+// Module die Premium voraussetzen — synchron mit lib/premium.ts FREE_MODULES.
+const PREMIUM_MODULE_KEYS = new Set<ModuleKey>([
+  'tickets',
+  'helpdesk',
+  'antiraid',
+  'verify',
+  'giveaways',
+  'automod',
+  'reactionroles',
+  'suggestions',
+  'birthday',
+  'rolebadges',
+  'afk',
+  'invitetracker',
+  'tempvoice',
+  'dailyimage',
+  'teamlist',
+  'pricelist',
+  'shop',
+  'sticky',
+  'channelmodes',
+  'booster',
+]);
+// (welcome, autoroles, logging, levels, embed, moderation = always free)
+const ALWAYS_FREE_KEYS = new Set<ModuleKey>([
+  'welcome',
+  'autoroles',
+  'logging',
+  'levels',
+  'embed',
+]);
 
 const GearIcon = () => (
   <svg
@@ -84,7 +117,7 @@ const SearchIcon = () => (
   </svg>
 );
 
-export function ModuleOverview({ guildId, modules }: Props) {
+export function ModuleOverview({ guildId, modules, premium = false }: Props) {
   const [query, setQuery] = useState('');
   const [optimisticState, setOptimisticState] = useState<Record<string, boolean>>({});
   const [busyKeys, setBusyKeys] = useState<Set<string>>(new Set());
@@ -177,10 +210,15 @@ export function ModuleOverview({ guildId, modules }: Props) {
           {filtered.map((m) => {
             const live =
               optimisticState[m.key] !== undefined ? optimisticState[m.key] : m.enabled;
+            const isPremiumModule =
+              PREMIUM_MODULE_KEYS.has(m.key) && !ALWAYS_FREE_KEYS.has(m.key);
+            const locked = isPremiumModule && !premium;
             return (
               <article
                 key={m.key}
-                className="group relative rounded-xl border border-line bg-surface hover:border-line-strong transition-all flex flex-col"
+                className={`group relative rounded-xl border ${
+                  locked ? 'border-line bg-surface/60' : 'border-line bg-surface hover:border-line-strong'
+                } transition-all flex flex-col`}
               >
                 <div className="p-4 flex-1">
                   <div className="flex items-start justify-between gap-3 mb-2">
@@ -188,8 +226,13 @@ export function ModuleOverview({ guildId, modules }: Props) {
                       <h3 className="text-[15px] font-semibold text-fg leading-tight">
                         {m.name}
                       </h3>
-                      {m.isNew && (
+                      {m.isNew && !locked && (
                         <StatusPill kind="success">Neu</StatusPill>
+                      )}
+                      {isPremiumModule && (
+                        <StatusPill kind={locked ? 'warning' : 'info'}>
+                          ⭐ Premium
+                        </StatusPill>
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -198,7 +241,9 @@ export function ModuleOverview({ guildId, modules }: Props) {
                           <Spinner size="xs" />
                         </span>
                       )}
-                      {m.toggleable ? (
+                      {locked ? (
+                        <StatusPill kind="neutral">Gesperrt</StatusPill>
+                      ) : m.toggleable ? (
                         <Switch
                           checked={live}
                           onChange={(next) => onToggle(m, next)}
@@ -221,14 +266,24 @@ export function ModuleOverview({ guildId, modules }: Props) {
                   </p>
                 </div>
                 <div className="px-4 py-2.5 border-t border-line/60">
-                  <button
-                    type="button"
-                    onClick={() => navigate(m.tab)}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--accent-soft)] hover:text-fg transition-colors"
-                  >
-                    <GearIcon />
-                    Einstellungen
-                  </button>
+                  {locked ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate('premium')}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--warning)] hover:text-fg transition-colors"
+                    >
+                      ⭐ Premium freischalten
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => navigate(m.tab)}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--accent-soft)] hover:text-fg transition-colors"
+                    >
+                      <GearIcon />
+                      Einstellungen
+                    </button>
+                  )}
                 </div>
               </article>
             );

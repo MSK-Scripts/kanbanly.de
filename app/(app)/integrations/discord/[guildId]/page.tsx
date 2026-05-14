@@ -43,6 +43,8 @@ import { DailyImageForm, TeamlistsForm } from '@/components/QuickWinsForms';
 import { TicketsForm } from '@/components/TicketsForm';
 import { PricelistForm } from '@/components/PricelistForm';
 import { ShopForm } from '@/components/ShopForm';
+import { PremiumForm } from '@/components/PremiumForm';
+import { isGuildPremium } from '@/lib/premium';
 import {
   listTicketPanels,
   listSuggestionPanels,
@@ -236,6 +238,7 @@ type LoadResult =
       }>;
       ticketPanels: TicketPanelRow[];
       pricelistPanels: PricelistPanelRow[];
+      premium: boolean;
       giveaways: Array<{
         id: string;
         channelId: string;
@@ -537,6 +540,8 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     ? pricelistRes.panels ?? []
     : [];
 
+  const premium = await isGuildPremium(guildId);
+
   const { data: teamlistsRaw } = await admin
     .from('bot_teamlists')
     .select('id, channel_id, message_id, title, role_ids, color')
@@ -705,6 +710,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     teamlists,
     ticketPanels,
     pricelistPanels,
+    premium,
     giveaways,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
@@ -862,6 +868,7 @@ export default async function GuildSettingsPage({
             teamlists={result.teamlists}
             ticketPanels={result.ticketPanels}
             pricelistPanels={result.pricelistPanels}
+            premium={result.premium}
           />
         )}
       </div>
@@ -904,6 +911,7 @@ function GuildSettingsView({
   teamlists,
   ticketPanels,
   pricelistPanels,
+  premium,
 }: {
   guildName: string;
   guildId: string;
@@ -1083,6 +1091,7 @@ function GuildSettingsView({
   }>;
   ticketPanels: TicketPanelRow[];
   pricelistPanels: PricelistPanelRow[];
+  premium: boolean;
 }) {
   const moduleDefs = [
     {
@@ -1327,7 +1336,7 @@ function GuildSettingsView({
       description: 'Alle Module — durchsuchen, ein-/ausschalten, konfigurieren.',
       noCardWrapper: true,
       content: (
-        <ModuleOverview guildId={guildId} modules={moduleDefs} />
+        <ModuleOverview guildId={guildId} modules={moduleDefs} premium={premium} />
       ),
     },
     {
@@ -1608,6 +1617,13 @@ function GuildSettingsView({
       icon: '🛒',
       description: 'Stripe-Bestellungen direkt aus Discord — Produkte, Checkout, Order-Channels.',
       content: <ShopForm guildId={guildId} channels={channels} roles={roles} />,
+    },
+    {
+      id: 'premium',
+      label: 'Premium',
+      icon: '⭐',
+      description: 'Premium-Status, Trial, Pakete — verwalten von Abos und Rechnungen.',
+      content: <PremiumForm guildId={guildId} />,
     },
   ];
 

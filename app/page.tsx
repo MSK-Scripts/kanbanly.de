@@ -181,10 +181,10 @@ export default async function LandingPage() {
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
                 <Link
-                  href="/bot"
+                  href="/preise"
                   className="rounded-md border border-line-strong hover:border-fg-soft bg-surface hover:bg-elev text-fg text-sm font-medium px-5 py-2.5 transition-colors text-center"
                 >
-                  Alle Module ansehen
+                  Preise &amp; Pläne
                 </Link>
                 <Link
                   href={signedIn ? '/integrations/discord' : '/register'}

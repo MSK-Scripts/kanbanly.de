@@ -95,6 +95,47 @@ export async function createConnectPaymentIntent(
   );
 }
 
+// ───── Subscription Checkout / Portal (Plattform-Account, kein Connect) ─────
+
+export async function createSubscriptionCheckoutSession(args: {
+  guildId: string;
+  priceId: string;
+  customerEmail?: string;
+  customerId?: string;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<{ url: string }> {
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    line_items: [{ price: args.priceId, quantity: 1 }],
+    metadata: { guild_id: args.guildId },
+    subscription_data: { metadata: { guild_id: args.guildId } },
+    success_url: args.successUrl,
+    cancel_url: args.cancelUrl,
+    ...(args.customerId ? { customer: args.customerId } : {}),
+    ...(args.customerEmail && !args.customerId
+      ? { customer_email: args.customerEmail }
+      : {}),
+    allow_promotion_codes: true,
+    automatic_tax: { enabled: false },
+  });
+  if (!session.url) throw new Error('Stripe Checkout: keine URL.');
+  return { url: session.url };
+}
+
+export async function createCustomerPortalSession(args: {
+  customerId: string;
+  returnUrl: string;
+}): Promise<{ url: string }> {
+  const stripe = getStripe();
+  const session = await stripe.billingPortal.sessions.create({
+    customer: args.customerId,
+    return_url: args.returnUrl,
+  });
+  return { url: session.url };
+}
+
 export function verifyWebhookSignature(
   rawBody: string,
   signature: string,

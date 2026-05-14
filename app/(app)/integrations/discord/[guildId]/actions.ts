@@ -4539,3 +4539,136 @@ export async function publishPricelistPanel(
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
   }
 }
+
+// ============== Premium / Subscription ==============
+
+export type PremiumStatusView = {
+  status: 'none' | 'trial' | 'active' | 'past_due' | 'cancelled' | 'expired';
+  plan: 'monthly' | 'quarterly' | 'biannual' | null;
+  trialUsed: boolean;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  hasStripeCustomer: boolean;
+};
+
+export async function getPremiumStatus(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; status?: PremiumStatusView }> {
+  try {
+    await assertCanManage(guildId);
+    const { getGuildSubscription } = await import('@/lib/premium');
+    const sub = await getGuildSubscription(guildId);
+    return {
+      ok: true,
+      status: {
+        status: sub.status,
+        plan: sub.plan,
+        trialUsed: Boolean(sub.trialUsedAt),
+        currentPeriodEnd: sub.currentPeriodEnd,
+        cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+        hasStripeCustomer: Boolean(sub.stripeCustomerId),
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function startGuildTrial(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const { getGuildSubscription, invalidatePremiumCache } = await import('@/lib/premium');
+    const sub = await getGuildSubscription(guildId);
+    if (sub.trialUsedAt) {
+      return { ok: false, error: 'Trial wurde für diese Guild bereits genutzt.' };
+    }
+    if (sub.status === 'active' || sub.status === 'trial' || sub.status === 'past_due') {
+      return { ok: false, error: 'Premium ist bereits aktiv.' };
+    }
+    const admin = createAdminClient();
+    const now = new Date();
+    const end = new Date(now.getTime() + 14 * 24 * 3600_000);
+    const { error } = await admin.from('bot_subscriptions').upsert(
+      {
+        guild_id: guildId,
+        status: 'trial',
+        trial_started_at: now.toISOString(),
+        trial_used_at: now.toISOString(),
+        current_period_end: end.toISOString(),
+        cancel_at_period_end: false,
+        updated_at: now.toISOString(),
+      },
+      { onConflict: 'guild_id' },
+    );
+    if (error) throw error;
+    invalidatePremiumCache(guildId);
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function createPremiumCheckout(
+  guildId: string,
+  plan: 'monthly' | 'quarterly' | 'biannual',
+): Promise<{ ok: boolean; error?: string; url?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const { getStripePriceId, getGuildSubscription } = await import('@/lib/premium');
+    const { createSubscriptionCheckoutSession, stripeEnabled } = await import(
+      '@/lib/stripe'
+    );
+    if (!stripeEnabled()) {
+      return { ok: false, error: 'Stripe-Integration ist nicht aktiviert.' };
+    }
+    const priceId = getStripePriceId(plan);
+    if (!priceId) {
+      return {
+        ok: false,
+        error: `Kein Stripe-Preis für Plan "${plan}" konfiguriert.`,
+      };
+    }
+    const sub = await getGuildSubscription(guildId);
+    const origin =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ?? 'https://kanbanly.de';
+    const session = await createSubscriptionCheckoutSession({
+      guildId,
+      priceId,
+      customerId: sub.stripeCustomerId ?? undefined,
+      successUrl: `${origin}/integrations/discord/${guildId}?premium=success`,
+      cancelUrl: `${origin}/integrations/discord/${guildId}?premium=cancelled`,
+    });
+    return { ok: true, url: session.url };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function createPremiumPortal(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; url?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const { getGuildSubscription } = await import('@/lib/premium');
+    const { createCustomerPortalSession, stripeEnabled } = await import('@/lib/stripe');
+    if (!stripeEnabled()) {
+      return { ok: false, error: 'Stripe-Integration ist nicht aktiviert.' };
+    }
+    const sub = await getGuildSubscription(guildId);
+    if (!sub.stripeCustomerId) {
+      return { ok: false, error: 'Noch kein Stripe-Kunde — bitte erst ein Abo kaufen.' };
+    }
+    const origin =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ?? 'https://kanbanly.de';
+    const session = await createCustomerPortalSession({
+      customerId: sub.stripeCustomerId,
+      returnUrl: `${origin}/integrations/discord/${guildId}`,
+    });
+    return { ok: true, url: session.url };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
