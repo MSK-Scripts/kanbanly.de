@@ -480,6 +480,66 @@ export async function sendBotEmbed(
   }
 }
 
+// ============== Modul-Toggle (Übersicht) ==============
+
+type ModuleKey =
+  | 'welcome'
+  | 'autoroles'
+  | 'logging'
+  | 'levels'
+  | 'automod'
+  | 'reactionroles'
+  | 'booster'
+  | 'sticky'
+  | 'channelmodes'
+  | 'embed';
+
+export async function toggleBotModule(
+  guildId: string,
+  key: ModuleKey,
+  enabled: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+    switch (key) {
+      case 'welcome':
+        patch.welcome_enabled = enabled;
+        break;
+      case 'autoroles':
+        patch.auto_roles_enabled = enabled;
+        break;
+      case 'levels':
+        patch.level_enabled = enabled;
+        break;
+      case 'automod':
+        patch.automod_enabled = enabled;
+        break;
+      case 'booster':
+        patch.booster_enabled = enabled;
+        break;
+      default:
+        return {
+          ok: false,
+          error: 'Dieses Modul hat keinen einfachen An/Aus-Schalter — bitte im Tab konfigurieren.',
+        };
+    }
+
+    const { error } = await admin
+      .from('bot_guilds')
+      .update(patch)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
 // ============== Reaction-Roles ==============
 
 async function refreshRrEmbed(

@@ -25,6 +25,7 @@ import { StickyMessagesForm } from '@/components/StickyMessagesForm';
 import { ChannelModesForm } from '@/components/ChannelModesForm';
 import { EmbedCreatorForm } from '@/components/EmbedCreatorForm';
 import { ReactionRolesManager } from '@/components/ReactionRolesManager';
+import { ModuleOverview } from '@/components/ModuleOverview';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
@@ -479,226 +480,103 @@ function GuildSettingsView({
     bannedWords: string[];
   };
 }) {
-  const overviewItems: Array<{
-    label: string;
-    icon: string;
-    enabled: boolean;
-    hint: string;
-    target: string;
-    accent: string;
-    summary: string;
-  }> = [
+  const moduleDefs = [
     {
-      label: 'Welcome',
-      icon: '👋',
+      key: 'welcome' as const,
+      name: 'Welcome',
+      description: 'Begrüßt neue Mitglieder mit personalisierter Nachricht und optionaler DM.',
+      tab: 'welcome',
       enabled: welcome.enabled,
-      hint: welcome.enabled
-        ? welcome.channelId
-          ? 'Channel gesetzt'
-          : 'Channel fehlt'
-        : 'Begrüße neue Mitglieder',
-      target: 'welcome',
-      accent: 'from-amber-500/25 to-orange-500/10 text-amber-500',
-      summary: 'Begrüßungs-Message mit Platzhaltern & Live-Preview.',
+      toggleable: true,
     },
     {
-      label: 'Auto-Roles',
-      icon: '🎭',
+      key: 'autoroles' as const,
+      name: 'Auto-Roles',
+      description: 'Vergibt jedem neuen Mitglied automatisch eine oder mehrere Rollen.',
+      tab: 'autoroles',
       enabled: autoRoles.enabled,
-      hint: autoRoles.enabled
-        ? `${autoRoles.roleIds.length} Rolle${autoRoles.roleIds.length === 1 ? '' : 'n'} bei Join`
-        : 'Rolle automatisch vergeben',
-      target: 'autoroles',
-      accent: 'from-fuchsia-500/25 to-pink-500/10 text-fuchsia-500',
-      summary: 'Rollen, die jedem neuen Mitglied vergeben werden.',
+      toggleable: true,
     },
     {
-      label: 'Logging',
-      icon: '📋',
+      key: 'logging' as const,
+      name: 'Logging',
+      description: 'Audit-Trail mit Joins, Leaves, Message-Edits/Deletes und Rollen-Änderungen.',
+      tab: 'logging',
       enabled: log.channelId !== null,
-      hint:
-        log.channelId !== null
-          ? [
-              log.joins && 'Joins',
-              log.leaves && 'Leaves',
-              log.messageEdits && 'Edits',
-              log.messageDeletes && 'Deletes',
-              log.roleChanges && 'Rollen',
-            ]
-              .filter(Boolean)
-              .join(' · ') || 'kein Event aktiv'
-          : 'Events in Audit-Channel',
-      target: 'logging',
-      accent: 'from-sky-500/25 to-cyan-500/10 text-sky-500',
-      summary: 'Audit-Trail: Joins, Leaves, Message-Edits, Rollen.',
+      toggleable: false,
     },
     {
-      label: 'Leveling',
-      icon: '🏆',
+      key: 'levels' as const,
+      name: 'Leveling',
+      description: 'XP-System mit Level-Up-Nachrichten und automatischen Rollen-Rewards.',
+      tab: 'levels',
       enabled: level.enabled,
-      hint: level.enabled
-        ? `${levelRewards.length} Reward${levelRewards.length === 1 ? '' : 's'}`
-        : 'XP-System für Engagement',
-      target: 'levels',
-      accent: 'from-yellow-400/25 to-amber-500/10 text-yellow-500',
-      summary: 'XP pro Message, Level-Up-Nachrichten, Rollen-Rewards.',
+      toggleable: true,
     },
     {
-      label: 'AutoMod',
-      icon: '🛡️',
+      key: 'automod' as const,
+      name: 'AutoMod',
+      description: 'Spam-, Link-, Caps- und Mention-Filter sowie Wort-Blacklist.',
+      tab: 'automod',
       enabled: automod.enabled,
-      hint: automod.enabled
-        ? [
-            automod.blockLinks && 'Links',
-            automod.maxCapsPct !== null && 'Caps',
-            automod.maxMentions !== null && 'Mentions',
-            automod.bannedWords.length > 0 && 'Wörter',
-          ]
-            .filter(Boolean)
-            .join(' · ') || 'an'
-        : 'Spam, Links, Caps filtern',
-      target: 'automod',
-      accent: 'from-rose-500/25 to-red-500/10 text-rose-500',
-      summary: 'Spam-, Link-, Caps- und Mention-Filter, Wort-Blacklist.',
+      toggleable: true,
     },
     {
-      label: 'Reaction-Rollen',
-      icon: '✨',
+      key: 'reactionroles' as const,
+      name: 'Reaction-Rollen',
+      description: 'Self-Service-Rollen via Reaktion, Button oder Dropdown.',
+      tab: 'reactionroles',
       enabled: reactionRoleMessages.length > 0,
-      hint:
-        reactionRoleMessages.length > 0
-          ? `${reactionRoleMessages.length} Nachricht${reactionRoleMessages.length === 1 ? '' : 'en'}`
-          : 'Rolle per Emoji-Klick',
-      target: 'reactionroles',
-      accent: 'from-violet-500/25 to-purple-500/10 text-violet-500',
-      summary: 'Self-Service: Rolle per Emoji-Reaktion.',
+      toggleable: false,
+      isNew: true,
     },
     {
-      label: 'Booster-Message',
-      icon: '🚀',
+      key: 'booster' as const,
+      name: 'Booster-Message',
+      description: 'Bedankt sich automatisch wenn jemand den Server boostet.',
+      tab: 'booster',
       enabled: booster.enabled,
-      hint: booster.enabled
-        ? booster.channelId
-          ? 'Channel gesetzt'
-          : 'Channel fehlt'
-        : 'Bedanke dich bei Boostern',
-      target: 'booster',
-      accent: 'from-pink-500/25 to-fuchsia-500/10 text-pink-500',
-      summary: 'Reagiert automatisch wenn jemand den Server boostet.',
+      toggleable: true,
+      isNew: true,
     },
     {
-      label: 'Sticky Messages',
-      icon: '📌',
+      key: 'sticky' as const,
+      name: 'Sticky Messages',
+      description: 'Re-postet wichtige Nachrichten am Channel-Ende.',
+      tab: 'sticky',
       enabled: stickyMessages.length > 0,
-      hint:
-        stickyMessages.length > 0
-          ? `${stickyMessages.length} Channel${stickyMessages.length === 1 ? '' : ''}`
-          : 'Wichtige Nachrichten fixieren',
-      target: 'sticky',
-      accent: 'from-amber-500/25 to-yellow-500/10 text-amber-500',
-      summary: 'Re-postet wichtige Nachrichten am Channel-Ende.',
+      toggleable: false,
+      isNew: true,
     },
     {
-      label: 'Channel-Modes',
-      icon: '🎯',
+      key: 'channelmodes' as const,
+      name: 'Channel-Modes',
+      description: 'Beschränkt Channels auf nur Bilder oder nur Text.',
+      tab: 'channelmodes',
       enabled: channelModes.length > 0,
-      hint:
-        channelModes.length > 0
-          ? `${channelModes.length} aktiv`
-          : 'Bilder-Only oder Text-Only',
-      target: 'channelmodes',
-      accent: 'from-cyan-500/25 to-sky-500/10 text-cyan-500',
-      summary: 'Beschränkt Channels auf nur Bilder oder nur Text.',
+      toggleable: false,
+      isNew: true,
     },
     {
-      label: 'Embed-Creator',
-      icon: '🎨',
+      key: 'embed' as const,
+      name: 'Embed-Creator',
+      description: 'Baue benutzerdefinierte Embed-Nachrichten und sende sie als Bot.',
+      tab: 'embed',
       enabled: false,
-      hint: 'Schöne Embeds bauen',
-      target: 'embed',
-      accent: 'from-purple-500/25 to-indigo-500/10 text-purple-500',
-      summary: 'Baue custom Embeds und sende sie als Bot.',
+      toggleable: false,
+      isNew: true,
     },
   ];
-
-  const activeModuleCount = overviewItems.filter((i) => i.enabled).length;
 
   const tabs: Tab[] = [
     {
       id: 'overview',
       label: 'Übersicht',
       icon: '🏠',
-      description: 'Status aller Module auf einen Blick — Karte klicken zum Konfigurieren.',
+      description: 'Alle Module — durchsuchen, ein-/ausschalten, konfigurieren.',
       noCardWrapper: true,
       content: (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3 px-1">
-            <div>
-              <h2 className="text-sm font-semibold text-fg">Module</h2>
-              <p className="text-[11px] text-subtle mt-0.5">
-                {activeModuleCount} von {overviewItems.length} aktiv — klick eine Karte zum Konfigurieren.
-              </p>
-            </div>
-            <div className="h-1.5 w-32 rounded-full bg-elev overflow-hidden border border-line">
-              <div
-                className="h-full bg-gradient-to-r from-[#5865F2] to-violet-500 transition-all"
-                style={{
-                  width: `${(activeModuleCount / overviewItems.length) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {overviewItems.map((item) => (
-              <a
-                key={item.target}
-                href={`#${item.target}`}
-                className={`group relative overflow-hidden rounded-lg border bg-surface p-4 flex flex-col gap-3 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg ${
-                  item.enabled
-                    ? 'border-emerald-500/30 hover:border-emerald-500/60 shadow-[0_0_0_1px_rgba(16,185,129,0.05)]'
-                    : 'border-line hover:border-line-strong'
-                }`}
-              >
-                <div
-                  className={`pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${item.accent} opacity-40 blur-2xl transition-opacity group-hover:opacity-70`}
-                  aria-hidden
-                />
-                <div className="relative flex items-start justify-between gap-2">
-                  <div
-                    className={`h-11 w-11 rounded-lg bg-gradient-to-br ${item.accent} grid place-items-center text-2xl leading-none border border-line-strong/40 shadow-inner`}
-                    aria-hidden
-                  >
-                    {item.icon}
-                  </div>
-                  <span
-                    className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border backdrop-blur-sm ${
-                      item.enabled
-                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
-                        : 'bg-elev/60 text-subtle border-line-strong'
-                    }`}
-                  >
-                    {item.enabled ? '● Aktiv' : '○ Aus'}
-                  </span>
-                </div>
-                <div className="relative">
-                  <div className="text-base font-semibold text-fg group-hover:text-accent-hover transition-colors">
-                    {item.label}
-                  </div>
-                  <div className="text-[11px] text-muted mt-1 leading-relaxed">
-                    {item.summary}
-                  </div>
-                </div>
-                <div className="relative flex items-center justify-between text-[11px] mt-auto pt-2 border-t border-line/60">
-                  <span className="text-subtle truncate">{item.hint}</span>
-                  <span className="text-fg-soft/50 group-hover:text-accent-hover group-hover:translate-x-0.5 transition-all">
-                    →
-                  </span>
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
+        <ModuleOverview guildId={guildId} modules={moduleDefs} />
       ),
     },
     {
