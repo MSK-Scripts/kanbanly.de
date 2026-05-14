@@ -39,10 +39,11 @@ type LoadResult =
   | { kind: 'no-conn' }
   | { kind: 'forbidden' }
   | { kind: 'no-bot' }
-  | { kind: 'rate-limited'; retryAfterSec: number }
+  // rate-limited entfernt — wir cachen Discord-API-Calls 5min und fallen auf DB-Lookup zurück.
   | {
       kind: 'ok';
-      guild: DiscordGuild;
+      guildName: string;
+      guildIcon: string | null;
       channels: DiscordChannel[];
       roles: DiscordRole[];
       welcome: {
@@ -121,18 +122,33 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const token = await getFreshAccessToken(userId);
   if (!token) return { kind: 'no-conn' };
 
-  let guilds: DiscordGuild[];
+  const admin0 = createAdminClient();
+
+  // Permission-Check über Discord — bei Rate-Limit fallback auf linked_user_id-Check.
+  let guild: DiscordGuild | undefined;
+  let guildName: string | null = null;
+  let guildIcon: string | null = null;
+  let permissionsOk = false;
   try {
-    guilds = await fetchCurrentUserGuilds(token);
+    const guilds = await fetchCurrentUserGuilds(token);
+    guild = guilds.find((g) => g.id === guildId);
+    if (!guild) return { kind: 'forbidden' };
+    permissionsOk = guild.owner || canManageGuild(guild.permissions);
+    if (!permissionsOk) return { kind: 'forbidden' };
+    guildName = guild.name;
+    guildIcon = guild.icon;
   } catch (err) {
-    if (err instanceof DiscordRateLimitError) {
-      return { kind: 'rate-limited', retryAfterSec: err.retryAfterSec };
-    }
-    throw err;
+    if (!(err instanceof DiscordRateLimitError)) throw err;
+    // Rate-Limited beim User-Guild-Check: vertraue dem linked_user_id auf bot_guilds.
+    const { data: link } = await admin0
+      .from('bot_guilds')
+      .select('linked_user_id, name')
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!link || link.linked_user_id !== userId) return { kind: 'forbidden' };
+    permissionsOk = true;
+    guildName = (link.name as string | null) ?? guildId;
   }
-  const guild = guilds.find((g) => g.id === guildId);
-  if (!guild) return { kind: 'forbidden' };
-  if (!guild.owner && !canManageGuild(guild.permissions)) return { kind: 'forbidden' };
 
   const admin = createAdminClient();
   const { data: guildRow, error: guildRowError } = await admin
@@ -157,20 +173,20 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       .filter((c) => c.type === CHANNEL_TYPE_TEXT || c.type === CHANNEL_TYPE_ANNOUNCEMENT)
       .sort((a, b) => a.position - b.position);
   } catch (err) {
-    if (err instanceof DiscordRateLimitError) {
-      return { kind: 'rate-limited', retryAfterSec: err.retryAfterSec };
+    // Rate-Limit: leise weitermachen mit leerer Liste — die Page bleibt nutzbar.
+    if (!(err instanceof DiscordRateLimitError)) {
+      console.error('[guild-settings] channels:', err);
     }
-    console.error('[guild-settings] channels:', err);
   }
 
   let roles: DiscordRole[] = [];
   try {
     roles = (await fetchGuildRoles(guildId)).sort((a, b) => b.position - a.position);
   } catch (err) {
-    if (err instanceof DiscordRateLimitError) {
-      return { kind: 'rate-limited', retryAfterSec: err.retryAfterSec };
+    // Rate-Limit: leise weitermachen.
+    if (!(err instanceof DiscordRateLimitError)) {
+      console.error('[guild-settings] roles:', err);
     }
-    console.error('[guild-settings] roles:', err);
   }
 
   const autoRoleIdsRaw = guildRow.auto_role_ids as unknown;
@@ -265,7 +281,8 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
 
   return {
     kind: 'ok',
-    guild,
+    guildName: guildName ?? guildId,
+    guildIcon,
     channels,
     roles,
     welcome: {
@@ -396,28 +413,20 @@ export default async function GuildSettingsPage({
           </div>
         )}
 
-        {result.kind === 'rate-limited' && (
-          <div className="rounded-xl border border-[var(--warning-line)] bg-[var(--warning-soft)] p-4 flex items-start gap-3">
-            <div className="h-8 w-8 shrink-0 rounded-full bg-[var(--warning-soft)] grid place-items-center text-[var(--warning)] text-sm font-bold border border-[var(--warning-line)]">
-              !
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] font-semibold text-[var(--warning)]">
-                Kurze Pause — Discord-Rate-Limit
-              </p>
-              <p className="text-[12px] text-[var(--warning)]/80 mt-0.5">
-                In ~{Math.max(1, result.retryAfterSec)}s wieder verfügbar.
-                Passiert manchmal nach vielen schnellen Aktionen — kein Fehler.
-              </p>
-            </div>
-          </div>
+        {/* rate-limited entfernt — gecachte Daten + DB-Fallback */}
+        {false && (
+          <div className="hidden" />
         )}
 
         {result.kind === 'ok' && (
           <GuildSettingsView
-            guildName={result.guild.name}
-            guildId={result.guild.id}
-            guildIcon={guildIconUrl(result.guild)}
+            guildName={result.guildName}
+            guildId={guildId}
+            guildIcon={
+              result.guildIcon
+                ? guildIconUrl({ id: guildId, icon: result.guildIcon })
+                : null
+            }
             channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
             roles={result.roles.map((r) => ({
               id: r.id,
