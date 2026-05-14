@@ -27,6 +27,33 @@ import { ChannelModesForm } from '@/components/ChannelModesForm';
 import { EmbedCreatorForm } from '@/components/EmbedCreatorForm';
 import { ReactionRolesManager } from '@/components/ReactionRolesManager';
 import { ModuleOverview } from '@/components/ModuleOverview';
+import { VerifyForm } from '@/components/VerifyForm';
+import { AntiRaidForm } from '@/components/AntiRaidForm';
+import { GiveawaysForm } from '@/components/GiveawaysForm';
+import {
+  BirthdayForm,
+  RoleBadgesForm,
+  AfkForm,
+  InviteTrackerForm,
+} from '@/components/Phase2FinishForms';
+import { SuggestionsForm } from '@/components/SuggestionsForm';
+import { HelpdeskForm } from '@/components/HelpdeskForm';
+import { TempVoiceForm } from '@/components/TempVoiceForm';
+import { DailyImageForm, TeamlistsForm } from '@/components/QuickWinsForms';
+import { TicketsForm } from '@/components/TicketsForm';
+import { PricelistForm } from '@/components/PricelistForm';
+import { ShopForm } from '@/components/ShopForm';
+import { PremiumForm } from '@/components/PremiumForm';
+import { isGuildPremium } from '@/lib/premium';
+import {
+  listTicketPanels,
+  listSuggestionPanels,
+  listPricelistPanels,
+  type TicketPanelRow,
+  type SuggestionPanelRow,
+  type PricelistPanelRow,
+} from '@/app/(app)/integrations/discord/[guildId]/actions';
+import type { EmbedTemplate, MessagePayloadV2 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
@@ -39,10 +66,11 @@ type LoadResult =
   | { kind: 'no-conn' }
   | { kind: 'forbidden' }
   | { kind: 'no-bot' }
-  | { kind: 'rate-limited'; retryAfterSec: number }
+  // rate-limited entfernt — wir cachen Discord-API-Calls 5min und fallen auf DB-Lookup zurück.
   | {
       kind: 'ok';
-      guild: DiscordGuild;
+      guildName: string;
+      guildIcon: string | null;
       channels: DiscordChannel[];
       roles: DiscordRole[];
       welcome: {
@@ -106,14 +134,121 @@ type LoadResult =
         maxMentions: number | null;
         bannedWords: string[];
       };
-      embedTemplates: Array<{
+      embedTemplates: EmbedTemplate[];
+      verify: {
+        enabled: boolean;
+        channelId: string | null;
+        roleId: string | null;
+        message: string | null;
+        panelMessageId: string | null;
+        panelTitle: string | null;
+        panelColor: number | null;
+        buttonLabel: string | null;
+        buttonEmoji: string | null;
+        buttonStyle: 'primary' | 'secondary' | 'success' | 'danger';
+        replySuccess: string | null;
+        replyAlready: string | null;
+      };
+      antiraid: {
+        enabled: boolean;
+        joinThreshold: number;
+        joinWindowSec: number;
+        action: 'alert' | 'kick' | 'lockdown';
+        alertChannelId: string | null;
+      };
+      birthday: {
+        enabled: boolean;
+        channelId: string | null;
+        message: string | null;
+      };
+      birthdayList: Array<{ userId: string; month: number; day: number; year: number | null }>;
+      roleBadgesEnabled: boolean;
+      roleBadges: Array<{ roleId: string; daysRequired: number }>;
+      afk: {
+        enabled: boolean;
+        channelId: string | null;
+        timeoutMinutes: number;
+      };
+      suggestions: {
+        enabled: boolean;
+        channelId: string | null;
+        modRoleId: string | null;
+        embedTitle: string;
+        embedMessage: string;
+        embedColor: number;
+        footerText: string | null;
+        bannerUrl: string | null;
+        thumbnailUrl: string | null;
+        upvoteEmoji: string | null;
+        downvoteEmoji: string | null;
+        statusOpenEmoji: string | null;
+        statusEndedEmoji: string | null;
+        allowedRoleIds: string[];
+        endMessage: string;
+        fieldOrder: Array<'id' | 'status' | 'upvotes' | 'downvotes' | 'banner'>;
+      };
+      suggestionsList: Array<{
         id: string;
-        name: string;
-        title: string | null;
+        userId: string;
+        content: string;
+        status: 'open' | 'approved' | 'rejected' | 'implemented';
+        upvotes: number;
+        downvotes: number;
+        createdAt: string;
+      }>;
+      suggestionPanels: SuggestionPanelRow[];
+      inviteTrackerEnabled: boolean;
+      helpdeskPanels: Array<{
+        id: string;
+        channelId: string;
+        messageId: string | null;
+        title: string;
         description: string | null;
         color: number | null;
-        footer: string | null;
-        imageUrl: string | null;
+        items: Array<{
+          id: string;
+          label: string;
+          emoji: string | null;
+          style: 'primary' | 'secondary' | 'success' | 'danger';
+          answer: string;
+          answerColor: number | null;
+          position: number;
+        }>;
+      }>;
+      tempvoice: {
+        enabled: boolean;
+        creatorChannelId: string | null;
+        categoryId: string | null;
+        nameTemplate: string | null;
+        defaultLimit: number;
+      };
+      dailyImage: {
+        enabled: boolean;
+        channelId: string | null;
+        hour: number;
+        urls: string[];
+      };
+      teamlists: Array<{
+        id: string;
+        channelId: string;
+        messageId: string | null;
+        title: string;
+        roleIds: string[];
+        color: number | null;
+      }>;
+      ticketPanels: TicketPanelRow[];
+      pricelistPanels: PricelistPanelRow[];
+      premium: boolean;
+      giveaways: Array<{
+        id: string;
+        channelId: string;
+        messageId: string | null;
+        prize: string;
+        winnersCount: number;
+        endsAt: string;
+        ended: boolean;
+        winnerUserIds: string[] | null;
+        entriesCount: number;
       }>;
     };
 
@@ -121,24 +256,39 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const token = await getFreshAccessToken(userId);
   if (!token) return { kind: 'no-conn' };
 
-  let guilds: DiscordGuild[];
+  const admin0 = createAdminClient();
+
+  // Permission-Check über Discord — bei Rate-Limit fallback auf linked_user_id-Check.
+  let guild: DiscordGuild | undefined;
+  let guildName: string | null = null;
+  let guildIcon: string | null = null;
+  let permissionsOk = false;
   try {
-    guilds = await fetchCurrentUserGuilds(token);
+    const guilds = await fetchCurrentUserGuilds(token);
+    guild = guilds.find((g) => g.id === guildId);
+    if (!guild) return { kind: 'forbidden' };
+    permissionsOk = guild.owner || canManageGuild(guild.permissions);
+    if (!permissionsOk) return { kind: 'forbidden' };
+    guildName = guild.name;
+    guildIcon = guild.icon;
   } catch (err) {
-    if (err instanceof DiscordRateLimitError) {
-      return { kind: 'rate-limited', retryAfterSec: err.retryAfterSec };
-    }
-    throw err;
+    if (!(err instanceof DiscordRateLimitError)) throw err;
+    // Rate-Limited beim User-Guild-Check: vertraue dem linked_user_id auf bot_guilds.
+    const { data: link } = await admin0
+      .from('bot_guilds')
+      .select('linked_user_id, name')
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!link || link.linked_user_id !== userId) return { kind: 'forbidden' };
+    permissionsOk = true;
+    guildName = (link.name as string | null) ?? guildId;
   }
-  const guild = guilds.find((g) => g.id === guildId);
-  if (!guild) return { kind: 'forbidden' };
-  if (!guild.owner && !canManageGuild(guild.permissions)) return { kind: 'forbidden' };
 
   const admin = createAdminClient();
   const { data: guildRow, error: guildRowError } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, verify_reply_success, verify_reply_already, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id, birthday_enabled, birthday_channel_id, birthday_message, role_badges_enabled, afk_enabled, afk_channel_id, afk_timeout_minutes, suggestions_enabled, suggestions_channel_id, suggestions_mod_role_id, suggestions_embed_title, suggestions_embed_message, suggestions_embed_color, suggestions_footer_text, suggestions_banner_url, suggestions_thumbnail_url, suggestions_upvote_emoji, suggestions_downvote_emoji, suggestions_status_open_emoji, suggestions_status_ended_emoji, suggestions_allowed_role_ids, suggestions_end_message, suggestions_field_order, invite_tracker_enabled, tempvoice_enabled, tempvoice_creator_channel_id, tempvoice_category_id, tempvoice_name_template, tempvoice_default_limit, daily_image_enabled, daily_image_channel_id, daily_image_hour, daily_image_urls',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -157,20 +307,20 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       .filter((c) => c.type === CHANNEL_TYPE_TEXT || c.type === CHANNEL_TYPE_ANNOUNCEMENT)
       .sort((a, b) => a.position - b.position);
   } catch (err) {
-    if (err instanceof DiscordRateLimitError) {
-      return { kind: 'rate-limited', retryAfterSec: err.retryAfterSec };
+    // Rate-Limit: leise weitermachen mit leerer Liste — die Page bleibt nutzbar.
+    if (!(err instanceof DiscordRateLimitError)) {
+      console.error('[guild-settings] channels:', err);
     }
-    console.error('[guild-settings] channels:', err);
   }
 
   let roles: DiscordRole[] = [];
   try {
     roles = (await fetchGuildRoles(guildId)).sort((a, b) => b.position - a.position);
   } catch (err) {
-    if (err instanceof DiscordRateLimitError) {
-      return { kind: 'rate-limited', retryAfterSec: err.retryAfterSec };
+    // Rate-Limit: leise weitermachen.
+    if (!(err instanceof DiscordRateLimitError)) {
+      console.error('[guild-settings] roles:', err);
     }
-    console.error('[guild-settings] roles:', err);
   }
 
   const autoRoleIdsRaw = guildRow.auto_role_ids as unknown;
@@ -238,17 +388,174 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   }
   const { data: tplRaw } = await admin
     .from('bot_embed_templates')
-    .select('id, name, title, description, color, footer, image_url')
+    .select('id, name, payload, title, description, color, footer, image_url')
     .eq('guild_id', guildId)
     .order('updated_at', { ascending: false });
-  const embedTemplates = (tplRaw ?? []).map((r) => ({
+  const embedTemplates: EmbedTemplate[] = (tplRaw ?? []).map((r) => ({
     id: r.id as string,
     name: r.name as string,
+    payload: (r.payload as MessagePayloadV2 | null) ?? null,
     title: (r.title as string | null) ?? null,
     description: (r.description as string | null) ?? null,
     color: (r.color as number | null) ?? null,
     footer: (r.footer as string | null) ?? null,
     imageUrl: (r.image_url as string | null) ?? null,
+  }));
+
+  const { data: giveawayRaw } = await admin
+    .from('bot_giveaways')
+    .select('id, channel_id, message_id, prize, winners_count, ends_at, ended, winner_user_ids')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  const gwIds = (giveawayRaw ?? []).map((r) => r.id as string);
+  const gwCount = new Map<string, number>();
+  if (gwIds.length) {
+    const { data: ents } = await admin
+      .from('bot_giveaway_entries')
+      .select('giveaway_id')
+      .in('giveaway_id', gwIds);
+    for (const e of ents ?? []) {
+      const id = e.giveaway_id as string;
+      gwCount.set(id, (gwCount.get(id) ?? 0) + 1);
+    }
+  }
+  const giveaways = (giveawayRaw ?? []).map((r) => ({
+    id: r.id as string,
+    channelId: r.channel_id as string,
+    messageId: (r.message_id as string | null) ?? null,
+    prize: r.prize as string,
+    winnersCount: r.winners_count as number,
+    endsAt: r.ends_at as string,
+    ended: Boolean(r.ended),
+    winnerUserIds: Array.isArray(r.winner_user_ids)
+      ? (r.winner_user_ids as unknown[]).filter(
+          (v): v is string => typeof v === 'string',
+        )
+      : null,
+    entriesCount: gwCount.get(r.id as string) ?? 0,
+  }));
+
+  const { data: birthdaysRaw } = await admin
+    .from('bot_birthdays')
+    .select('user_id, month, day, year')
+    .eq('guild_id', guildId)
+    .order('month')
+    .order('day');
+  const birthdayList = (birthdaysRaw ?? []).map((r) => ({
+    userId: r.user_id as string,
+    month: r.month as number,
+    day: r.day as number,
+    year: (r.year as number | null) ?? null,
+  }));
+
+  const { data: badgesRaw } = await admin
+    .from('bot_role_badges')
+    .select('role_id, days_required')
+    .eq('guild_id', guildId)
+    .order('days_required');
+  const roleBadges = (badgesRaw ?? []).map((r) => ({
+    roleId: r.role_id as string,
+    daysRequired: r.days_required as number,
+  }));
+
+  const { data: suggRaw } = await admin
+    .from('bot_suggestions')
+    .select('id, user_id, content, status, upvotes, downvotes, created_at')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  const suggestionsList = (suggRaw ?? []).map((r) => ({
+    id: r.id as string,
+    userId: r.user_id as string,
+    content: r.content as string,
+    status: r.status as 'open' | 'approved' | 'rejected' | 'implemented',
+    upvotes: (r.upvotes as number) ?? 0,
+    downvotes: (r.downvotes as number) ?? 0,
+    createdAt: r.created_at as string,
+  }));
+
+  const sugPanelsRes = await listSuggestionPanels(guildId);
+  const suggestionPanels: SuggestionPanelRow[] = sugPanelsRes.ok
+    ? sugPanelsRes.panels ?? []
+    : [];
+
+  const { data: hdPanelsRaw } = await admin
+    .from('bot_helpdesk_panels')
+    .select('id, channel_id, message_id, title, description, color')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false });
+  const hdPanelIds = (hdPanelsRaw ?? []).map((p) => p.id as string);
+  const { data: hdItemsRaw } = hdPanelIds.length
+    ? await admin
+        .from('bot_helpdesk_items')
+        .select('id, panel_id, label, emoji, style, answer, answer_color, position')
+        .in('panel_id', hdPanelIds)
+        .order('position')
+    : { data: [] as Array<Record<string, unknown>> };
+  const itemsByPanel = new Map<
+    string,
+    Array<{
+      id: string;
+      label: string;
+      emoji: string | null;
+      style: 'primary' | 'secondary' | 'success' | 'danger';
+      answer: string;
+      answerColor: number | null;
+      position: number;
+    }>
+  >();
+  for (const it of hdItemsRaw ?? []) {
+    const pid = it.panel_id as string;
+    if (!itemsByPanel.has(pid)) itemsByPanel.set(pid, []);
+    itemsByPanel.get(pid)!.push({
+      id: it.id as string,
+      label: it.label as string,
+      emoji: (it.emoji as string | null) ?? null,
+      style: ((it.style as string) ?? 'secondary') as
+        | 'primary'
+        | 'secondary'
+        | 'success'
+        | 'danger',
+      answer: it.answer as string,
+      answerColor: (it.answer_color as number | null) ?? null,
+      position: (it.position as number) ?? 0,
+    });
+  }
+  const helpdeskPanels = (hdPanelsRaw ?? []).map((p) => ({
+    id: p.id as string,
+    channelId: p.channel_id as string,
+    messageId: (p.message_id as string | null) ?? null,
+    title: p.title as string,
+    description: (p.description as string | null) ?? null,
+    color: (p.color as number | null) ?? null,
+    items: itemsByPanel.get(p.id as string) ?? [],
+  }));
+
+  const ticketListRes = await listTicketPanels(guildId);
+  const ticketPanels: TicketPanelRow[] = ticketListRes.ok ? ticketListRes.panels ?? [] : [];
+
+  const pricelistRes = await listPricelistPanels(guildId);
+  const pricelistPanels: PricelistPanelRow[] = pricelistRes.ok
+    ? pricelistRes.panels ?? []
+    : [];
+
+  const premium = await isGuildPremium(guildId);
+
+  const { data: teamlistsRaw } = await admin
+    .from('bot_teamlists')
+    .select('id, channel_id, message_id, title, role_ids, color')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false });
+  const teamlists = (teamlistsRaw ?? []).map((r) => ({
+    id: r.id as string,
+    channelId: r.channel_id as string,
+    messageId: (r.message_id as string | null) ?? null,
+    title: (r.title as string) ?? 'Team',
+    roleIds: Array.isArray(r.role_ids)
+      ? (r.role_ids as unknown[]).filter((v): v is string => typeof v === 'string')
+      : [],
+    color: (r.color as number | null) ?? null,
   }));
 
   const reactionRoleMessages = (rrMsgRaw ?? []).map((m) => ({
@@ -265,7 +572,8 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
 
   return {
     kind: 'ok',
-    guild,
+    guildName: guildName ?? guildId,
+    guildIcon,
     channels,
     roles,
     welcome: {
@@ -289,6 +597,121 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     channelModes,
     reactionRoleMessages,
     embedTemplates,
+    verify: {
+      enabled: Boolean(guildRow.verify_enabled),
+      channelId: (guildRow.verify_channel_id as string | null) ?? null,
+      roleId: (guildRow.verify_role_id as string | null) ?? null,
+      message: (guildRow.verify_message as string | null) ?? null,
+      panelMessageId: (guildRow.verify_panel_message_id as string | null) ?? null,
+      panelTitle: (guildRow.verify_panel_title as string | null) ?? null,
+      panelColor: (guildRow.verify_panel_color as number | null) ?? null,
+      buttonLabel: (guildRow.verify_button_label as string | null) ?? null,
+      buttonEmoji: (guildRow.verify_button_emoji as string | null) ?? null,
+      buttonStyle:
+        ((guildRow.verify_button_style as
+          | 'primary'
+          | 'secondary'
+          | 'success'
+          | 'danger'
+          | null) ?? 'primary'),
+      replySuccess: (guildRow.verify_reply_success as string | null) ?? null,
+      replyAlready: (guildRow.verify_reply_already as string | null) ?? null,
+    },
+    antiraid: {
+      enabled: Boolean(guildRow.antiraid_enabled),
+      joinThreshold: (guildRow.antiraid_join_threshold as number | null) ?? 5,
+      joinWindowSec: (guildRow.antiraid_join_window_sec as number | null) ?? 10,
+      action:
+        ((guildRow.antiraid_action as 'alert' | 'kick' | 'lockdown' | null) ??
+          'alert'),
+      alertChannelId:
+        (guildRow.antiraid_alert_channel_id as string | null) ?? null,
+    },
+    birthday: {
+      enabled: Boolean(guildRow.birthday_enabled),
+      channelId: (guildRow.birthday_channel_id as string | null) ?? null,
+      message: (guildRow.birthday_message as string | null) ?? null,
+    },
+    birthdayList,
+    roleBadgesEnabled: Boolean(guildRow.role_badges_enabled),
+    roleBadges,
+    afk: {
+      enabled: Boolean(guildRow.afk_enabled),
+      channelId: (guildRow.afk_channel_id as string | null) ?? null,
+      timeoutMinutes: (guildRow.afk_timeout_minutes as number | null) ?? 10,
+    },
+    suggestions: {
+      enabled: Boolean(guildRow.suggestions_enabled),
+      channelId: (guildRow.suggestions_channel_id as string | null) ?? null,
+      modRoleId: (guildRow.suggestions_mod_role_id as string | null) ?? null,
+      embedTitle:
+        ((guildRow.suggestions_embed_title as string | null) ?? 'Neuer Vorschlag'),
+      embedMessage:
+        ((guildRow.suggestions_embed_message as string | null) ??
+          '{user} hat einen neuen Vorschlag gepostet\n\n{suggestion}'),
+      embedColor: (guildRow.suggestions_embed_color as number | null) ?? 0x5865f2,
+      footerText: (guildRow.suggestions_footer_text as string | null) ?? null,
+      bannerUrl: (guildRow.suggestions_banner_url as string | null) ?? null,
+      thumbnailUrl: (guildRow.suggestions_thumbnail_url as string | null) ?? null,
+      upvoteEmoji: (guildRow.suggestions_upvote_emoji as string | null) ?? null,
+      downvoteEmoji: (guildRow.suggestions_downvote_emoji as string | null) ?? null,
+      statusOpenEmoji:
+        (guildRow.suggestions_status_open_emoji as string | null) ?? null,
+      statusEndedEmoji:
+        (guildRow.suggestions_status_ended_emoji as string | null) ?? null,
+      allowedRoleIds: Array.isArray(guildRow.suggestions_allowed_role_ids)
+        ? (guildRow.suggestions_allowed_role_ids as unknown[]).filter(
+            (v): v is string => typeof v === 'string',
+          )
+        : [],
+      endMessage:
+        ((guildRow.suggestions_end_message as string | null) ??
+          'Dieser Vorschlag wurde beendet.'),
+      fieldOrder: (() => {
+        const raw = guildRow.suggestions_field_order;
+        const valid = ['id', 'status', 'upvotes', 'downvotes', 'banner'] as const;
+        type K = (typeof valid)[number];
+        const seen = new Set<K>();
+        const out: K[] = [];
+        if (Array.isArray(raw)) {
+          for (const v of raw as unknown[]) {
+            if (typeof v === 'string' && (valid as readonly string[]).includes(v) && !seen.has(v as K)) {
+              out.push(v as K);
+              seen.add(v as K);
+            }
+          }
+        }
+        for (const k of valid) if (!seen.has(k)) out.push(k);
+        return out;
+      })(),
+    },
+    suggestionsList,
+    suggestionPanels,
+    inviteTrackerEnabled: Boolean(guildRow.invite_tracker_enabled),
+    helpdeskPanels,
+    tempvoice: {
+      enabled: Boolean(guildRow.tempvoice_enabled),
+      creatorChannelId:
+        (guildRow.tempvoice_creator_channel_id as string | null) ?? null,
+      categoryId: (guildRow.tempvoice_category_id as string | null) ?? null,
+      nameTemplate: (guildRow.tempvoice_name_template as string | null) ?? null,
+      defaultLimit: (guildRow.tempvoice_default_limit as number | null) ?? 0,
+    },
+    dailyImage: {
+      enabled: Boolean(guildRow.daily_image_enabled),
+      channelId: (guildRow.daily_image_channel_id as string | null) ?? null,
+      hour: (guildRow.daily_image_hour as number | null) ?? 9,
+      urls: Array.isArray(guildRow.daily_image_urls)
+        ? (guildRow.daily_image_urls as unknown[]).filter(
+            (v): v is string => typeof v === 'string',
+          )
+        : [],
+    },
+    teamlists,
+    ticketPanels,
+    pricelistPanels,
+    premium,
+    giveaways,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
       roleIds: autoRoleIds,
@@ -396,28 +819,20 @@ export default async function GuildSettingsPage({
           </div>
         )}
 
-        {result.kind === 'rate-limited' && (
-          <div className="rounded-xl border border-[var(--warning-line)] bg-[var(--warning-soft)] p-4 flex items-start gap-3">
-            <div className="h-8 w-8 shrink-0 rounded-full bg-[var(--warning-soft)] grid place-items-center text-[var(--warning)] text-sm font-bold border border-[var(--warning-line)]">
-              !
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] font-semibold text-[var(--warning)]">
-                Kurze Pause — Discord-Rate-Limit
-              </p>
-              <p className="text-[12px] text-[var(--warning)]/80 mt-0.5">
-                In ~{Math.max(1, result.retryAfterSec)}s wieder verfügbar.
-                Passiert manchmal nach vielen schnellen Aktionen — kein Fehler.
-              </p>
-            </div>
-          </div>
+        {/* rate-limited entfernt — gecachte Daten + DB-Fallback */}
+        {false && (
+          <div className="hidden" />
         )}
 
         {result.kind === 'ok' && (
           <GuildSettingsView
-            guildName={result.guild.name}
-            guildId={result.guild.id}
-            guildIcon={guildIconUrl(result.guild)}
+            guildName={result.guildName}
+            guildId={guildId}
+            guildIcon={
+              result.guildIcon
+                ? guildIconUrl({ id: guildId, icon: result.guildIcon })
+                : null
+            }
             channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
             roles={result.roles.map((r) => ({
               id: r.id,
@@ -435,6 +850,25 @@ export default async function GuildSettingsPage({
             levelRewards={result.levelRewards}
             automod={result.automod}
             embedTemplates={result.embedTemplates}
+            verify={result.verify}
+            antiraid={result.antiraid}
+            giveaways={result.giveaways}
+            birthday={result.birthday}
+            birthdayList={result.birthdayList}
+            roleBadgesEnabled={result.roleBadgesEnabled}
+            roleBadges={result.roleBadges}
+            afk={result.afk}
+            suggestions={result.suggestions}
+            suggestionsList={result.suggestionsList}
+            suggestionPanels={result.suggestionPanels}
+            inviteTrackerEnabled={result.inviteTrackerEnabled}
+            helpdeskPanels={result.helpdeskPanels}
+            tempvoice={result.tempvoice}
+            dailyImage={result.dailyImage}
+            teamlists={result.teamlists}
+            ticketPanels={result.ticketPanels}
+            pricelistPanels={result.pricelistPanels}
+            premium={result.premium}
           />
         )}
       </div>
@@ -459,6 +893,25 @@ function GuildSettingsView({
   levelRewards,
   automod,
   embedTemplates,
+  verify,
+  antiraid,
+  giveaways,
+  birthday,
+  birthdayList,
+  roleBadgesEnabled,
+  roleBadges,
+  afk,
+  suggestions,
+  suggestionsList,
+  suggestionPanels,
+  inviteTrackerEnabled,
+  helpdeskPanels,
+  tempvoice,
+  dailyImage,
+  teamlists,
+  ticketPanels,
+  pricelistPanels,
+  premium,
 }: {
   guildName: string;
   guildId: string;
@@ -526,15 +979,119 @@ function GuildSettingsView({
     maxMentions: number | null;
     bannedWords: string[];
   };
-  embedTemplates: Array<{
+  embedTemplates: Array<EmbedTemplate>;
+  verify: {
+    enabled: boolean;
+    channelId: string | null;
+    roleId: string | null;
+    message: string | null;
+    panelMessageId: string | null;
+    panelTitle: string | null;
+    panelColor: number | null;
+    buttonLabel: string | null;
+    buttonEmoji: string | null;
+    buttonStyle: 'primary' | 'secondary' | 'success' | 'danger';
+    replySuccess: string | null;
+    replyAlready: string | null;
+  };
+  antiraid: {
+    enabled: boolean;
+    joinThreshold: number;
+    joinWindowSec: number;
+    action: 'alert' | 'kick' | 'lockdown';
+    alertChannelId: string | null;
+  };
+  giveaways: Array<{
     id: string;
-    name: string;
-    title: string | null;
+    channelId: string;
+    messageId: string | null;
+    prize: string;
+    winnersCount: number;
+    endsAt: string;
+    ended: boolean;
+    winnerUserIds: string[] | null;
+    entriesCount: number;
+  }>;
+  birthday: { enabled: boolean; channelId: string | null; message: string | null };
+  birthdayList: Array<{
+    userId: string;
+    month: number;
+    day: number;
+    year: number | null;
+  }>;
+  roleBadgesEnabled: boolean;
+  roleBadges: Array<{ roleId: string; daysRequired: number }>;
+  afk: { enabled: boolean; channelId: string | null; timeoutMinutes: number };
+  suggestions: {
+    enabled: boolean;
+    channelId: string | null;
+    modRoleId: string | null;
+    embedTitle: string;
+    embedMessage: string;
+    embedColor: number;
+    footerText: string | null;
+    bannerUrl: string | null;
+    thumbnailUrl: string | null;
+    upvoteEmoji: string | null;
+    downvoteEmoji: string | null;
+    statusOpenEmoji: string | null;
+    statusEndedEmoji: string | null;
+    allowedRoleIds: string[];
+    endMessage: string;
+    fieldOrder: Array<'id' | 'status' | 'upvotes' | 'downvotes' | 'banner'>;
+  };
+  suggestionsList: Array<{
+    id: string;
+    userId: string;
+    content: string;
+    status: 'open' | 'approved' | 'rejected' | 'implemented';
+    upvotes: number;
+    downvotes: number;
+    createdAt: string;
+  }>;
+  suggestionPanels: SuggestionPanelRow[];
+  inviteTrackerEnabled: boolean;
+  helpdeskPanels: Array<{
+    id: string;
+    channelId: string;
+    messageId: string | null;
+    title: string;
     description: string | null;
     color: number | null;
-    footer: string | null;
-    imageUrl: string | null;
+    items: Array<{
+      id: string;
+      label: string;
+      emoji: string | null;
+      style: 'primary' | 'secondary' | 'success' | 'danger';
+      answer: string;
+      answerColor: number | null;
+      position: number;
+    }>;
   }>;
+  tempvoice: {
+    enabled: boolean;
+    creatorChannelId: string | null;
+    categoryId: string | null;
+    nameTemplate: string | null;
+    defaultLimit: number;
+  };
+  dailyImage: {
+    enabled: boolean;
+    channelId: string | null;
+    hour: number;
+    urls: string[];
+  };
+  teamlists: Array<{
+    id: string;
+    channelId: string;
+    messageId: string | null;
+    title: string;
+    roleIds: string[];
+    color: number | null;
+  }>;
+  ticketPanels: TicketPanelRow[];
+  pricelistPanels: PricelistPanelRow[];
+  premium: boolean;
 }) {
   const moduleDefs = [
     {
@@ -628,6 +1185,147 @@ function GuildSettingsView({
       toggleable: false,
       isNew: true,
     },
+    {
+      key: 'verify' as const,
+      name: 'Verifizierung',
+      description: 'Button-Verify schützt vor Selfbots — neue Member klicken, um die Verified-Rolle zu bekommen.',
+      tab: 'verify',
+      enabled: verify.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'antiraid' as const,
+      name: 'Anti-Raid',
+      description: 'Burst-Detection: X Joins in Y Sekunden → Alert, Kick oder Lockdown.',
+      tab: 'antiraid',
+      enabled: antiraid.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'giveaways' as const,
+      name: 'Giveaways',
+      description: 'Verlose Preise mit Button-Teilnahme, automatischem Ende und Reroll.',
+      tab: 'giveaways',
+      enabled: giveaways.some((g) => !g.ended),
+      toggleable: false,
+      count: giveaways.some((g) => !g.ended)
+        ? giveaways.filter((g) => !g.ended).length
+        : undefined,
+      isNew: true,
+    },
+    {
+      key: 'birthday' as const,
+      name: 'Geburtstage',
+      description: 'Automatische Glückwünsche zum Geburtstag im konfigurierten Channel.',
+      tab: 'birthday',
+      enabled: birthday.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'rolebadges' as const,
+      name: 'Rollen-Badges',
+      description: 'Auto-Rollen nach X Tagen Mitgliedschaft (1-Year-Member etc.).',
+      tab: 'rolebadges',
+      enabled: roleBadgesEnabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'afk' as const,
+      name: 'AFK-Room',
+      description: 'Stumm/taube Voice-User werden nach X Minuten in AFK-Channel verschoben.',
+      tab: 'afk',
+      enabled: afk.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'suggestions' as const,
+      name: 'Vorschläge',
+      description: '/suggest mit Modal — Upvote/Downvote-Buttons + Mod-Approve.',
+      tab: 'suggestions',
+      enabled: suggestions.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'invitetracker' as const,
+      name: 'Invite-Tracker',
+      description: 'Wer hat wen eingeladen — mit Leaderboard.',
+      tab: 'invitetracker',
+      enabled: inviteTrackerEnabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'helpdesk' as const,
+      name: 'Helpdesk',
+      description: 'Button-Panels mit ephemeren FAQ-Antworten — perfekt für Server-Regeln und Common-Questions.',
+      tab: 'helpdesk',
+      enabled: helpdeskPanels.length > 0,
+      toggleable: false,
+      count: helpdeskPanels.length > 0 ? helpdeskPanels.length : undefined,
+      isNew: true,
+    },
+    {
+      key: 'tempvoice' as const,
+      name: 'Temp-Voice',
+      description: 'User joint Creator-Channel → Bot legt persönlichen Voice-Channel an, der bei Verlassen gelöscht wird.',
+      tab: 'tempvoice',
+      enabled: tempvoice.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'dailyimage' as const,
+      name: 'Bild des Tages',
+      description: 'Bot postet täglich ein Bild aus einer URL-Liste — Rotation pro Tag.',
+      tab: 'dailyimage',
+      enabled: dailyImage.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'teamlist' as const,
+      name: 'Teamlisten',
+      description: 'Auto-aktualisierende Embeds mit Members pro Rolle — alle 30 Min.',
+      tab: 'teamlist',
+      enabled: teamlists.length > 0,
+      toggleable: false,
+      count: teamlists.length > 0 ? teamlists.length : undefined,
+      isNew: true,
+    },
+    {
+      key: 'tickets' as const,
+      name: 'Tickets',
+      description: 'Support-Tickets als private Channels mit Staff-Rolle, Transcripts & Panel-Management.',
+      tab: 'tickets',
+      enabled: ticketPanels.length > 0,
+      toggleable: false,
+      count: ticketPanels.length > 0 ? ticketPanels.length : undefined,
+    },
+    {
+      key: 'pricelist' as const,
+      name: 'Preisliste',
+      description: 'Panel mit Buttons — Klick öffnet privates Detail-Embed (Preis, Beschreibung, Bild).',
+      tab: 'pricelist',
+      enabled: pricelistPanels.length > 0,
+      toggleable: false,
+      count: pricelistPanels.length > 0 ? pricelistPanels.length : undefined,
+      isNew: true,
+    },
+    {
+      key: 'shop' as const,
+      name: 'Bestellsystem',
+      description: 'Stripe-Bestellungen mit Order-Channels & Admin-Übersicht.',
+      tab: 'shop',
+      enabled: false,
+      toggleable: false,
+      isNew: true,
+    },
   ];
 
   const tabs: Tab[] = [
@@ -638,7 +1336,7 @@ function GuildSettingsView({
       description: 'Alle Module — durchsuchen, ein-/ausschalten, konfigurieren.',
       noCardWrapper: true,
       content: (
-        <ModuleOverview guildId={guildId} modules={moduleDefs} />
+        <ModuleOverview guildId={guildId} modules={moduleDefs} premium={premium} />
       ),
     },
     {
@@ -746,9 +1444,186 @@ function GuildSettingsView({
         <EmbedCreatorForm
           guildId={guildId}
           channels={channels}
+          roles={roles}
           initialTemplates={embedTemplates}
         />
       ),
+    },
+    {
+      id: 'verify',
+      label: 'Verifizierung',
+      icon: '🛡️',
+      description: 'Button-Verify — schützt vor Selfbots und Raid-Accounts.',
+      content: (
+        <VerifyForm
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initial={verify}
+        />
+      ),
+    },
+    {
+      id: 'antiraid',
+      label: 'Anti-Raid',
+      icon: '🚨',
+      description: 'Burst-Detection: X Joins in Y Sekunden → Alert/Kick/Lockdown.',
+      content: (
+        <AntiRaidForm guildId={guildId} channels={channels} initial={antiraid} />
+      ),
+    },
+    {
+      id: 'giveaways',
+      label: 'Giveaways',
+      icon: '🎉',
+      description: 'Preise verlosen mit Button-Teilnahme und automatischem Ende.',
+      content: (
+        <GiveawaysForm guildId={guildId} channels={channels} initial={giveaways} />
+      ),
+    },
+    {
+      id: 'birthday',
+      label: 'Geburtstage',
+      icon: '🎂',
+      description: 'Tägliche Glückwünsche um ~09:00 UTC.',
+      content: (
+        <BirthdayForm
+          guildId={guildId}
+          channels={channels}
+          initial={birthday}
+          birthdays={birthdayList}
+        />
+      ),
+    },
+    {
+      id: 'rolebadges',
+      label: 'Rollen-Badges',
+      icon: '🏅',
+      description: 'Auto-Rollen nach Mitgliedschafts-Dauer.',
+      content: (
+        <RoleBadgesForm
+          guildId={guildId}
+          roles={roles}
+          enabled={roleBadgesEnabled}
+          badges={roleBadges}
+        />
+      ),
+    },
+    {
+      id: 'afk',
+      label: 'AFK-Room',
+      icon: '💤',
+      description: 'Stumm/taube User in AFK-Voice verschieben.',
+      content: <AfkForm guildId={guildId} channels={channels} initial={afk} />,
+    },
+    {
+      id: 'suggestions',
+      label: 'Vorschläge',
+      icon: '💡',
+      description: 'Modal-Vorschläge mit Voting + Mod-Workflow.',
+      content: (
+        <SuggestionsForm
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initial={suggestions}
+          list={suggestionsList}
+          initialPanels={suggestionPanels}
+        />
+      ),
+    },
+    {
+      id: 'invitetracker',
+      label: 'Invite-Tracker',
+      icon: '📨',
+      description: 'Leaderboard wer wen eingeladen hat.',
+      content: (
+        <InviteTrackerForm guildId={guildId} enabled={inviteTrackerEnabled} />
+      ),
+    },
+    {
+      id: 'helpdesk',
+      label: 'Helpdesk',
+      icon: '❓',
+      description: 'Button-Panels mit ephemeren FAQ-Antworten.',
+      content: (
+        <HelpdeskForm
+          guildId={guildId}
+          channels={channels}
+          initial={helpdeskPanels}
+        />
+      ),
+    },
+    {
+      id: 'tempvoice',
+      label: 'Temp-Voice',
+      icon: '🔊',
+      description: 'Persönliche Voice-Channels auf Knopfdruck.',
+      content: <TempVoiceForm guildId={guildId} initial={tempvoice} />,
+    },
+    {
+      id: 'dailyimage',
+      label: 'Bild des Tages',
+      icon: '',
+      description: 'Tägliches Bild zur konfigurierten Stunde.',
+      content: (
+        <DailyImageForm guildId={guildId} channels={channels} initial={dailyImage} />
+      ),
+    },
+    {
+      id: 'teamlist',
+      label: 'Teamlisten',
+      icon: '',
+      description: 'Auto-aktualisierende Embeds mit Team-Mitgliedern.',
+      content: (
+        <TeamlistsForm
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initial={teamlists}
+        />
+      ),
+    },
+    {
+      id: 'tickets',
+      label: 'Tickets',
+      icon: '',
+      description: 'Support-Tickets mit Panel-Management & Transcripts.',
+      content: (
+        <TicketsForm
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initialPanels={ticketPanels}
+        />
+      ),
+    },
+    {
+      id: 'pricelist',
+      label: 'Preisliste',
+      icon: '📋',
+      description: 'Panel mit Buttons — Klick zeigt Detail-Embed pro Eintrag.',
+      content: (
+        <PricelistForm
+          guildId={guildId}
+          channels={channels}
+          initialPanels={pricelistPanels}
+        />
+      ),
+    },
+    {
+      id: 'shop',
+      label: 'Bestellsystem',
+      icon: '🛒',
+      description: 'Stripe-Bestellungen direkt aus Discord — Produkte, Checkout, Order-Channels.',
+      content: <ShopForm guildId={guildId} channels={channels} roles={roles} />,
+    },
+    {
+      id: 'premium',
+      label: 'Premium',
+      icon: '⭐',
+      description: 'Premium-Status, Trial, Pakete — verwalten von Abos und Rechnungen.',
+      content: <PremiumForm guildId={guildId} />,
     },
   ];
 

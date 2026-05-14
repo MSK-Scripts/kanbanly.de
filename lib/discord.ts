@@ -107,6 +107,42 @@ export async function fetchCurrentUser(accessToken: string): Promise<DiscordUser
   return (await res.json()) as DiscordUser;
 }
 
+// User-Basic-Info-Cache: 15min — global, kein Guild-Scope nötig.
+const userBasicCache = new Map<
+  string,
+  { value: DiscordUser | null; expires: number }
+>();
+const USER_BASIC_TTL_MS = 15 * 60_000;
+
+export async function fetchUserBasic(userId: string): Promise<DiscordUser | null> {
+  const now = Date.now();
+  const cached = userBasicCache.get(userId);
+  if (cached && cached.expires > now) return cached.value;
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return null;
+  try {
+    const data = await discordGet<DiscordUser>(`/users/${userId}`, token);
+    userBasicCache.set(userId, { value: data, expires: now + USER_BASIC_TTL_MS });
+    return data;
+  } catch (err) {
+    // Bei 404/Rate-Limit kurz cachen, damit nicht ständig nachgefragt wird.
+    userBasicCache.set(userId, { value: null, expires: now + 60_000 });
+    if (!(err instanceof DiscordRateLimitError)) {
+      console.error('[fetchUserBasic]', userId, err);
+    }
+    return null;
+  }
+}
+
+export function userAvatarUrl(user: {
+  id: string;
+  avatar: string | null;
+}): string | null {
+  if (!user.avatar) return null;
+  const ext = user.avatar.startsWith('a_') ? 'gif' : 'png';
+  return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${ext}?size=64`;
+}
+
 export type DiscordGuild = {
   id: string;
   name: string;
@@ -127,8 +163,28 @@ export function canManageGuild(perms: string): boolean {
   }
 }
 
-export async function fetchCurrentUserGuilds(accessToken: string): Promise<DiscordGuild[]> {
-  return discordGet<DiscordGuild[]>('/users/@me/guilds', accessToken, 'Bearer');
+// In-memory Cache pro User+Endpunkt — verhindert Discord-Rate-Limits bei Page-Reloads.
+// User-Guilds ändern sich selten — 5min Cache ist OK.
+const userGuildsCache = new Map<
+  string,
+  { value: DiscordGuild[]; expires: number }
+>();
+const USER_GUILDS_TTL_MS = 5 * 60_000;
+
+export async function fetchCurrentUserGuilds(
+  accessToken: string,
+): Promise<DiscordGuild[]> {
+  const key = accessToken;
+  const now = Date.now();
+  const cached = userGuildsCache.get(key);
+  if (cached && cached.expires > now) return cached.value;
+  const value = await discordGet<DiscordGuild[]>(
+    '/users/@me/guilds',
+    accessToken,
+    'Bearer',
+  );
+  userGuildsCache.set(key, { value, expires: now + USER_GUILDS_TTL_MS });
+  return value;
 }
 
 export type DiscordChannel = {
@@ -163,10 +219,37 @@ async function discordGet<T>(path: string, token: string, tokenKind: 'Bot' | 'Be
   return (await res.json()) as T;
 }
 
-export async function fetchGuildChannels(guildId: string): Promise<DiscordChannel[]> {
+// Channel/Role-Lookups: 60s Cache — kurz genug dass neue Channels/Rollen schnell auftauchen,
+// lang genug um Rate-Limits zu vermeiden bei Tab-Wechseln.
+const guildChannelsCache = new Map<
+  string,
+  { value: DiscordChannel[]; expires: number }
+>();
+const guildRolesCache = new Map<
+  string,
+  { value: DiscordRole[]; expires: number }
+>();
+const GUILD_DATA_TTL_MS = 60_000;
+
+export function invalidateGuildCache(guildId: string): void {
+  guildChannelsCache.delete(guildId);
+  guildRolesCache.delete(guildId);
+}
+
+export async function fetchGuildChannels(
+  guildId: string,
+): Promise<DiscordChannel[]> {
+  const now = Date.now();
+  const cached = guildChannelsCache.get(guildId);
+  if (cached && cached.expires > now) return cached.value;
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!token) throw new Error('DISCORD_BOT_TOKEN fehlt in .env.local');
-  return discordGet<DiscordChannel[]>(`/guilds/${guildId}/channels`, token);
+  const value = await discordGet<DiscordChannel[]>(
+    `/guilds/${guildId}/channels`,
+    token,
+  );
+  guildChannelsCache.set(guildId, { value, expires: now + GUILD_DATA_TTL_MS });
+  return value;
 }
 
 export type DiscordRole = {
@@ -179,11 +262,16 @@ export type DiscordRole = {
 };
 
 export async function fetchGuildRoles(guildId: string): Promise<DiscordRole[]> {
+  const now = Date.now();
+  const cached = guildRolesCache.get(guildId);
+  if (cached && cached.expires > now) return cached.value;
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!token) throw new Error('DISCORD_BOT_TOKEN fehlt in .env.local');
   const roles = await discordGet<DiscordRole[]>(`/guilds/${guildId}/roles`, token);
   // @everyone-Rolle hat dieselbe ID wie die Guild — die wollen wir nicht zur Auswahl.
-  return roles.filter((r) => r.id !== guildId && !r.managed);
+  const filtered = roles.filter((r) => r.id !== guildId && !r.managed);
+  guildRolesCache.set(guildId, { value: filtered, expires: now + GUILD_DATA_TTL_MS });
+  return filtered;
 }
 
 export function guildIconUrl(guild: { id: string; icon: string | null }): string | null {

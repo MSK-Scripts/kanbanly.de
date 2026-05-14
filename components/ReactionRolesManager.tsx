@@ -6,16 +6,19 @@ import {
   createReactionRoleMessage,
   deleteReactionRoleMessage,
   removeReactionRoleMapping,
+  sendTestReactionRoles,
   updateReactionRoleMode,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { confirm } from '@/store/confirmStore';
+import { toast } from '@/store/toastStore';
+import { TestSendButton } from './ui/TestSendButton';
 
 type RrMode = 'reactions' | 'buttons' | 'select_menu';
 
 const MODE_LABEL: Record<RrMode, string> = {
-  reactions: '😀 Reaktionen',
-  buttons: '🟦 Buttons',
-  select_menu: '⬇️ Dropdown',
+  reactions: 'Reaktionen',
+  buttons: 'Buttons',
+  select_menu: 'Dropdown',
 };
 
 const MODE_HINT: Record<RrMode, string> = {
@@ -61,14 +64,12 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
   const [newDesc, setNewDesc] = useState('');
   const [newMode, setNewMode] = useState<RrMode>('reactions');
   const [pending, startTransition] = useTransition();
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   const channelById = new Map(channels.map((c) => [c.id, c.name]));
   const roleById = new Map(roles.map((r) => [r.id, r]));
 
   const create = () => {
     if (!newChannelId || !newTitle.trim()) return;
-    setMsg(null);
     startTransition(async () => {
       const r = await createReactionRoleMessage(
         guildId,
@@ -94,9 +95,9 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
         setNewDesc('');
         setNewMode('reactions');
         setCreating(false);
-        setMsg({ kind: 'ok', text: 'Nachricht gepostet.' });
+        toast.success('RR-Nachricht gepostet');
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Anlegen fehlgeschlagen', r.error);
       }
     });
   };
@@ -109,14 +110,13 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
       danger: true,
     });
     if (!ok) return;
-    setMsg(null);
     startTransition(async () => {
       const r = await deleteReactionRoleMessage(guildId, messageId);
       if (r.ok) {
         setItems((prev) => prev.filter((i) => i.messageId !== messageId));
-        setMsg({ kind: 'ok', text: 'Gelöscht.' });
+        toast.success('RR-Nachricht gelöscht');
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Löschen fehlgeschlagen', r.error);
       }
     });
   };
@@ -127,7 +127,6 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
     roleId: string,
     label: string,
   ) => {
-    setMsg(null);
     startTransition(async () => {
       const r = await addReactionRoleMapping(
         guildId,
@@ -156,27 +155,23 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
               : m,
           ),
         );
-        setMsg({
-          kind: 'ok',
-          text: `${emoji} → ${role?.name ?? 'Rolle'} hinzugefügt.`,
-        });
+        toast.success(`${emoji} → ${role?.name ?? 'Rolle'} hinzugefügt`);
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Hinzufügen fehlgeschlagen', r.error);
       }
     });
   };
 
   const changeMode = (messageId: string, mode: RrMode) => {
-    setMsg(null);
     startTransition(async () => {
       const r = await updateReactionRoleMode(guildId, messageId, mode);
       if (r.ok) {
         setItems((prev) =>
           prev.map((m) => (m.messageId === messageId ? { ...m, mode } : m)),
         );
-        setMsg({ kind: 'ok', text: `Modus auf ${MODE_LABEL[mode]} gesetzt.` });
+        toast.success(`Modus geändert: ${MODE_LABEL[mode]}`);
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Modus-Wechsel fehlgeschlagen', r.error);
       }
     });
   };
@@ -186,7 +181,6 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
     emojiKey: string,
     emojiDisplay: string,
   ) => {
-    setMsg(null);
     startTransition(async () => {
       const r = await removeReactionRoleMapping(
         guildId,
@@ -205,9 +199,9 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
               : m,
           ),
         );
-        setMsg({ kind: 'ok', text: 'Entfernt.' });
+        toast.success('Zuordnung entfernt');
       } else {
-        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+        toast.error('Entfernen fehlgeschlagen', r.error);
       }
     });
   };
@@ -239,6 +233,7 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
               }
               onChangeMode={(mode) => changeMode(m.messageId, mode)}
               onDeleteMessage={() => removeMessage(m.messageId)}
+              onSendTest={() => sendTestReactionRoles(guildId, m.messageId)}
               pending={pending}
             />
           ))}
@@ -340,17 +335,6 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
         </button>
       )}
 
-      {msg && (
-        <div
-          className={`text-xs ${
-            msg.kind === 'ok'
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-rose-600 dark:text-rose-400'
-          }`}
-        >
-          {msg.text}
-        </div>
-      )}
     </div>
   );
 }
@@ -365,6 +349,7 @@ function RrMessageCard({
   onRemoveMapping,
   onChangeMode,
   onDeleteMessage,
+  onSendTest,
   pending,
 }: {
   message: RrMessage;
@@ -376,6 +361,7 @@ function RrMessageCard({
   onRemoveMapping: (emojiKey: string, emojiDisplay: string) => void;
   onChangeMode: (mode: RrMode) => void;
   onDeleteMessage: () => void;
+  onSendTest: () => Promise<{ ok: boolean; error?: string }>;
   pending: boolean;
 }) {
   const [emoji, setEmoji] = useState('');
@@ -397,7 +383,7 @@ function RrMessageCard({
       <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-line bg-elev/40">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-fg truncate">
-            ✨ {message.title ?? '(ohne Titel)'}
+            {message.title ?? '(ohne Titel)'}
           </div>
           <div className="text-[11px] text-subtle mt-0.5">
             <span className="text-accent">#{channelName}</span> ·{' '}
@@ -416,6 +402,7 @@ function RrMessageCard({
             <option value="buttons">{MODE_LABEL.buttons}</option>
             <option value="select_menu">{MODE_LABEL.select_menu}</option>
           </select>
+          <TestSendButton onSend={onSendTest} label="Test" />
           <button
             type="button"
             onClick={onDeleteMessage}

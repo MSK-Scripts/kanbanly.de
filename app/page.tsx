@@ -174,27 +174,72 @@ export default async function LandingPage() {
                   Discord-Bot für deine Community
                 </h3>
                 <p className="text-sm text-muted mt-2 max-w-xl">
-                  Welcome-Messages, Reaction-Roles, Auto-Roles, Moderation,
-                  Logging und ein XP-/Leveling-System. Alles über ein Web-Dashboard
-                  konfigurierbar — keine Slash-Commands raten.
+                  40+ Module: Welcome, Reaction-Roles, Auto-Roles, Tickets,
+                  Helpdesk, Verify, Anti-Raid, Giveaways, XP/Level, Moderation,
+                  Logging und mehr. Alles über das Web-Dashboard konfigurierbar.
                 </p>
               </div>
-              <Link
-                href={signedIn ? '/integrations/discord' : '/register'}
-                className="rounded-md bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-medium px-5 py-2.5 transition-colors text-center shrink-0"
-              >
-                {signedIn ? 'Bot einrichten' : 'Jetzt starten'}
-              </Link>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                <Link
+                  href="/preise"
+                  className="rounded-md border border-line-strong hover:border-fg-soft bg-surface hover:bg-elev text-fg text-sm font-medium px-5 py-2.5 transition-colors text-center"
+                >
+                  Preise &amp; Pläne
+                </Link>
+                <Link
+                  href={signedIn ? '/integrations/discord' : '/register'}
+                  className="rounded-md bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-medium px-5 py-2.5 transition-colors text-center"
+                >
+                  {signedIn ? 'Bot einrichten' : 'Jetzt starten'}
+                </Link>
+              </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <BotFeature label="Welcome &amp; Reaction-Roles" />
-              <BotFeature label="Auto-Roles beim Join" />
+              <BotFeature label="Tickets &amp; Helpdesk" />
+              <BotFeature label="Verify &amp; Anti-Raid" />
+              <BotFeature label="Giveaways" />
+              <BotFeature label="XP-System &amp; Level-Rewards" />
               <BotFeature label="Moderation /warn /kick /ban" />
               <BotFeature label="Logging der Events" />
-              <BotFeature label="XP-System &amp; Levels" />
-              <BotFeature label="Level-Rewards (Rollen)" />
-              <BotFeature label="Leaderboard /rank" />
-              <BotFeature label="Pro Server konfigurierbar" />
+              <BotFeature label="40+ Module insgesamt" />
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 sm:px-6 pb-16 sm:pb-20">
+          <div className="max-w-5xl mx-auto rounded-md bg-surface border border-line p-6 sm:p-10">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center mb-6">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-accent-soft font-mono mb-1">
+                  Mini-Tool
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
+                  Linkvertise / Boost-Link Bypass
+                </h3>
+                <p className="text-sm text-muted mt-2 max-w-xl">
+                  Verkürzungs- und Werbe-Link-Dienste (Linkvertise, Boost.ink,
+                  Lootlinks, Rekonise, AdFly und mehr) führen oft zu langen
+                  Captcha-Ketten. Wirf den Link in unser kostenloses Bypass-Tool —
+                  zurück kommt das echte Ziel.
+                </p>
+              </div>
+              <Link
+                href="/bypass"
+                className="rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors text-center shrink-0"
+              >
+                Bypass öffnen
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <BotFeature label="Linkvertise &amp; link-to.net" />
+              <BotFeature label="Boost.ink, mboost.me" />
+              <BotFeature label="Sub2unlock, Rekonise" />
+              <BotFeature label="Lootlinks, Lootdest" />
+              <BotFeature label="AdFly, Shorte.st, AdFoc.us" />
+              <BotFeature label="ouo.io, bit.ly, tinyurl" />
+              <BotFeature label="Kostenlos, ohne Login" />
+              <BotFeature label="Kein Tracking" />
             </div>
           </div>
         </section>

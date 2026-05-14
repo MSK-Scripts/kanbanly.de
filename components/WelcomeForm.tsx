@@ -1,10 +1,15 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { updateWelcomeConfig } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import {
+  updateWelcomeConfig,
+  sendTestWelcome,
+} from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { TestSendButton } from './ui/TestSendButton';
 import { toast } from '@/store/toastStore';
 import { Switch } from './Switch';
 import { Button } from './ui/Button';
+import { ColorPicker } from './ui/ColorPicker';
 import { FormSection, FormRow } from './ui/FormSection';
 import { StatusPill } from './ui/Status';
 
@@ -23,8 +28,8 @@ type Props = {
   };
 };
 
-const DEFAULT_TEMPLATE = 'Willkommen {mention} auf **{server}** 🎉 — ihr seid jetzt zu {members}.';
-const DEFAULT_DM_TEMPLATE = 'Hey {user}! Willkommen auf **{server}** 👋 Schau dich um und sag Hallo.';
+const DEFAULT_TEMPLATE = 'Willkommen {mention} auf **{server}** — ihr seid jetzt zu {members}.';
+const DEFAULT_DM_TEMPLATE = 'Hey {user}! Willkommen auf **{server}**. Schau dich um und sag Hallo.';
 
 const PLACEHOLDERS: Array<{ token: string; label: string; sample: string }> = [
   { token: '{user}', label: 'Username', sample: 'NewUser' },
@@ -164,23 +169,14 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
             </div>
           </FormRow>
 
-          <div className="flex items-center justify-between rounded-lg border border-line bg-elev/30 px-3.5 py-2.5">
-            <div className="text-[12.5px] text-fg-soft">
-              Format:{' '}
-              <span className="font-semibold text-fg">
-                {useEmbed ? 'Embed' : 'Plain-Text'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              {useEmbed && (
-                <input
-                  type="color"
-                  value={embedColor}
-                  onChange={(e) => setEmbedColor(e.target.value)}
-                  className="h-6 w-9 rounded border border-line-strong bg-elev cursor-pointer"
-                  title="Embed-Farbe"
-                />
-              )}
+          <div className="rounded-lg border border-line bg-elev/30 px-3.5 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[12.5px] text-fg-soft">
+                Format:{' '}
+                <span className="font-semibold text-fg">
+                  {useEmbed ? 'Embed' : 'Plain-Text'}
+                </span>
+              </div>
               <Switch
                 checked={useEmbed}
                 onChange={setUseEmbed}
@@ -188,6 +184,14 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
                 ariaLabel="Als Embed senden"
               />
             </div>
+            {useEmbed && (
+              <div className="mt-3 pt-3 border-t border-line/60">
+                <div className="text-[11.5px] font-medium text-muted mb-2">
+                  Embed-Farbe
+                </div>
+                <ColorPicker value={embedColor} onChange={setEmbedColor} />
+              </div>
+            )}
           </div>
 
           <div>
@@ -276,7 +280,8 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
         </div>
       </FormSection>
 
-      <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex items-center justify-end">
+      <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex items-center justify-end gap-2">
+        <TestSendButton onSend={() => sendTestWelcome(guildId)} />
         <Button type="submit" loading={pending} variant="primary">
           {pending ? 'Speichern…' : 'Speichern'}
         </Button>

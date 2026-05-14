@@ -1,7 +1,11 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateLogConfig } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { toast } from '@/store/toastStore';
 import { Switch } from './Switch';
+import { Button } from './ui/Button';
+import { FormSection, FormRow } from './ui/FormSection';
+import { StatusPill, StatusBanner } from './ui/Status';
 
 type Channel = { id: string; name: string };
 
@@ -26,14 +30,12 @@ export function LogConfigForm({ guildId, channels, initial }: Props) {
   const [messageDeletes, setMessageDeletes] = useState(initial.messageDeletes);
   const [roleChanges, setRoleChanges] = useState(initial.roleChanges);
   const [pending, startTransition] = useTransition();
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   const submit = (formData: FormData) => {
-    setMsg(null);
     startTransition(async () => {
       const res = await updateLogConfig(guildId, formData);
-      if (res.ok) setMsg({ kind: 'ok', text: 'Gespeichert.' });
-      else setMsg({ kind: 'err', text: res.error ?? 'Fehler.' });
+      if (res.ok) toast.success('Logging gespeichert');
+      else toast.error('Speichern fehlgeschlagen', res.error);
     });
   };
 
@@ -42,134 +44,130 @@ export function LogConfigForm({ guildId, channels, initial }: Props) {
 
   return (
     <form action={submit} className="space-y-5">
-      <div className="rounded-md border border-line bg-elev/40 p-4">
-        <label className="block text-xs font-medium text-muted mb-1.5" htmlFor="log-channel">
-          Log-Channel
-        </label>
-        <select
-          id="log-channel"
-          name="channel_id"
-          value={channelId}
-          onChange={(e) => setChannelId(e.target.value)}
-          className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-accent"
-        >
-          <option value="">— Logging deaktiviert —</option>
-          {channels.map((c) => (
-            <option key={c.id} value={c.id}>
-              #{c.name}
-            </option>
-          ))}
-        </select>
-        {active && (
-          <p className="text-[11px] text-subtle mt-2">
-            {enabledCount === 0
-              ? 'Channel gesetzt, aber kein Event aktiv — wähle unten was geloggt werden soll.'
-              : `${enabledCount} Event-Typ${enabledCount === 1 ? '' : 'en'} aktiv.`}
-          </p>
+      <FormSection
+        title="Log-Channel"
+        description="Welcher Channel soll die Audit-Events empfangen?"
+        badge={
+          active ? (
+            <StatusPill kind="success" dot>
+              {enabledCount} Event{enabledCount === 1 ? '' : 's'}
+            </StatusPill>
+          ) : (
+            <StatusPill kind="neutral" dot>
+              Aus
+            </StatusPill>
+          )
+        }
+      >
+        <FormRow label="Channel">
+          <select
+            id="log-channel"
+            name="channel_id"
+            value={channelId}
+            onChange={(e) => setChannelId(e.target.value)}
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+          >
+            <option value="">— Logging deaktiviert —</option>
+            {channels.map((c) => (
+              <option key={c.id} value={c.id}>
+                #{c.name}
+              </option>
+            ))}
+          </select>
+        </FormRow>
+        {active && enabledCount === 0 && (
+          <StatusBanner kind="warning">
+            Channel ist gesetzt, aber kein Event aktiv. Wähle unten was geloggt werden soll.
+          </StatusBanner>
         )}
-      </div>
+      </FormSection>
 
-      <div className={active ? '' : 'opacity-60 pointer-events-none'}>
-        <Section title="Member-Events" hint="Wer kommt, wer geht">
-          <Toggle
+      <div className={active ? 'space-y-4' : 'space-y-4 opacity-50 pointer-events-none'}>
+        <EventGroup title="Member-Events" hint="Wer kommt, wer geht">
+          <EventRow
             name="log_joins"
             label="Beitritte"
             description="Wenn jemand dem Server beitritt."
             checked={joins}
             onChange={setJoins}
           />
-          <Toggle
+          <EventRow
             name="log_leaves"
             label="Austritte"
             description="Beim Verlassen oder Kick/Ban."
             checked={leaves}
             onChange={setLeaves}
           />
-        </Section>
+        </EventGroup>
 
-        <Section title="Message-Events" hint="Braucht MESSAGE CONTENT INTENT">
-          <Toggle
+        <EventGroup title="Message-Events" hint="Braucht MESSAGE CONTENT INTENT">
+          <EventRow
             name="log_message_deletes"
             label="Gelöschte Nachrichten"
             description="Inhalt + Autor wird mitgeloggt."
             checked={messageDeletes}
             onChange={setMessageDeletes}
           />
-          <Toggle
+          <EventRow
             name="log_message_edits"
             label="Bearbeitete Nachrichten"
             description="Vorher/Nachher-Vergleich."
             checked={messageEdits}
             onChange={setMessageEdits}
           />
-        </Section>
+        </EventGroup>
 
-        <Section title="Rollen-Events" hint="">
-          <Toggle
+        <EventGroup title="Rollen-Events">
+          <EventRow
             name="log_role_changes"
             label="Rollen-Änderungen"
             description="Wer welche Rolle bekommen/verloren hat."
             checked={roleChanges}
             onChange={setRoleChanges}
           />
-        </Section>
+        </EventGroup>
       </div>
 
-      <div className="flex items-center gap-3 border-t border-line pt-4">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-4 py-2 transition-colors disabled:opacity-50"
-        >
-          {pending ? 'Speichert…' : 'Speichern'}
-        </button>
-        {msg && (
-          <span
-            className={`text-xs ${
-              msg.kind === 'ok'
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-rose-600 dark:text-rose-400'
-            }`}
-          >
-            {msg.text}
-          </span>
-        )}
-      </div>
-
-      <p className="text-[11px] text-subtle">
+      <StatusBanner kind="info">
         Für Message-Edits/Deletes braucht der Bot den{' '}
         <strong>MESSAGE CONTENT INTENT</strong> im Discord Developer Portal —
         sonst kommen Events ohne Inhalt durch.
-      </p>
+      </StatusBanner>
+
+      <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3 bg-bg/80 backdrop-blur-sm border-t border-line flex items-center justify-end">
+        <Button type="submit" loading={pending} variant="primary">
+          {pending ? 'Speichern…' : 'Speichern'}
+        </Button>
+      </div>
     </form>
   );
 }
 
-function Section({
+function EventGroup({
   title,
   hint,
   children,
 }: {
   title: string;
-  hint: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="mb-4 last:mb-0">
-      <div className="flex items-baseline justify-between mb-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+    <div>
+      <div className="flex items-baseline justify-between mb-2 px-1">
+        <h4 className="text-[11.5px] font-semibold uppercase tracking-wider text-muted">
           {title}
-        </div>
-        {hint && <div className="text-[10px] text-subtle">{hint}</div>}
+        </h4>
+        {hint && <span className="text-[10.5px] text-subtle">{hint}</span>}
       </div>
-      <div className="rounded-md border border-line bg-elev/40 divide-y divide-line">
+      <div className="rounded-lg border border-line bg-surface divide-y divide-line/60 overflow-hidden">
         {children}
       </div>
     </div>
   );
 }
 
-function Toggle({
+function EventRow({
   name,
   label,
   description,
@@ -183,10 +181,10 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 px-4 py-2.5 cursor-pointer hover:bg-elev/60 transition-colors">
+    <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-elev/30 transition-colors">
       <div className="min-w-0">
-        <div className="text-sm text-fg">{label}</div>
-        <div className="text-[11px] text-subtle">{description}</div>
+        <div className="text-[13.5px] text-fg font-medium">{label}</div>
+        <div className="text-[11.5px] text-muted mt-0.5">{description}</div>
       </div>
       <input
         type="checkbox"

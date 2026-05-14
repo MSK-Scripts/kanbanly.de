@@ -53,16 +53,13 @@ export function GuildSettingsTabs({ tabs, defaultTab }: Props) {
                 <button
                   type="button"
                   onClick={() => switchTo(t.id)}
-                  className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors text-left whitespace-nowrap ${
+                  className={`w-full rounded-md px-3 py-2 text-sm transition-colors text-left whitespace-nowrap ${
                     isActive
                       ? 'bg-accent text-white font-medium'
                       : 'text-fg-soft hover:bg-elev hover:text-fg'
                   }`}
                 >
-                  <span className="text-base shrink-0" aria-hidden>
-                    {t.icon}
-                  </span>
-                  <span>{t.label}</span>
+                  {t.label}
                 </button>
               </li>
             );
@@ -72,12 +69,7 @@ export function GuildSettingsTabs({ tabs, defaultTab }: Props) {
 
       <div className="min-w-0">
         <div className="mb-4">
-          <div className="flex items-center gap-2 text-fg">
-            <span className="text-2xl" aria-hidden>
-              {current?.icon}
-            </span>
-            <h2 className="text-lg font-semibold">{current?.label}</h2>
-          </div>
+          <h2 className="text-lg font-semibold text-fg">{current?.label}</h2>
           {current?.description && (
             <p className="text-xs text-muted mt-1">{current.description}</p>
           )}

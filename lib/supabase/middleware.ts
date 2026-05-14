@@ -11,6 +11,7 @@ const PUBLIC_PREFIXES = [
   '/datenschutz',
   '/trello-alternative',
   '/bot',
+  '/bypass',
 ];
 
 const PUBLIC_EXACT = ['/'];
