@@ -449,6 +449,111 @@ export async function deleteChannelMode(
   }
 }
 
+// ============== Embed-Creator v2: Multi-Embed-Payload ==============
+
+export type EmbedField = {
+  name: string;
+  value: string;
+  inline?: boolean;
+};
+
+export type EmbedAuthor = {
+  name: string;
+  url?: string;
+  icon_url?: string;
+};
+
+export type EmbedFooter = {
+  text: string;
+  icon_url?: string;
+};
+
+export type EmbedV2 = {
+  author?: EmbedAuthor;
+  title?: string;
+  title_url?: string;
+  description?: string;
+  color?: number;
+  fields?: EmbedField[];
+  image?: string;
+  thumbnail?: string;
+  footer?: EmbedFooter;
+  timestamp?: boolean;
+};
+
+export type MessagePayloadV2 = {
+  content?: string;
+  embeds?: EmbedV2[];
+};
+
+function buildDiscordEmbed(e: EmbedV2): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (e.author?.name) {
+    out.author = {
+      name: e.author.name.slice(0, 256),
+      ...(e.author.url ? { url: e.author.url } : {}),
+      ...(e.author.icon_url ? { icon_url: e.author.icon_url } : {}),
+    };
+  }
+  if (e.title) out.title = e.title.slice(0, 256);
+  if (e.title_url) out.url = e.title_url;
+  if (e.description) out.description = e.description.slice(0, 4000);
+  if (typeof e.color === 'number') out.color = e.color;
+  if (e.image) out.image = { url: e.image };
+  if (e.thumbnail) out.thumbnail = { url: e.thumbnail };
+  if (e.footer?.text) {
+    out.footer = {
+      text: e.footer.text.slice(0, 2048),
+      ...(e.footer.icon_url ? { icon_url: e.footer.icon_url } : {}),
+    };
+  }
+  if (e.timestamp) out.timestamp = new Date().toISOString();
+  if (e.fields && e.fields.length > 0) {
+    out.fields = e.fields
+      .slice(0, 25)
+      .filter((f) => f.name?.trim() && f.value?.trim())
+      .map((f) => ({
+        name: f.name.slice(0, 256),
+        value: f.value.slice(0, 1024),
+        inline: Boolean(f.inline),
+      }));
+  }
+  return out;
+}
+
+export async function sendBotMessage(
+  guildId: string,
+  channelId: string,
+  payload: MessagePayloadV2,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const content = payload.content?.trim();
+    const embeds = (payload.embeds ?? [])
+      .slice(0, 10)
+      .map(buildDiscordEmbed)
+      .filter((e) => Object.keys(e).length > 0);
+    if (!content && embeds.length === 0) {
+      return { ok: false, error: 'Content oder mindestens ein Embed nötig.' };
+    }
+    const body: Record<string, unknown> = {};
+    if (content) body.content = content.slice(0, 2000);
+    if (embeds.length > 0) body.embeds = embeds;
+    try {
+      await postMessage(channelId, body);
+      return { ok: true };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Discord-Fehler.',
+      };
+    }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// Legacy single-embed-send (für Backwards-Compat behalten — wird vom EmbedCreator nicht mehr genutzt)
 export async function sendBotEmbed(
   guildId: string,
   channelId: string,
@@ -460,42 +565,17 @@ export async function sendBotEmbed(
     image?: string;
   },
 ): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await assertCanManage(guildId);
-    const token = process.env.DISCORD_BOT_TOKEN;
-    if (!token) {
-      return { ok: false, error: 'DISCORD_BOT_TOKEN ist nicht gesetzt.' };
-    }
-    const payload = {
-      embeds: [
-        {
-          title: embed.title?.slice(0, 256) || undefined,
-          description: embed.description?.slice(0, 4000) || undefined,
-          color: embed.color,
-          footer: embed.footer ? { text: embed.footer.slice(0, 2048) } : undefined,
-          image: embed.image ? { url: embed.image } : undefined,
-        },
-      ],
-    };
-    const res = await fetch(
-      `https://discord.com/api/v10/channels/${channelId}/messages`,
+  return sendBotMessage(guildId, channelId, {
+    embeds: [
       {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        title: embed.title,
+        description: embed.description,
+        color: embed.color,
+        footer: embed.footer ? { text: embed.footer } : undefined,
+        image: embed.image,
       },
-    );
-    if (!res.ok) {
-      const txt = await res.text();
-      return { ok: false, error: `Discord ${res.status}: ${txt.slice(0, 200)}` };
-    }
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
-  }
+    ],
+  });
 }
 
 // ============== Verifizierung ==============
@@ -1732,6 +1812,9 @@ export async function toggleBotModule(
 export type EmbedTemplate = {
   id: string;
   name: string;
+  // V2-Payload (Multi-Embed). Wenn null/leer, fallback auf v1 (title/desc/color etc.)
+  payload: MessagePayloadV2 | null;
+  // Legacy v1-Felder — bleiben für alte Templates lesbar
   title: string | null;
   description: string | null;
   color: number | null;
@@ -1747,7 +1830,7 @@ export async function listEmbedTemplates(
     const admin = createAdminClient();
     const { data, error } = await admin
       .from('bot_embed_templates')
-      .select('id, name, title, description, color, footer, image_url')
+      .select('id, name, payload, title, description, color, footer, image_url')
       .eq('guild_id', guildId)
       .order('updated_at', { ascending: false });
     if (error) throw error;
@@ -1756,6 +1839,7 @@ export async function listEmbedTemplates(
       templates: (data ?? []).map((r) => ({
         id: r.id as string,
         name: r.name as string,
+        payload: (r.payload as MessagePayloadV2 | null) ?? null,
         title: (r.title as string | null) ?? null,
         description: (r.description as string | null) ?? null,
         color: (r.color as number | null) ?? null,
@@ -1773,11 +1857,7 @@ export async function saveEmbedTemplate(
   template: {
     id?: string;
     name: string;
-    title?: string | null;
-    description?: string | null;
-    color?: number | null;
-    footer?: string | null;
-    imageUrl?: string | null;
+    payload: MessagePayloadV2;
   },
 ): Promise<{ ok: boolean; error?: string; id?: string }> {
   try {
@@ -1786,21 +1866,23 @@ export async function saveEmbedTemplate(
       return { ok: false, error: 'Name fehlt oder ist zu lang (max 80).' };
     }
     const admin = createAdminClient();
-    const payload = {
+    const row = {
       guild_id: guildId,
       name: template.name.trim(),
-      title: template.title?.trim() || null,
-      description: template.description?.trim() || null,
-      color: template.color ?? null,
-      footer: template.footer?.trim() || null,
-      image_url: template.imageUrl?.trim() || null,
+      payload: template.payload as unknown,
+      // Legacy-Felder mit Defaults aus payload[0] befüllen (für alte Reader)
+      title: template.payload.embeds?.[0]?.title ?? null,
+      description: template.payload.embeds?.[0]?.description ?? null,
+      color: template.payload.embeds?.[0]?.color ?? null,
+      footer: template.payload.embeds?.[0]?.footer?.text ?? null,
+      image_url: template.payload.embeds?.[0]?.image ?? null,
       updated_at: new Date().toISOString(),
     };
 
     if (template.id) {
       const { error } = await admin
         .from('bot_embed_templates')
-        .update(payload)
+        .update(row)
         .eq('id', template.id)
         .eq('guild_id', guildId);
       if (error) throw error;
@@ -1809,7 +1891,7 @@ export async function saveEmbedTemplate(
     }
     const { data, error } = await admin
       .from('bot_embed_templates')
-      .insert(payload)
+      .insert(row)
       .select('id')
       .single();
     if (error) throw error;

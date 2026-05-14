@@ -39,6 +39,7 @@ import {
 } from '@/components/Phase2FinishForms';
 import { HelpdeskForm } from '@/components/HelpdeskForm';
 import { TempVoiceForm } from '@/components/TempVoiceForm';
+import type { EmbedTemplate, MessagePayloadV2 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
@@ -119,15 +120,7 @@ type LoadResult =
         maxMentions: number | null;
         bannedWords: string[];
       };
-      embedTemplates: Array<{
-        id: string;
-        name: string;
-        title: string | null;
-        description: string | null;
-        color: number | null;
-        footer: string | null;
-        imageUrl: string | null;
-      }>;
+      embedTemplates: EmbedTemplate[];
       verify: {
         enabled: boolean;
         channelId: string | null;
@@ -350,12 +343,13 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   }
   const { data: tplRaw } = await admin
     .from('bot_embed_templates')
-    .select('id, name, title, description, color, footer, image_url')
+    .select('id, name, payload, title, description, color, footer, image_url')
     .eq('guild_id', guildId)
     .order('updated_at', { ascending: false });
-  const embedTemplates = (tplRaw ?? []).map((r) => ({
+  const embedTemplates: EmbedTemplate[] = (tplRaw ?? []).map((r) => ({
     id: r.id as string,
     name: r.name as string,
+    payload: (r.payload as MessagePayloadV2 | null) ?? null,
     title: (r.title as string | null) ?? null,
     description: (r.description as string | null) ?? null,
     color: (r.color as number | null) ?? null,
@@ -842,15 +836,7 @@ function GuildSettingsView({
     maxMentions: number | null;
     bannedWords: string[];
   };
-  embedTemplates: Array<{
-    id: string;
-    name: string;
-    title: string | null;
-    description: string | null;
-    color: number | null;
-    footer: string | null;
-    imageUrl: string | null;
-  }>;
+  embedTemplates: Array<EmbedTemplate>;
   verify: {
     enabled: boolean;
     channelId: string | null;
