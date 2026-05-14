@@ -3548,3 +3548,273 @@ export async function sendTestReactionRoles(
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
   }
 }
+
+// ============== Suggestion-Panels ==============
+
+export type SuggestionPanelRow = {
+  id: string;
+  channelId: string;
+  messageId: string | null;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  buttonEmoji: string | null;
+  buttonStyle: TicketButtonStyleAct;
+  color: number | null;
+};
+
+function parseSugEmoji(
+  raw: string | null,
+): { id?: string; name?: string; animated?: boolean } | undefined {
+  if (!raw) return undefined;
+  const t = raw.trim();
+  if (!t) return undefined;
+  const m = t.match(/^<(a?):([\w~]+):(\d+)>$/);
+  if (m) {
+    const [, animated, name, id] = m;
+    return { id, name, animated: animated === 'a' };
+  }
+  return { name: t };
+}
+
+function buildSugPanelPayload(panel: {
+  id: string;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  buttonEmoji: string | null;
+  buttonStyle: TicketButtonStyleAct;
+  color: number | null;
+}): Record<string, unknown> {
+  const button: Record<string, unknown> = {
+    type: 2,
+    style: TICKET_STYLE_MAP[panel.buttonStyle] ?? 1,
+    custom_id: `sug-open:${panel.id}`,
+    label: panel.buttonLabel.slice(0, 80),
+  };
+  const emoji = parseSugEmoji(panel.buttonEmoji);
+  if (emoji) button.emoji = emoji;
+  return {
+    embeds: [
+      {
+        title: panel.title.slice(0, 256),
+        description: panel.description.slice(0, 4000),
+        color: panel.color ?? 0x5865f2,
+      },
+    ],
+    components: [{ type: 1, components: [button] }],
+  };
+}
+
+export async function listSuggestionPanels(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; panels?: SuggestionPanelRow[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_suggestion_panels')
+      .select(
+        'id, channel_id, message_id, title, description, button_label, button_emoji, button_style, color',
+      )
+      .eq('guild_id', guildId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return {
+      ok: true,
+      panels: (data ?? []).map((r) => ({
+        id: r.id as string,
+        channelId: r.channel_id as string,
+        messageId: (r.message_id as string | null) ?? null,
+        title: (r.title as string) ?? 'Vorschlag einreichen',
+        description: (r.description as string) ?? '',
+        buttonLabel: (r.button_label as string) ?? 'Vorschlag einreichen',
+        buttonEmoji: (r.button_emoji as string | null) ?? null,
+        buttonStyle: ((r.button_style as TicketButtonStyleAct | null) ?? 'primary'),
+        color: (r.color as number | null) ?? null,
+      })),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export type SuggestionPanelInput = {
+  channelId: string;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  buttonEmoji: string | null;
+  buttonStyle: TicketButtonStyleAct;
+  color: number | null;
+};
+
+function sanitizeSugPanelInput(input: SuggestionPanelInput) {
+  return {
+    channel_id: input.channelId,
+    title: input.title.trim().slice(0, 256) || 'Vorschlag einreichen',
+    description: input.description.trim().slice(0, 4000),
+    button_label: input.buttonLabel.trim().slice(0, 80) || 'Vorschlag einreichen',
+    button_emoji: input.buttonEmoji?.trim() || null,
+    button_style: input.buttonStyle,
+    color: input.color ?? null,
+  };
+}
+
+export async function createSuggestionPanelWeb(
+  guildId: string,
+  input: SuggestionPanelInput,
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    const { userId } = await assertCanManage(guildId);
+    if (!input.channelId || !input.title.trim()) {
+      return { ok: false, error: 'Channel und Titel sind nötig.' };
+    }
+    const admin = createAdminClient();
+    const patch = sanitizeSugPanelInput(input);
+    const { data: panel, error: insErr } = await admin
+      .from('bot_suggestion_panels')
+      .insert({ guild_id: guildId, created_by: userId, ...patch })
+      .select('id')
+      .single();
+    if (insErr || !panel) throw insErr ?? new Error('Insert fehlgeschlagen.');
+
+    const payload = buildSugPanelPayload({
+      id: panel.id as string,
+      title: patch.title,
+      description: patch.description,
+      buttonLabel: patch.button_label,
+      buttonEmoji: patch.button_emoji,
+      buttonStyle: patch.button_style as TicketButtonStyleAct,
+      color: patch.color,
+    });
+    try {
+      const posted = await postMessage(input.channelId, payload);
+      await admin
+        .from('bot_suggestion_panels')
+        .update({ message_id: posted.id })
+        .eq('id', panel.id);
+    } catch (err) {
+      await admin.from('bot_suggestion_panels').delete().eq('id', panel.id);
+      return {
+        ok: false,
+        error: `Discord-Post fehlgeschlagen: ${err instanceof Error ? err.message : 'unbekannt'}`,
+      };
+    }
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: panel.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updateSuggestionPanelWeb(
+  guildId: string,
+  panelId: string,
+  input: SuggestionPanelInput,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const patch = sanitizeSugPanelInput(input);
+    const { data: updated, error } = await admin
+      .from('bot_suggestion_panels')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', panelId)
+      .eq('guild_id', guildId)
+      .select('id, channel_id, message_id, button_style')
+      .maybeSingle();
+    if (error) throw error;
+    if (!updated) return { ok: false, error: 'Panel nicht gefunden.' };
+
+    if (updated.message_id) {
+      const payload = buildSugPanelPayload({
+        id: panelId,
+        title: patch.title,
+        description: patch.description,
+        buttonLabel: patch.button_label,
+        buttonEmoji: patch.button_emoji,
+        buttonStyle: patch.button_style as TicketButtonStyleAct,
+        color: patch.color,
+      });
+      await editMessage(
+        updated.channel_id as string,
+        updated.message_id as string,
+        payload,
+      ).catch((err) => console.error('[sug-panel] editMessage:', err));
+    }
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteSuggestionPanelWeb(
+  guildId: string,
+  panelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: row } = await admin
+      .from('bot_suggestion_panels')
+      .select('channel_id, message_id')
+      .eq('id', panelId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (row?.message_id) {
+      await deleteMessage(
+        row.channel_id as string,
+        row.message_id as string,
+      ).catch(() => {});
+    }
+    const { error } = await admin
+      .from('bot_suggestion_panels')
+      .delete()
+      .eq('id', panelId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function sendTestSuggestionPanel(
+  guildId: string,
+  panelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: p } = await admin
+      .from('bot_suggestion_panels')
+      .select(
+        'channel_id, title, description, button_label, button_emoji, button_style, color',
+      )
+      .eq('id', panelId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!p) return { ok: false, error: 'Panel nicht gefunden.' };
+    const payload = buildSugPanelPayload({
+      id: panelId,
+      title: (p.title as string) ?? 'Vorschlag einreichen',
+      description: (p.description as string) ?? '',
+      buttonLabel: (p.button_label as string) ?? 'Vorschlag einreichen',
+      buttonEmoji: (p.button_emoji as string | null) ?? null,
+      buttonStyle: ((p.button_style as TicketButtonStyleAct | null) ?? 'primary'),
+      color: (p.color as number | null) ?? null,
+    });
+    const embeds = payload.embeds as Array<Record<string, unknown>>;
+    if (embeds[0]) embeds[0].footer = { text: TEST_FOOTER };
+    await postMessage(p.channel_id as string, {
+      embeds: embeds as unknown as EmbedPayload[],
+      components: payload.components as Record<string, unknown>[],
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}

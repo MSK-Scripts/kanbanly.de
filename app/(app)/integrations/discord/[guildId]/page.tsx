@@ -43,7 +43,9 @@ import { DailyImageForm, TeamlistsForm } from '@/components/QuickWinsForms';
 import { TicketsForm } from '@/components/TicketsForm';
 import {
   listTicketPanels,
+  listSuggestionPanels,
   type TicketPanelRow,
+  type SuggestionPanelRow,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import type { EmbedTemplate, MessagePayloadV2 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
@@ -188,6 +190,7 @@ type LoadResult =
         downvotes: number;
         createdAt: string;
       }>;
+      suggestionPanels: SuggestionPanelRow[];
       inviteTrackerEnabled: boolean;
       helpdeskPanels: Array<{
         id: string;
@@ -464,6 +467,11 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     createdAt: r.created_at as string,
   }));
 
+  const sugPanelsRes = await listSuggestionPanels(guildId);
+  const suggestionPanels: SuggestionPanelRow[] = sugPanelsRes.ok
+    ? sugPanelsRes.panels ?? []
+    : [];
+
   const { data: hdPanelsRaw } = await admin
     .from('bot_helpdesk_panels')
     .select('id, channel_id, message_id, title, description, color')
@@ -663,6 +671,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       })(),
     },
     suggestionsList,
+    suggestionPanels,
     inviteTrackerEnabled: Boolean(guildRow.invite_tracker_enabled),
     helpdeskPanels,
     tempvoice: {
@@ -834,6 +843,7 @@ export default async function GuildSettingsPage({
             afk={result.afk}
             suggestions={result.suggestions}
             suggestionsList={result.suggestionsList}
+            suggestionPanels={result.suggestionPanels}
             inviteTrackerEnabled={result.inviteTrackerEnabled}
             helpdeskPanels={result.helpdeskPanels}
             tempvoice={result.tempvoice}
@@ -874,6 +884,7 @@ function GuildSettingsView({
   afk,
   suggestions,
   suggestionsList,
+  suggestionPanels,
   inviteTrackerEnabled,
   helpdeskPanels,
   tempvoice,
@@ -1017,6 +1028,7 @@ function GuildSettingsView({
     downvotes: number;
     createdAt: string;
   }>;
+  suggestionPanels: SuggestionPanelRow[];
   inviteTrackerEnabled: boolean;
   helpdeskPanels: Array<{
     id: string;
@@ -1474,6 +1486,7 @@ function GuildSettingsView({
           roles={roles}
           initial={suggestions}
           list={suggestionsList}
+          initialPanels={suggestionPanels}
         />
       ),
     },

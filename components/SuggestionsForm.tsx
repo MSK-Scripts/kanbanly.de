@@ -7,12 +7,21 @@ import {
   Draggable,
   type DropResult,
 } from '@hello-pangea/dnd';
-import { updateSuggestionsConfig } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import {
+  updateSuggestionsConfig,
+  createSuggestionPanelWeb,
+  updateSuggestionPanelWeb,
+  deleteSuggestionPanelWeb,
+  sendTestSuggestionPanel,
+  type SuggestionPanelRow,
+} from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { toast } from '@/store/toastStore';
+import { confirm } from '@/store/confirmStore';
 import { Switch } from './Switch';
 import { Button } from './ui/Button';
+import { TestSendButton } from './ui/TestSendButton';
 import { FormSection, FormRow } from './ui/FormSection';
-import { StatusPill } from './ui/Status';
+import { StatusPill, StatusBanner } from './ui/Status';
 import { ColorPicker } from './ui/ColorPicker';
 
 type Channel = { id: string; name: string };
@@ -72,6 +81,7 @@ export function SuggestionsForm({
   roles,
   initial,
   list,
+  initialPanels = [],
 }: {
   guildId: string;
   channels: Channel[];
@@ -86,6 +96,7 @@ export function SuggestionsForm({
     downvotes: number;
     createdAt: string;
   }>;
+  initialPanels?: SuggestionPanelRow[];
 }) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [channelId, setChannelId] = useState(initial.channelId ?? '');
@@ -152,6 +163,7 @@ export function SuggestionsForm({
   };
 
   return (
+    <div className="space-y-6">
     <form onSubmit={submit} className="space-y-5">
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_minmax(0,420px)] gap-5">
         {/* === LEFT: CONFIG === */}
@@ -396,6 +408,307 @@ export function SuggestionsForm({
         </Button>
       </div>
     </form>
+    <SuggestionPanelsBlock
+      guildId={guildId}
+      channels={channels}
+      initial={initialPanels}
+    />
+    </div>
+  );
+}
+
+// ---------------- Suggestion-Panels ----------------
+
+function SuggestionPanelsBlock({
+  guildId,
+  channels,
+  initial,
+}: {
+  guildId: string;
+  channels: Channel[];
+  initial: SuggestionPanelRow[];
+}) {
+  const [panels, setPanels] = useState(initial);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  return (
+    <FormSection
+      title="Vorschlag-Panel (Button im Channel)"
+      description="Postet eine Embed mit Button — Klick öffnet das gleiche Modal wie /suggest. So muss niemand den Slash-Command kennen."
+    >
+      <StatusBanner kind="info">
+        Vorschläge landen weiterhin im konfigurierten Vorschlags-Channel oben.
+        Das Panel ist nur der UX-Aufhänger und kann in jedem Channel platziert werden.
+      </StatusBanner>
+
+      {panels.length > 0 && (
+        <ul className="space-y-2 mt-3">
+          {panels.map((p) => {
+            const ch = channels.find((c) => c.id === p.channelId)?.name ?? p.channelId;
+            const isOpen = editingId === p.id;
+            return (
+              <li key={p.id} className="rounded-lg border border-line bg-surface overflow-hidden">
+                <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 border-b border-line bg-elev/30">
+                  <div className="min-w-0">
+                    <div className="text-[13.5px] font-semibold text-fg truncate">
+                      {p.title}
+                    </div>
+                    <div className="text-[11px] text-muted mt-0.5">
+                      <span className="text-accent-soft">#{ch}</span> · Button: {p.buttonLabel}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <TestSendButton
+                      onSend={() => sendTestSuggestionPanel(guildId, p.id)}
+                      label="Test"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingId(isOpen ? null : p.id)}
+                    >
+                      {isOpen ? 'Schließen' : 'Bearbeiten'}
+                    </Button>
+                    <DeletePanelButton
+                      guildId={guildId}
+                      id={p.id}
+                      onDeleted={() =>
+                        setPanels((prev) => prev.filter((x) => x.id !== p.id))
+                      }
+                    />
+                  </div>
+                </div>
+                {isOpen && (
+                  <div className="p-4">
+                    <SuggestionPanelEditor
+                      guildId={guildId}
+                      channels={channels}
+                      initial={p}
+                      onSaved={(u) => {
+                        setPanels((prev) => prev.map((x) => (x.id === u.id ? u : x)));
+                        setEditingId(null);
+                      }}
+                    />
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {creating ? (
+        <div className="mt-3 rounded-lg border border-line bg-elev/30 p-4">
+          <SuggestionPanelEditor
+            guildId={guildId}
+            channels={channels}
+            initial={null}
+            onSaved={(u) => {
+              setPanels((prev) => [u, ...prev]);
+              setCreating(false);
+            }}
+            onCancel={() => setCreating(false)}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="mt-3 w-full rounded-lg border border-dashed border-line-strong hover:border-accent hover:bg-elev/40 py-3 text-sm text-muted hover:text-fg transition-colors"
+        >
+          + Neues Vorschlag-Panel
+        </button>
+      )}
+    </FormSection>
+  );
+}
+
+function DeletePanelButton({
+  guildId,
+  id,
+  onDeleted,
+}: {
+  guildId: string;
+  id: string;
+  onDeleted: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const onClick = async () => {
+    const ok = await confirm({
+      title: 'Panel löschen?',
+      description: 'Die Discord-Nachricht und das Panel werden entfernt.',
+      confirmLabel: 'Löschen',
+      danger: true,
+    });
+    if (!ok) return;
+    startTransition(async () => {
+      const r = await deleteSuggestionPanelWeb(guildId, id);
+      if (r.ok) {
+        onDeleted();
+        toast.success('Panel gelöscht');
+      } else toast.error('Fehler', r.error);
+    });
+  };
+  return (
+    <Button type="button" size="sm" variant="ghost" onClick={onClick} disabled={pending}>
+      Löschen
+    </Button>
+  );
+}
+
+function SuggestionPanelEditor({
+  guildId,
+  channels,
+  initial,
+  onSaved,
+  onCancel,
+}: {
+  guildId: string;
+  channels: Channel[];
+  initial: SuggestionPanelRow | null;
+  onSaved: (p: SuggestionPanelRow) => void;
+  onCancel?: () => void;
+}) {
+  const [channelId, setChannelId] = useState(initial?.channelId ?? '');
+  const [title, setTitle] = useState(initial?.title ?? 'Vorschlag einreichen');
+  const [description, setDescription] = useState(
+    initial?.description ??
+      'Klick den Button unten, um einen Vorschlag einzureichen.',
+  );
+  const [buttonLabel, setButtonLabel] = useState(
+    initial?.buttonLabel ?? 'Vorschlag einreichen',
+  );
+  const [buttonEmoji, setButtonEmoji] = useState(initial?.buttonEmoji ?? '💡');
+  const [buttonStyle, setButtonStyle] = useState<
+    'primary' | 'secondary' | 'success' | 'danger'
+  >(initial?.buttonStyle ?? 'primary');
+  const [color, setColor] = useState(intToHex(initial?.color ?? 0x5865f2));
+  const [pending, startTransition] = useTransition();
+
+  const colorInt = /^#?[0-9a-f]{6}$/i.test(color)
+    ? parseInt(color.replace('#', ''), 16)
+    : null;
+
+  const submit = () => {
+    if (!channelId || !title.trim()) {
+      toast.error('Channel und Titel sind nötig');
+      return;
+    }
+    const payload = {
+      channelId,
+      title,
+      description,
+      buttonLabel,
+      buttonEmoji: buttonEmoji || null,
+      buttonStyle,
+      color: colorInt,
+    };
+    startTransition(async () => {
+      if (initial) {
+        const r = await updateSuggestionPanelWeb(guildId, initial.id, payload);
+        if (r.ok) {
+          onSaved({ ...initial, ...payload, buttonEmoji: payload.buttonEmoji });
+          toast.success('Panel aktualisiert');
+        } else toast.error('Fehler', r.error);
+      } else {
+        const r = await createSuggestionPanelWeb(guildId, payload);
+        if (r.ok && r.id) {
+          onSaved({
+            id: r.id,
+            messageId: null,
+            ...payload,
+          });
+          toast.success('Panel angelegt + gepostet');
+        } else toast.error('Fehler', r.error);
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      {!initial && (
+        <FormRow label="Channel (wo das Panel erscheint)" required>
+          <select
+            value={channelId}
+            onChange={(e) => setChannelId(e.target.value)}
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
+          >
+            <option value="">— Channel wählen —</option>
+            {channels.map((c) => (
+              <option key={c.id} value={c.id}>
+                #{c.name}
+              </option>
+            ))}
+          </select>
+        </FormRow>
+      )}
+      <FormRow label="Panel-Titel" required>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value.slice(0, 256))}
+          className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
+        />
+      </FormRow>
+      <FormRow label="Beschreibung">
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+          rows={3}
+          className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg font-mono focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-y"
+        />
+      </FormRow>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <FormRow label="Button-Label">
+          <input
+            type="text"
+            value={buttonLabel}
+            onChange={(e) => setButtonLabel(e.target.value.slice(0, 80))}
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
+          />
+        </FormRow>
+        <FormRow label="Emoji">
+          <input
+            type="text"
+            value={buttonEmoji}
+            onChange={(e) => setButtonEmoji(e.target.value.slice(0, 80))}
+            placeholder="💡"
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
+          />
+        </FormRow>
+        <FormRow label="Style">
+          <select
+            value={buttonStyle}
+            onChange={(e) =>
+              setButtonStyle(
+                e.target.value as 'primary' | 'secondary' | 'success' | 'danger',
+              )
+            }
+            className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
+          >
+            <option value="primary">Blurple</option>
+            <option value="secondary">Grau</option>
+            <option value="success">Grün</option>
+            <option value="danger">Rot</option>
+          </select>
+        </FormRow>
+      </div>
+      <FormRow label="Embed-Farbe">
+        <ColorPicker value={color} onChange={setColor} />
+      </FormRow>
+      <div className="flex items-center justify-end gap-2 pt-1">
+        {onCancel && (
+          <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+            Abbrechen
+          </Button>
+        )}
+        <Button type="button" size="sm" variant="primary" onClick={submit} loading={pending}>
+          {initial ? 'Speichern' : 'Anlegen & posten'}
+        </Button>
+      </div>
+    </div>
   );
 }
 

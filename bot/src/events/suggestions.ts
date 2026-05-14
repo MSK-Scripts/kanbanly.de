@@ -1,7 +1,11 @@
 import {
+  ActionRowBuilder,
   Events,
   MessageFlags,
+  ModalBuilder,
   PermissionFlagsBits,
+  TextInputBuilder,
+  TextInputStyle,
   type ButtonInteraction,
   type Client,
   type Interaction,
@@ -161,6 +165,31 @@ async function handleMod(
   refreshMessage(interaction, suggestionId).catch(() => {});
 }
 
+async function handlePanelButton(interaction: ButtonInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const cfg = await getSuggestionConfig(interaction.guild.id);
+  if (!cfg.enabled || !cfg.channelId) {
+    await interaction.reply({
+      content: 'Vorschläge sind auf diesem Server nicht aktiv.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+  const modal = new ModalBuilder()
+    .setCustomId('sug:modal')
+    .setTitle('Vorschlag einreichen');
+  const input = new TextInputBuilder()
+    .setCustomId('content')
+    .setLabel('Dein Vorschlag')
+    .setStyle(TextInputStyle.Paragraph)
+    .setMinLength(10)
+    .setMaxLength(1500)
+    .setPlaceholder('Beschreibe deinen Vorschlag…')
+    .setRequired(true);
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+  await interaction.showModal(modal);
+}
+
 export function registerSuggestions(client: Client): void {
   client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     try {
@@ -169,6 +198,11 @@ export function registerSuggestions(client: Client): void {
         return;
       }
       if (interaction.isButton()) {
+        // Panel-Button → Modal anzeigen (gleiches Modal wie /suggest).
+        if (interaction.customId.startsWith('sug-open:')) {
+          await handlePanelButton(interaction);
+          return;
+        }
         const parsed = parseSuggestionCustomId(interaction.customId);
         if (!parsed) return;
         if (parsed.action === 'up' || parsed.action === 'down') {
