@@ -2,15 +2,18 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import {
-  sendBotMessage,
+  sendBotEmbedComposed,
   saveEmbedTemplate,
   deleteEmbedTemplate,
   type EmbedTemplate,
   type EmbedV2,
   type MessagePayloadV2,
+  type ComponentRow,
+  type LinkButton,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { toast } from '@/store/toastStore';
 import { confirm } from '@/store/confirmStore';
+import { Switch } from './Switch';
 import { Button } from './ui/Button';
 import { ColorPicker } from './ui/ColorPicker';
 import { FormSection, FormRow } from './ui/FormSection';
@@ -56,6 +59,11 @@ export function EmbedCreatorForm({ guildId, channels, initialTemplates = [] }: P
   const [channelId, setChannelId] = useState('');
   const [content, setContent] = useState('');
   const [embeds, setEmbeds] = useState<EmbedV2[]>([emptyEmbed()]);
+  const [componentRows, setComponentRows] = useState<ComponentRow[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [webhookMode, setWebhookMode] = useState(false);
+  const [overrideUsername, setOverrideUsername] = useState('');
+  const [overrideAvatarUrl, setOverrideAvatarUrl] = useState('');
   const [templates, setTemplates] = useState<EmbedTemplate[]>(initialTemplates);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState('');
@@ -165,12 +173,40 @@ export function EmbedCreatorForm({ guildId, channels, initialTemplates = [] }: P
       toast.error('Channel wählen');
       return;
     }
+    const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+    if (totalSize > 25 * 1024 * 1024) {
+      toast.error('Anhänge zusammen >25 MB');
+      return;
+    }
     startTransition(async () => {
-      const r = await sendBotMessage(guildId, channelId, currentPayload);
-      if (r.ok) toast.success('Nachricht gesendet');
-      else toast.error('Senden fehlgeschlagen', r.error);
+      const fd = new FormData();
+      fd.set('guildId', guildId);
+      fd.set('channelId', channelId);
+      fd.set(
+        'payload',
+        JSON.stringify({
+          content: content.trim() || undefined,
+          embeds: embeds.length > 0 ? embeds : undefined,
+          components: componentRows.length > 0 ? componentRows : undefined,
+          webhookMode,
+          username: webhookMode ? overrideUsername : undefined,
+          avatarUrl: webhookMode ? overrideAvatarUrl : undefined,
+        }),
+      );
+      for (const f of files) {
+        fd.append('files', f);
+      }
+      const r = await sendBotEmbedComposed(fd);
+      if (r.ok) {
+        toast.success('Nachricht gesendet');
+        setFiles([]);
+      } else {
+        toast.error('Senden fehlgeschlagen', r.error);
+      }
     });
   };
+
+  void currentPayload; // wird gebraucht für saveAs unten
 
   const selectedChannel = channels.find((c) => c.id === channelId);
 
@@ -323,6 +359,57 @@ export function EmbedCreatorForm({ guildId, channels, initialTemplates = [] }: P
           />
         ))}
       </div>
+
+      {/* Components (Link-Buttons) */}
+      <ComponentsEditor rows={componentRows} onChange={setComponentRows} />
+
+      {/* Attachments */}
+      <AttachmentsEditor files={files} onChange={setFiles} />
+
+      {/* Send-Mode */}
+      <FormSection
+        title="Sende-Modus"
+        description="Bot-Send oder Webhook. Webhook erlaubt Username & Avatar zu überschreiben."
+      >
+        <div className="flex items-center justify-between rounded-lg border border-line bg-elev/30 px-3.5 py-2.5">
+          <div className="text-[12.5px] text-fg-soft">
+            <span className="font-semibold text-fg">
+              {webhookMode ? 'Per Webhook' : 'Als Bot'}
+            </span>{' '}
+            senden
+          </div>
+          <Switch checked={webhookMode} onChange={setWebhookMode} size="sm" />
+        </div>
+        {webhookMode && (
+          <>
+            <FormRow
+              label="Username (überschreibt Bot-Namen)"
+              hint='Pro Nachricht setzbar. Discord untersagt "Clyde" und "Discord" als Username.'
+            >
+              <input
+                type="text"
+                value={overrideUsername}
+                onChange={(e) => setOverrideUsername(e.target.value.slice(0, 80))}
+                placeholder="z.B. Server-Bot"
+                className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+              />
+            </FormRow>
+            <FormRow label="Avatar-URL (überschreibt Bot-Avatar)">
+              <input
+                type="url"
+                value={overrideAvatarUrl}
+                onChange={(e) => setOverrideAvatarUrl(e.target.value)}
+                placeholder="https://…"
+                className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+              />
+            </FormRow>
+            <p className="text-[11px] text-subtle">
+              Beim ersten Send erstellt der Bot automatisch einen Webhook im Channel.
+              Bot braucht <strong>Webhooks verwalten</strong>-Permission.
+            </p>
+          </>
+        )}
+      </FormSection>
 
       {/* Preview */}
       <FormSection title="Vorschau" description={`Sendet an: ${selectedChannel ? '#' + selectedChannel.name : 'kein Channel'}`}>
@@ -721,6 +808,240 @@ function renderInlineMarkdown(text: string): string {
     .replace(/~~(.+?)~~/g, '<s>$1</s>')
     .replace(/`(.+?)`/g, '<code class="rounded bg-elev px-1 text-[0.85em]">$1</code>')
     .replace(/\n/g, '<br>');
+}
+
+// ============== Components-Editor (Link-Buttons in ActionRows) ==============
+
+const BUTTON_STYLE_CLASSES: Record<NonNullable<LinkButton['style']>, string> = {
+  primary: 'bg-[#5865F2] text-white',
+  secondary: 'bg-[#4E5058] text-white',
+  success: 'bg-[#248046] text-white',
+  danger: 'bg-[#DA373C] text-white',
+  link: 'bg-[#4E5058] text-white',
+};
+
+function ComponentsEditor({
+  rows,
+  onChange,
+}: {
+  rows: ComponentRow[];
+  onChange: (next: ComponentRow[]) => void;
+}) {
+  const totalButtons = rows.reduce((acc, r) => acc + r.buttons.length, 0);
+
+  const addRow = () => {
+    if (rows.length >= 5) return;
+    onChange([...rows, { buttons: [] }]);
+  };
+  const removeRow = (i: number) =>
+    onChange(rows.filter((_, idx) => idx !== i));
+
+  const addButton = (rowIdx: number) => {
+    const row = rows[rowIdx];
+    if (row.buttons.length >= 5) return;
+    const next = [...rows];
+    next[rowIdx] = {
+      buttons: [...row.buttons, { label: 'Klick', url: '', style: 'link' }],
+    };
+    onChange(next);
+  };
+
+  const updateButton = (
+    rowIdx: number,
+    btnIdx: number,
+    patch: Partial<LinkButton>,
+  ) => {
+    const next = [...rows];
+    next[rowIdx] = {
+      buttons: rows[rowIdx].buttons.map((b, i) =>
+        i === btnIdx ? { ...b, ...patch } : b,
+      ),
+    };
+    onChange(next);
+  };
+
+  const removeButton = (rowIdx: number, btnIdx: number) => {
+    const next = [...rows];
+    next[rowIdx] = {
+      buttons: rows[rowIdx].buttons.filter((_, i) => i !== btnIdx),
+    };
+    onChange(next);
+  };
+
+  return (
+    <FormSection
+      title={`Buttons / Components (${totalButtons}/25)`}
+      description="Link-Buttons unter der Nachricht. Max 5 Reihen × 5 Buttons = 25. Aktuell nur URL-Buttons unterstützt."
+    >
+      {rows.length === 0 ? (
+        <div className="text-[12.5px] text-subtle text-center py-2">
+          Keine Buttons.
+        </div>
+      ) : (
+        rows.map((row, rowIdx) => (
+          <div
+            key={rowIdx}
+            className="rounded-lg border border-line bg-elev/30 p-3 space-y-2"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-subtle font-mono">
+                Reihe {rowIdx + 1} · {row.buttons.length}/5 Buttons
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => removeRow(rowIdx)}
+              >
+                Reihe entfernen
+              </Button>
+            </div>
+            {row.buttons.map((btn, btnIdx) => (
+              <div
+                key={btnIdx}
+                className="rounded-md border border-line bg-surface p-3 space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-subtle font-mono">
+                    Button {btnIdx + 1}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => removeButton(rowIdx, btnIdx)}
+                  >
+                    ×
+                  </Button>
+                </div>
+                <div className="grid grid-cols-[1fr_140px] gap-2">
+                  <input
+                    type="text"
+                    value={btn.label}
+                    onChange={(e) =>
+                      updateButton(rowIdx, btnIdx, {
+                        label: e.target.value.slice(0, 80),
+                      })
+                    }
+                    placeholder="Label"
+                    className="rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                  />
+                  <input
+                    type="text"
+                    value={btn.emoji ?? ''}
+                    onChange={(e) =>
+                      updateButton(rowIdx, btnIdx, {
+                        emoji: e.target.value.slice(0, 80) || undefined,
+                      })
+                    }
+                    placeholder="Emoji (opt)"
+                    className="rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                  />
+                </div>
+                <input
+                  type="url"
+                  value={btn.url}
+                  onChange={(e) => updateButton(rowIdx, btnIdx, { url: e.target.value })}
+                  placeholder="https://example.com"
+                  className="w-full rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => addButton(rowIdx)}
+              disabled={row.buttons.length >= 5}
+              className="w-full rounded-md border border-dashed border-line-strong hover:border-accent hover:bg-elev/30 py-1.5 text-[12px] text-muted hover:text-fg transition-colors disabled:opacity-50"
+            >
+              + Button in dieser Reihe
+            </button>
+          </div>
+        ))
+      )}
+      <button
+        type="button"
+        onClick={addRow}
+        disabled={rows.length >= 5}
+        className="w-full rounded-md border border-dashed border-line-strong hover:border-accent hover:bg-elev/30 py-2 text-[12px] text-muted hover:text-fg transition-colors disabled:opacity-50"
+      >
+        + Neue Button-Reihe ({rows.length}/5)
+      </button>
+    </FormSection>
+  );
+}
+
+// ============== Attachments-Editor (Datei-Upload) ==============
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function AttachmentsEditor({
+  files,
+  onChange,
+}: {
+  files: File[];
+  onChange: (next: File[]) => void;
+}) {
+  const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+  const over = totalSize > 25 * 1024 * 1024;
+
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files ?? []);
+    const merged = [...files, ...selected].slice(0, 10);
+    onChange(merged);
+    // Reset für nochmaliges Hochladen derselben Datei
+    e.target.value = '';
+  };
+
+  const remove = (i: number) => {
+    onChange(files.filter((_, idx) => idx !== i));
+  };
+
+  return (
+    <FormSection
+      title={`Attachments (${files.length}/10 · ${formatBytes(totalSize)} / 25 MB)`}
+      description="Bilder, Videos, Dokumente — direkt vom Rechner."
+    >
+      {files.length > 0 && (
+        <ul className="space-y-1.5">
+          {files.map((f, i) => (
+            <li
+              key={i}
+              className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface px-3 py-2 text-[12.5px]"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-fg truncate">{f.name}</div>
+                <div className="text-[10.5px] text-subtle font-mono">
+                  {f.type || 'unknown'} · {formatBytes(f.size)}
+                </div>
+              </div>
+              <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>
+                ×
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {over && (
+        <div className="text-[12px] text-[var(--danger)]">
+          Anhänge sind zusammen über 25 MB — Discord wird das ablehnen.
+        </div>
+      )}
+      <label className="inline-flex items-center gap-2 cursor-pointer rounded-md border border-dashed border-line-strong hover:border-accent hover:bg-elev/30 px-4 py-2 text-[12.5px] text-muted hover:text-fg transition-colors">
+        <input
+          type="file"
+          multiple
+          onChange={onPick}
+          disabled={files.length >= 10}
+          className="hidden"
+        />
+        📎 Datei{files.length === 0 ? '' : 'en'} hinzufügen
+      </label>
+    </FormSection>
+  );
 }
 
 function DiscordPreview({

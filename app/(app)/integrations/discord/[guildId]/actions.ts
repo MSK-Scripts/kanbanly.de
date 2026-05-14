@@ -14,6 +14,13 @@ import {
 } from '@/lib/discordBot';
 import { invalidateGuildCache, fetchUserBasic, userAvatarUrl } from '@/lib/discord';
 import {
+  createChannelWebhook,
+  deleteWebhookViaBot,
+  getWebhookInfo,
+  sendBotMessageWithFiles,
+  sendViaWebhook,
+} from '@/lib/discordWebhook';
+import {
   buildReactionRoleEmbed,
   buildRrComponents,
   parseEmoji,
@@ -548,6 +555,206 @@ export async function sendBotMessage(
         error: err instanceof Error ? err.message : 'Discord-Fehler.',
       };
     }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Components (Link-Buttons) ==============
+
+export type LinkButton = {
+  label: string;
+  url: string;
+  emoji?: string;
+  style?: 'primary' | 'secondary' | 'success' | 'danger' | 'link';
+};
+
+export type ComponentRow = {
+  buttons: LinkButton[];
+};
+
+const BUTTON_STYLE_MAP: Record<NonNullable<LinkButton['style']>, number> = {
+  primary: 1,
+  secondary: 2,
+  success: 3,
+  danger: 4,
+  link: 5,
+};
+
+function parseLinkButtonEmoji(
+  raw: string | undefined,
+): { id?: string; name?: string; animated?: boolean } | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const customMatch = trimmed.match(/^<(a?):([\w~]+):(\d+)>$/);
+  if (customMatch) {
+    const [, animated, name, id] = customMatch;
+    return { id, name, animated: animated === 'a' };
+  }
+  return { name: trimmed };
+}
+
+function buildComponentsPayload(rows: ComponentRow[]): unknown[] {
+  return rows
+    .slice(0, 5)
+    .map((row) => ({
+      type: 1,
+      components: row.buttons.slice(0, 5).map((b) => {
+        // Link-Buttons müssen url haben, kein custom_id
+        const isLink = b.url && (b.style ?? 'link') === 'link';
+        const btn: Record<string, unknown> = {
+          type: 2,
+          style: isLink ? 5 : BUTTON_STYLE_MAP[b.style ?? 'link'] ?? 5,
+          label: b.label.slice(0, 80),
+        };
+        if (isLink) {
+          btn.url = b.url;
+        } else {
+          // Nicht-link Buttons brauchen custom_id — als Pseudo-noop
+          btn.url = b.url;
+          btn.style = 5;
+        }
+        const emoji = parseLinkButtonEmoji(b.emoji);
+        if (emoji) btn.emoji = emoji;
+        return btn;
+      }),
+    }))
+    .filter((row) => Array.isArray(row.components) && row.components.length > 0);
+}
+
+// ============== Webhook-Management ==============
+
+async function getOrCreateChannelWebhook(
+  guildId: string,
+  channelId: string,
+  name = 'Kanbanly Webhook',
+): Promise<{ id: string; token: string }> {
+  const admin = createAdminClient();
+  const { data: existing } = await admin
+    .from('bot_webhooks')
+    .select('webhook_id, webhook_token')
+    .eq('guild_id', guildId)
+    .eq('channel_id', channelId)
+    .maybeSingle();
+  if (existing) {
+    const id = existing.webhook_id as string;
+    const token = existing.webhook_token as string;
+    const info = await getWebhookInfo(id, token);
+    if (info.ok) return { id, token };
+    // Token nicht mehr gültig → neu erstellen
+    await admin
+      .from('bot_webhooks')
+      .delete()
+      .eq('guild_id', guildId)
+      .eq('channel_id', channelId);
+  }
+  const wh = await createChannelWebhook(channelId, name);
+  await admin
+    .from('bot_webhooks')
+    .insert({
+      guild_id: guildId,
+      channel_id: channelId,
+      webhook_id: wh.id,
+      webhook_token: wh.token,
+      name: wh.name,
+    })
+    .then(undefined, (err) => {
+      console.error('[webhook] insert:', err);
+    });
+  return { id: wh.id, token: wh.token };
+}
+
+// ============== Voll-Send: Bot oder Webhook, mit Files + Components ==============
+
+export async function sendBotEmbedComposed(
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const guildId = String(formData.get('guildId') ?? '');
+    const channelId = String(formData.get('channelId') ?? '');
+    if (!guildId || !channelId) {
+      return { ok: false, error: 'Channel oder Guild fehlt.' };
+    }
+    await assertCanManage(guildId);
+
+    const payloadRaw = String(formData.get('payload') ?? '{}');
+    const parsed = JSON.parse(payloadRaw) as {
+      content?: string;
+      embeds?: EmbedV2[];
+      components?: ComponentRow[];
+      webhookMode?: boolean;
+      username?: string;
+      avatarUrl?: string;
+    };
+
+    const content = parsed.content?.trim();
+    const embedsOut = (parsed.embeds ?? [])
+      .slice(0, 10)
+      .map(buildDiscordEmbed)
+      .filter((e) => Object.keys(e).length > 0);
+    const componentsOut = parsed.components
+      ? buildComponentsPayload(parsed.components)
+      : [];
+
+    const files = formData.getAll('files').filter((v): v is File => v instanceof File);
+    if (files.length > 10) {
+      return { ok: false, error: 'Max 10 Attachments pro Nachricht.' };
+    }
+    for (const f of files) {
+      if (f.size > 25 * 1024 * 1024) {
+        return { ok: false, error: `Datei „${f.name}" ist größer als 25 MB.` };
+      }
+    }
+
+    if (!content && embedsOut.length === 0 && componentsOut.length === 0 && files.length === 0) {
+      return { ok: false, error: 'Nachricht ist leer.' };
+    }
+
+    const basePayload: Record<string, unknown> = {};
+    if (content) basePayload.content = content.slice(0, 2000);
+    if (embedsOut.length > 0) basePayload.embeds = embedsOut;
+    if (componentsOut.length > 0) basePayload.components = componentsOut;
+
+    if (parsed.webhookMode) {
+      const wh = await getOrCreateChannelWebhook(guildId, channelId);
+      const whPayload: Record<string, unknown> = { ...basePayload };
+      const u = parsed.username?.trim();
+      const a = parsed.avatarUrl?.trim();
+      if (u) whPayload.username = u.slice(0, 80);
+      if (a) whPayload.avatar_url = a;
+      return await sendViaWebhook(wh.id, wh.token, whPayload, files);
+    }
+
+    return await sendBotMessageWithFiles(channelId, basePayload, files);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// Webhook-Verwaltung exportiert für UI
+export async function deleteChannelWebhook(
+  guildId: string,
+  channelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: row } = await admin
+      .from('bot_webhooks')
+      .select('webhook_id')
+      .eq('guild_id', guildId)
+      .eq('channel_id', channelId)
+      .maybeSingle();
+    if (row?.webhook_id) {
+      await deleteWebhookViaBot(row.webhook_id as string).catch(() => {});
+    }
+    await admin
+      .from('bot_webhooks')
+      .delete()
+      .eq('guild_id', guildId)
+      .eq('channel_id', channelId);
+    return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
   }
