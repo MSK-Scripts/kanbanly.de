@@ -124,13 +124,20 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   if (!guild.owner && !canManageGuild(guild.permissions)) return { kind: 'forbidden' };
 
   const admin = createAdminClient();
-  const { data: guildRow } = await admin
+  const { data: guildRow, error: guildRowError } = await admin
     .from('bot_guilds')
     .select(
       'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
+  if (guildRowError) {
+    console.error('[guild-settings] bot_guilds select failed:', guildRowError);
+    throw new Error(
+      `Datenbank-Schema unvollständig — vermutlich fehlende Migration. ` +
+        `(${guildRowError.message})`,
+    );
+  }
   if (!guildRow) return { kind: 'no-bot' };
 
   let channels: DiscordChannel[] = [];
