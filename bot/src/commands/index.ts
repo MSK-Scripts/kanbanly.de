@@ -19,6 +19,8 @@ import ticket from './ticket.js';
 import slowmode from './slowmode.js';
 import roleall from './roleall.js';
 import giveaway from './giveaway.js';
+import birthday from './birthday.js';
+import suggest from './suggest.js';
 
 export const commands: SlashCommand[] = [
   ping,
@@ -41,5 +43,7 @@ export const commands: SlashCommand[] = [
   slowmode,
   roleall,
   giveaway,
+  birthday,
+  suggest,
 ];
 export const commandMap = new Map(commands.map((c) => [c.data.name, c]));

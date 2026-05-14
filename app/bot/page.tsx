@@ -339,8 +339,8 @@ export default async function BotLandingPage() {
             </div>
 
             <div className="mt-12 grid grid-cols-3 gap-4 max-w-md mx-auto text-center">
-              <HeroStat value="21" label="Module" />
-              <HeroStat value="20" label="Commands" />
+              <HeroStat value="26" label="Module" />
+              <HeroStat value="22" label="Commands" />
               <HeroStat value="0 €" label="Forever" />
             </div>
           </div>

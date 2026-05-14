@@ -7,6 +7,12 @@ export type Update = {
 export const updates: Update[] = [
   {
     date: '2026-05-14',
+    title: 'Phase 2 final: 5 neue Module',
+    description:
+      'Geburtstage (täglich um 09:00 UTC), Rollen-Badges (auto nach X Tagen), AFK-Room (stumme Voice-User verschieben), Vorschlags-System mit Discord-Modal + Up/Downvote + Mod-Workflow, und Invite-Tracker mit Leaderboard (wer hat wen eingeladen).',
+  },
+  {
+    date: '2026-05-14',
     title: 'Phase 2: Verifizierung, Anti-Raid, Giveaways',
     description:
       'Drei neue Module. Verifizierung: Button-Panel das die Verified-Rolle vergibt — schützt vor Selfbots. Anti-Raid: erkennt Burst-Joins und reagiert mit Alert/Kick/Lockdown. Giveaways: /giveaway start mit Button-Teilnahme, automatischem Ende und Reroll — vollständig im Dashboard verwaltbar.',

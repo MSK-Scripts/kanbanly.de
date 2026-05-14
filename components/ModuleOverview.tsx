@@ -20,7 +20,12 @@ export type ModuleKey =
   | 'embed'
   | 'verify'
   | 'antiraid'
-  | 'giveaways';
+  | 'giveaways'
+  | 'birthday'
+  | 'rolebadges'
+  | 'afk'
+  | 'suggestions'
+  | 'invitetracker';
 
 type ModuleDef = {
   key: ModuleKey;

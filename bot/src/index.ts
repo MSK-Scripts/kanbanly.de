@@ -20,6 +20,11 @@ import { registerVerify } from './events/verify.js';
 import { registerAntiRaid } from './events/antiraid.js';
 import { registerGiveawayButtons } from './events/giveawayButtons.js';
 import { startGiveawayScheduler } from './events/giveawayScheduler.js';
+import { startBirthdayScheduler } from './events/birthdayScheduler.js';
+import { startRoleBadgeScheduler } from './events/roleBadgeScheduler.js';
+import { registerAfkRoom } from './events/afkRoom.js';
+import { registerSuggestions } from './events/suggestions.js';
+import { registerInviteTracker } from './events/inviteTracker.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -34,6 +39,8 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildInvites,
+    GatewayIntentBits.GuildVoiceStates,
   ],
   // Partials: nötig, damit Reaction-Events und Message-Delete auch für ältere
   // (nicht gecachte) Messages feuern.
@@ -89,6 +96,11 @@ registerVerify(client);
 registerAntiRaid(client);
 registerGiveawayButtons(client);
 startGiveawayScheduler(client);
+startBirthdayScheduler(client);
+startRoleBadgeScheduler(client);
+registerAfkRoom(client);
+registerSuggestions(client);
+registerInviteTracker(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

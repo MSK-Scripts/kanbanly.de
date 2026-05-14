@@ -1064,6 +1064,248 @@ export async function refreshGuildCache(
   }
 }
 
+// ============== Geburtstage ==============
+
+export async function updateBirthdayConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const message = (formData.get('message') as string | null)?.trim() || null;
+    if (enabled && !channelId) {
+      return { ok: false, error: 'Channel ist nötig wenn Geburtstage aktiv.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        birthday_enabled: enabled,
+        birthday_channel_id: channelId,
+        birthday_message: message,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Rollen-Badge ==============
+
+export async function updateRoleBadgesEnabled(
+  guildId: string,
+  enabled: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        role_badges_enabled: enabled,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function addRoleBadge(
+  guildId: string,
+  roleId: string,
+  daysRequired: number,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (!roleId || daysRequired < 1 || daysRequired > 9999) {
+      return { ok: false, error: 'Ungültige Eingabe.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin.from('bot_role_badges').upsert(
+      {
+        guild_id: guildId,
+        role_id: roleId,
+        days_required: daysRequired,
+      },
+      { onConflict: 'guild_id,role_id' },
+    );
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function removeRoleBadge(
+  guildId: string,
+  roleId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_role_badges')
+      .delete()
+      .eq('guild_id', guildId)
+      .eq('role_id', roleId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== AFK-Room ==============
+
+export async function updateAfkConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const timeoutMinutes = Math.max(
+      1,
+      Math.min(
+        240,
+        parseInt(String(formData.get('timeout_minutes') ?? '10'), 10) || 10,
+      ),
+    );
+    if (enabled && !channelId) {
+      return { ok: false, error: 'AFK-Channel nötig.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        afk_enabled: enabled,
+        afk_channel_id: channelId,
+        afk_timeout_minutes: timeoutMinutes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Vorschlags-System ==============
+
+export async function updateSuggestionsConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const modRoleId = (formData.get('mod_role_id') as string | null)?.trim() || null;
+    if (enabled && !channelId) {
+      return { ok: false, error: 'Vorschlags-Channel nötig.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        suggestions_enabled: enabled,
+        suggestions_channel_id: channelId,
+        suggestions_mod_role_id: modRoleId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Invite-Tracker ==============
+
+export type InviteLeaderRow = {
+  inviterUserId: string;
+  username: string | null;
+  globalName: string | null;
+  avatarUrl: string | null;
+  count: number;
+};
+
+export async function listInviteLeaderboard(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; rows?: InviteLeaderRow[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_invite_attributions')
+      .select('inviter_user_id')
+      .eq('guild_id', guildId)
+      .not('inviter_user_id', 'is', null);
+    if (error) throw error;
+    const counts = new Map<string, number>();
+    for (const r of data ?? []) {
+      const id = r.inviter_user_id as string;
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    const top = sorted.slice(0, 25);
+    const rows = await Promise.all(
+      top.map(async ([id, count]) => {
+        const u = await fetchUserBasic(id);
+        return {
+          inviterUserId: id,
+          username: u?.username ?? null,
+          globalName: u?.global_name ?? null,
+          avatarUrl: u ? userAvatarUrl({ id: u.id, avatar: u.avatar }) : null,
+          count,
+        };
+      }),
+    );
+    return { ok: true, rows };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updateInviteTrackerEnabled(
+  guildId: string,
+  enabled: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        invite_tracker_enabled: enabled,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
 // ============== Modul-Toggle (Übersicht) ==============
 
 type ModuleKey =
@@ -1079,7 +1321,12 @@ type ModuleKey =
   | 'embed'
   | 'verify'
   | 'antiraid'
-  | 'giveaways';
+  | 'giveaways'
+  | 'birthday'
+  | 'rolebadges'
+  | 'afk'
+  | 'suggestions'
+  | 'invitetracker';
 
 export async function toggleBotModule(
   guildId: string,
@@ -1112,6 +1359,21 @@ export async function toggleBotModule(
         break;
       case 'antiraid':
         patch.antiraid_enabled = enabled;
+        break;
+      case 'birthday':
+        patch.birthday_enabled = enabled;
+        break;
+      case 'rolebadges':
+        patch.role_badges_enabled = enabled;
+        break;
+      case 'afk':
+        patch.afk_enabled = enabled;
+        break;
+      case 'suggestions':
+        patch.suggestions_enabled = enabled;
+        break;
+      case 'invitetracker':
+        patch.invite_tracker_enabled = enabled;
         break;
       default:
         return {

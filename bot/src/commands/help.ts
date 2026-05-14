@@ -38,9 +38,9 @@ const command: SlashCommand = {
             '`/ticket panel create` · Button-Panel zum Ticket-Öffnen\n`/ticket close` · Ticket schließen\n`/serverstats add|remove|list` · Live-Counter in Voice-Channels',
         },
         {
-          name: '🎉 Events',
+          name: '🎉 Events & Community',
           value:
-            '`/giveaway start prize:… duration:… [winners:…]` · Giveaway starten\n`/giveaway end id:…` · sofort beenden\n`/giveaway reroll id:…` · neue Gewinner auslosen',
+            '`/giveaway start ...` · Giveaway starten\n`/giveaway end/reroll id:…`\n`/birthday set day:… month:…` · Geburtstag eintragen\n`/suggest` · Vorschlag einreichen (Modal-Popup)',
         },
         {
           name: '🌐 Dashboard',

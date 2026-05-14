@@ -30,6 +30,13 @@ import { ModuleOverview } from '@/components/ModuleOverview';
 import { VerifyForm } from '@/components/VerifyForm';
 import { AntiRaidForm } from '@/components/AntiRaidForm';
 import { GiveawaysForm } from '@/components/GiveawaysForm';
+import {
+  BirthdayForm,
+  RoleBadgesForm,
+  AfkForm,
+  SuggestionsForm,
+  InviteTrackerForm,
+} from '@/components/Phase2FinishForms';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
@@ -140,6 +147,34 @@ type LoadResult =
         action: 'alert' | 'kick' | 'lockdown';
         alertChannelId: string | null;
       };
+      birthday: {
+        enabled: boolean;
+        channelId: string | null;
+        message: string | null;
+      };
+      birthdayList: Array<{ userId: string; month: number; day: number; year: number | null }>;
+      roleBadgesEnabled: boolean;
+      roleBadges: Array<{ roleId: string; daysRequired: number }>;
+      afk: {
+        enabled: boolean;
+        channelId: string | null;
+        timeoutMinutes: number;
+      };
+      suggestions: {
+        enabled: boolean;
+        channelId: string | null;
+        modRoleId: string | null;
+      };
+      suggestionsList: Array<{
+        id: string;
+        userId: string;
+        content: string;
+        status: 'open' | 'approved' | 'rejected' | 'implemented';
+        upvotes: number;
+        downvotes: number;
+        createdAt: string;
+      }>;
+      inviteTrackerEnabled: boolean;
       giveaways: Array<{
         id: string;
         channelId: string;
@@ -189,7 +224,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow, error: guildRowError } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, verify_reply_success, verify_reply_already, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, verify_reply_success, verify_reply_already, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id, birthday_enabled, birthday_channel_id, birthday_message, role_badges_enabled, afk_enabled, afk_channel_id, afk_timeout_minutes, suggestions_enabled, suggestions_channel_id, suggestions_mod_role_id, invite_tracker_enabled',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -336,6 +371,45 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     entriesCount: gwCount.get(r.id as string) ?? 0,
   }));
 
+  const { data: birthdaysRaw } = await admin
+    .from('bot_birthdays')
+    .select('user_id, month, day, year')
+    .eq('guild_id', guildId)
+    .order('month')
+    .order('day');
+  const birthdayList = (birthdaysRaw ?? []).map((r) => ({
+    userId: r.user_id as string,
+    month: r.month as number,
+    day: r.day as number,
+    year: (r.year as number | null) ?? null,
+  }));
+
+  const { data: badgesRaw } = await admin
+    .from('bot_role_badges')
+    .select('role_id, days_required')
+    .eq('guild_id', guildId)
+    .order('days_required');
+  const roleBadges = (badgesRaw ?? []).map((r) => ({
+    roleId: r.role_id as string,
+    daysRequired: r.days_required as number,
+  }));
+
+  const { data: suggRaw } = await admin
+    .from('bot_suggestions')
+    .select('id, user_id, content, status, upvotes, downvotes, created_at')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  const suggestionsList = (suggRaw ?? []).map((r) => ({
+    id: r.id as string,
+    userId: r.user_id as string,
+    content: r.content as string,
+    status: r.status as 'open' | 'approved' | 'rejected' | 'implemented',
+    upvotes: (r.upvotes as number) ?? 0,
+    downvotes: (r.downvotes as number) ?? 0,
+    createdAt: r.created_at as string,
+  }));
+
   const reactionRoleMessages = (rrMsgRaw ?? []).map((m) => ({
     messageId: m.message_id as string,
     channelId: m.channel_id as string,
@@ -405,6 +479,26 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       alertChannelId:
         (guildRow.antiraid_alert_channel_id as string | null) ?? null,
     },
+    birthday: {
+      enabled: Boolean(guildRow.birthday_enabled),
+      channelId: (guildRow.birthday_channel_id as string | null) ?? null,
+      message: (guildRow.birthday_message as string | null) ?? null,
+    },
+    birthdayList,
+    roleBadgesEnabled: Boolean(guildRow.role_badges_enabled),
+    roleBadges,
+    afk: {
+      enabled: Boolean(guildRow.afk_enabled),
+      channelId: (guildRow.afk_channel_id as string | null) ?? null,
+      timeoutMinutes: (guildRow.afk_timeout_minutes as number | null) ?? 10,
+    },
+    suggestions: {
+      enabled: Boolean(guildRow.suggestions_enabled),
+      channelId: (guildRow.suggestions_channel_id as string | null) ?? null,
+      modRoleId: (guildRow.suggestions_mod_role_id as string | null) ?? null,
+    },
+    suggestionsList,
+    inviteTrackerEnabled: Boolean(guildRow.invite_tracker_enabled),
     giveaways,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
@@ -547,6 +641,14 @@ export default async function GuildSettingsPage({
             verify={result.verify}
             antiraid={result.antiraid}
             giveaways={result.giveaways}
+            birthday={result.birthday}
+            birthdayList={result.birthdayList}
+            roleBadgesEnabled={result.roleBadgesEnabled}
+            roleBadges={result.roleBadges}
+            afk={result.afk}
+            suggestions={result.suggestions}
+            suggestionsList={result.suggestionsList}
+            inviteTrackerEnabled={result.inviteTrackerEnabled}
           />
         )}
       </div>
@@ -574,6 +676,14 @@ function GuildSettingsView({
   verify,
   antiraid,
   giveaways,
+  birthday,
+  birthdayList,
+  roleBadgesEnabled,
+  roleBadges,
+  afk,
+  suggestions,
+  suggestionsList,
+  inviteTrackerEnabled,
 }: {
   guildName: string;
   guildId: string;
@@ -682,6 +792,31 @@ function GuildSettingsView({
     winnerUserIds: string[] | null;
     entriesCount: number;
   }>;
+  birthday: { enabled: boolean; channelId: string | null; message: string | null };
+  birthdayList: Array<{
+    userId: string;
+    month: number;
+    day: number;
+    year: number | null;
+  }>;
+  roleBadgesEnabled: boolean;
+  roleBadges: Array<{ roleId: string; daysRequired: number }>;
+  afk: { enabled: boolean; channelId: string | null; timeoutMinutes: number };
+  suggestions: {
+    enabled: boolean;
+    channelId: string | null;
+    modRoleId: string | null;
+  };
+  suggestionsList: Array<{
+    id: string;
+    userId: string;
+    content: string;
+    status: 'open' | 'approved' | 'rejected' | 'implemented';
+    upvotes: number;
+    downvotes: number;
+    createdAt: string;
+  }>;
+  inviteTrackerEnabled: boolean;
 }) {
   const moduleDefs = [
     {
@@ -803,6 +938,51 @@ function GuildSettingsView({
       count: giveaways.some((g) => !g.ended)
         ? giveaways.filter((g) => !g.ended).length
         : undefined,
+      isNew: true,
+    },
+    {
+      key: 'birthday' as const,
+      name: 'Geburtstage',
+      description: 'Automatische Glückwünsche zum Geburtstag im konfigurierten Channel.',
+      tab: 'birthday',
+      enabled: birthday.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'rolebadges' as const,
+      name: 'Rollen-Badges',
+      description: 'Auto-Rollen nach X Tagen Mitgliedschaft (1-Year-Member etc.).',
+      tab: 'rolebadges',
+      enabled: roleBadgesEnabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'afk' as const,
+      name: 'AFK-Room',
+      description: 'Stumm/taube Voice-User werden nach X Minuten in AFK-Channel verschoben.',
+      tab: 'afk',
+      enabled: afk.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'suggestions' as const,
+      name: 'Vorschläge',
+      description: '/suggest mit Modal — Upvote/Downvote-Buttons + Mod-Approve.',
+      tab: 'suggestions',
+      enabled: suggestions.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'invitetracker' as const,
+      name: 'Invite-Tracker',
+      description: 'Wer hat wen eingeladen — mit Leaderboard.',
+      tab: 'invitetracker',
+      enabled: inviteTrackerEnabled,
+      toggleable: true,
       isNew: true,
     },
   ];
@@ -957,6 +1137,65 @@ function GuildSettingsView({
       description: 'Preise verlosen mit Button-Teilnahme und automatischem Ende.',
       content: (
         <GiveawaysForm guildId={guildId} channels={channels} initial={giveaways} />
+      ),
+    },
+    {
+      id: 'birthday',
+      label: 'Geburtstage',
+      icon: '🎂',
+      description: 'Tägliche Glückwünsche um ~09:00 UTC.',
+      content: (
+        <BirthdayForm
+          guildId={guildId}
+          channels={channels}
+          initial={birthday}
+          birthdays={birthdayList}
+        />
+      ),
+    },
+    {
+      id: 'rolebadges',
+      label: 'Rollen-Badges',
+      icon: '🏅',
+      description: 'Auto-Rollen nach Mitgliedschafts-Dauer.',
+      content: (
+        <RoleBadgesForm
+          guildId={guildId}
+          roles={roles}
+          enabled={roleBadgesEnabled}
+          badges={roleBadges}
+        />
+      ),
+    },
+    {
+      id: 'afk',
+      label: 'AFK-Room',
+      icon: '💤',
+      description: 'Stumm/taube User in AFK-Voice verschieben.',
+      content: <AfkForm guildId={guildId} channels={channels} initial={afk} />,
+    },
+    {
+      id: 'suggestions',
+      label: 'Vorschläge',
+      icon: '💡',
+      description: 'Modal-Vorschläge mit Voting + Mod-Workflow.',
+      content: (
+        <SuggestionsForm
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initial={suggestions}
+          list={suggestionsList}
+        />
+      ),
+    },
+    {
+      id: 'invitetracker',
+      label: 'Invite-Tracker',
+      icon: '📨',
+      description: 'Leaderboard wer wen eingeladen hat.',
+      content: (
+        <InviteTrackerForm guildId={guildId} enabled={inviteTrackerEnabled} />
       ),
     },
   ];
