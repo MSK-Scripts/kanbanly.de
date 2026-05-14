@@ -39,7 +39,7 @@ export function BirthdayForm({
   const [enabled, setEnabled] = useState(initial.enabled);
   const [channelId, setChannelId] = useState(initial.channelId ?? '');
   const [message, setMessage] = useState(
-    initial.message ?? '🎂 Alles Gute zum Geburtstag, {mention}! 🎉',
+    initial.message ?? 'Alles Gute zum Geburtstag, {mention}!',
   );
   const [pending, startTransition] = useTransition();
 

@@ -24,8 +24,8 @@ type Props = {
   };
 };
 
-const DEFAULT_TEMPLATE = 'Willkommen {mention} auf **{server}** 🎉 — ihr seid jetzt zu {members}.';
-const DEFAULT_DM_TEMPLATE = 'Hey {user}! Willkommen auf **{server}** 👋 Schau dich um und sag Hallo.';
+const DEFAULT_TEMPLATE = 'Willkommen {mention} auf **{server}** — ihr seid jetzt zu {members}.';
+const DEFAULT_DM_TEMPLATE = 'Hey {user}! Willkommen auf **{server}**. Schau dich um und sag Hallo.';
 
 const PLACEHOLDERS: Array<{ token: string; label: string; sample: string }> = [
   { token: '{user}', label: 'Username', sample: 'NewUser' },

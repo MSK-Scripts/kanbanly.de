@@ -25,8 +25,8 @@ const MODE_LABEL: Record<Mode, string> = {
 };
 
 const MODE_ICON: Record<Mode, string> = {
-  images_only: '🖼️',
-  text_only: '💬',
+  images_only: 'IMG',
+  text_only: 'TXT',
 };
 
 export function ChannelModesForm({ guildId, channels, initial }: Props) {
@@ -127,7 +127,7 @@ export function ChannelModesForm({ guildId, channels, initial }: Props) {
         </ul>
       ) : (
         <div className="rounded-xl border border-dashed border-line-strong p-10 text-center">
-          <div className="text-3xl mb-2">🎯</div>
+          <div className="text-3xl mb-2 text-muted">—</div>
           <div className="text-sm text-fg-soft mb-1">
             Noch keine Channel-Modes konfiguriert
           </div>
@@ -173,8 +173,8 @@ export function ChannelModesForm({ guildId, channels, initial }: Props) {
               onChange={(e) => setNewMode(e.target.value as Mode)}
               className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
             >
-              <option value="images_only">🖼️ Bilder-Only</option>
-              <option value="text_only">💬 Text-Only</option>
+              <option value="images_only">Bilder-Only</option>
+              <option value="text_only">Text-Only</option>
             </select>
           </div>
         </div>

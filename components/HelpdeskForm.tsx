@@ -140,7 +140,7 @@ export function HelpdeskForm({ guildId, channels, initial }: Props) {
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-line-strong p-10 text-center">
-          <div className="text-3xl mb-2">❓</div>
+          <div className="text-3xl mb-2 text-muted">—</div>
           <div className="text-sm text-fg-soft mb-1">Noch keine Helpdesk-Panels</div>
           <div className="text-[12px] text-subtle">
             Lege unten dein erstes Panel an.
@@ -328,7 +328,7 @@ function PanelCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[14px] font-semibold text-fg truncate max-w-[280px]">
-              ❓ {panel.title}
+              {panel.title}
             </span>
             {panel.messageId ? (
               <StatusPill kind="success" dot>Gepostet</StatusPill>

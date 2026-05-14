@@ -79,7 +79,7 @@ export function AutoModForm({ guildId, initial }: Props) {
         >
           <FilterCard
             title="Link-Filter"
-            icon="🔗"
+            icon=""
             active={blockLinks}
             summary={blockLinks ? 'Links blockiert (außer Whitelist)' : 'Aus'}
           >
@@ -115,7 +115,7 @@ export function AutoModForm({ guildId, initial }: Props) {
 
           <FilterCard
             title="Caps-Filter"
-            icon="🔠"
+            icon=""
             active={capsEnabled}
             summary={capsEnabled ? 'Großbuchstaben begrenzt' : 'Aus'}
           >
@@ -147,7 +147,7 @@ export function AutoModForm({ guildId, initial }: Props) {
 
           <FilterCard
             title="Mention-Spam"
-            icon="📣"
+            icon=""
             active={mentionsEnabled}
             summary={mentionsEnabled ? 'Mention-Limit aktiv' : 'Aus'}
           >
@@ -179,7 +179,7 @@ export function AutoModForm({ guildId, initial }: Props) {
 
           <FilterCard
             title="Verbotene Wörter"
-            icon="🚫"
+            icon=""
             active={bannedWordsCount > 0}
             summary={
               bannedWordsCount > 0
@@ -236,12 +236,7 @@ function FilterCard({
       }`}
     >
       <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-line bg-elev/30">
-        <div className="flex items-center gap-2">
-          <span className="text-base leading-none" aria-hidden>
-            {icon}
-          </span>
-          <span className="text-[13.5px] font-semibold text-fg">{title}</span>
-        </div>
+        <span className="text-[13.5px] font-semibold text-fg">{title}</span>
         <div className="flex items-center gap-1.5">
           <span
             className={`h-1.5 w-1.5 rounded-full ${

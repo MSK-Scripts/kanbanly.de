@@ -107,7 +107,7 @@ export function GiveawaysForm({ guildId, channels, initial }: Props) {
         buttonStyle,
       });
       if (r.ok && r.id) {
-        toast.success('Giveaway gestartet 🎉');
+        toast.success('Giveaway gestartet');
         setNewPrize('');
         // refresh
         setGiveaways((prev) => [
@@ -361,7 +361,7 @@ export function GiveawaysForm({ guildId, channels, initial }: Props) {
             disabled={!newPrize.trim() || !newChannelId}
             variant="primary"
           >
-            🎉 Giveaway starten
+            Giveaway starten
           </Button>
         </div>
       </FormSection>
@@ -463,8 +463,8 @@ function GiveawayRow({
     <li className="rounded-xl border border-line bg-surface overflow-hidden">
       <div className="p-4 flex items-center justify-between gap-4 flex-wrap">
         <div className="min-w-0 flex-1 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-elev border border-line grid place-items-center shrink-0">
-            🎉
+          <div className="h-10 w-10 rounded-lg bg-elev border border-line grid place-items-center shrink-0 text-muted text-[10px] font-mono uppercase tracking-wider">
+            GW
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -569,10 +569,10 @@ function GiveawayRow({
                     <span className="text-fg truncate flex-1">{displayName}</span>
                     {isWinner && (
                       <span
-                        className="text-[10px] font-bold text-[var(--warning)] shrink-0"
+                        className="text-[9px] font-bold uppercase tracking-wider text-[var(--warning)] shrink-0"
                         aria-label="Gewinner"
                       >
-                        🏆
+                        Winner
                       </span>
                     )}
                   </li>

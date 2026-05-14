@@ -219,7 +219,7 @@ export function ModuleOverview({ guildId, modules }: Props) {
                   <button
                     type="button"
                     onClick={() => navigate(m.tab)}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--danger)] hover:opacity-80 transition-opacity"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--accent-soft)] hover:text-fg transition-colors"
                   >
                     <GearIcon />
                     Einstellungen

@@ -1038,7 +1038,7 @@ function AttachmentsEditor({
           disabled={files.length >= 10}
           className="hidden"
         />
-        📎 Datei{files.length === 0 ? '' : 'en'} hinzufügen
+        Datei{files.length === 0 ? '' : 'en'} hinzufügen
       </label>
     </FormSection>
   );

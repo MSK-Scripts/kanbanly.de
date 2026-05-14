@@ -22,7 +22,7 @@ type Props = {
 };
 
 const DEFAULT_TEMPLATE =
-  'Danke für den Boost, {mention}! 🚀 **{server}** wird durch dich besser.';
+  'Danke für den Boost, {mention}! **{server}** wird durch dich besser.';
 
 export function BoosterForm({ guildId, channels, initial }: Props) {
   const [enabled, setEnabled] = useState(initial.enabled);

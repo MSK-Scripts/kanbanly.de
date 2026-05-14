@@ -54,7 +54,7 @@ export function VerifyForm({ guildId, channels, roles, initial }: Props) {
   const [roleId, setRoleId] = useState(initial.roleId ?? '');
   const [message, setMessage] = useState(initial.message ?? DEFAULT_MESSAGE);
   const [panelTitle, setPanelTitle] = useState(
-    initial.panelTitle ?? '🛡️ Verifizierung',
+    initial.panelTitle ?? 'Verifizierung',
   );
   const [panelColor, setPanelColor] = useState(
     initial.panelColor !== null
@@ -182,7 +182,7 @@ export function VerifyForm({ guildId, channels, roles, initial }: Props) {
                 type="text"
                 value={panelTitle}
                 onChange={(e) => setPanelTitle(e.target.value.slice(0, 256))}
-                placeholder="🛡️ Verifizierung"
+                placeholder="Verifizierung"
                 className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
               />
             </FormRow>

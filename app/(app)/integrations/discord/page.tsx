@@ -378,12 +378,12 @@ function ServerCard({ guild }: { guild: GuildRow }) {
 
       <div className="shrink-0">
         {isActive ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-accent/10 text-accent border border-accent/30 px-3 py-1.5 text-xs font-semibold group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-all">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-accent text-white border border-accent px-3 py-1.5 text-xs font-semibold group-hover:bg-accent-hover transition-all">
             Verwalten
             <ArrowIcon />
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-[#5865F2]/10 text-[#5865F2] border border-[#5865F2]/30 px-3 py-1.5 text-xs font-semibold group-hover:bg-[#5865F2] group-hover:text-white group-hover:border-[#5865F2] transition-all">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-[#5865F2] text-white border border-[#5865F2] px-3 py-1.5 text-xs font-semibold group-hover:bg-[#4752C4] transition-all">
             Einladen
             <ExternalIcon />
           </span>

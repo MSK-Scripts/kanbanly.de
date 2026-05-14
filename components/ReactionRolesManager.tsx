@@ -14,9 +14,9 @@ import { toast } from '@/store/toastStore';
 type RrMode = 'reactions' | 'buttons' | 'select_menu';
 
 const MODE_LABEL: Record<RrMode, string> = {
-  reactions: '😀 Reaktionen',
-  buttons: '🟦 Buttons',
-  select_menu: '⬇️ Dropdown',
+  reactions: 'Reaktionen',
+  buttons: 'Buttons',
+  select_menu: 'Dropdown',
 };
 
 const MODE_HINT: Record<RrMode, string> = {
@@ -378,7 +378,7 @@ function RrMessageCard({
       <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-line bg-elev/40">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-fg truncate">
-            ✨ {message.title ?? '(ohne Titel)'}
+            {message.title ?? '(ohne Titel)'}
           </div>
           <div className="text-[11px] text-subtle mt-0.5">
             <span className="text-accent">#{channelName}</span> ·{' '}

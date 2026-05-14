@@ -107,7 +107,7 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
         </ul>
       ) : (
         <div className="rounded-xl border border-dashed border-line-strong p-10 text-center">
-          <div className="text-3xl mb-2">📌</div>
+          <div className="text-3xl mb-2 text-muted">—</div>
           <div className="text-sm text-fg-soft mb-1">Noch keine Sticky-Messages</div>
           <div className="text-[12px] text-subtle">
             Lege unten deine erste Sticky-Message für einen Channel an.
@@ -214,7 +214,6 @@ function StickyRow({
     <li className="rounded-xl border border-line bg-surface overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-line bg-elev/30">
         <div className="flex items-center gap-2 min-w-0">
-          <span aria-hidden>📌</span>
           <span className="text-[13.5px] font-semibold text-accent">
             #{channelName}
           </span>
