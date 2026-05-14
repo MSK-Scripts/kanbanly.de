@@ -23,6 +23,14 @@ async function endGiveaway(
     | null;
   if (!channel || !giveaway.messageId) return;
 
+  const design = {
+    embedColor: giveaway.embedColor,
+    embedTitle: giveaway.embedTitle,
+    embedDescription: giveaway.embedDescription,
+    buttonLabel: giveaway.buttonLabel,
+    buttonEmoji: giveaway.buttonEmoji,
+    buttonStyle: giveaway.buttonStyle,
+  };
   const embed = buildGiveawayEmbed(
     giveaway.prize,
     new Date(giveaway.endsAt),
@@ -30,6 +38,7 @@ async function endGiveaway(
     entries.length,
     true,
     winners,
+    design,
   );
   const msg = await channel.messages.fetch(giveaway.messageId).catch(() => null);
   if (msg) await msg.edit({ embeds: [embed], components: [] }).catch(() => {});

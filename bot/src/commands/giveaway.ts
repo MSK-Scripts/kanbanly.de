@@ -148,6 +148,14 @@ async function execute(interaction: ChatInputCommandInteraction): Promise<void> 
       .fetch(gw.channelId)
       .catch(() => null)) as TextChannel | null;
     if (channel && gw.messageId) {
+      const design = {
+        embedColor: gw.embedColor,
+        embedTitle: gw.embedTitle,
+        embedDescription: gw.embedDescription,
+        buttonLabel: gw.buttonLabel,
+        buttonEmoji: gw.buttonEmoji,
+        buttonStyle: gw.buttonStyle,
+      };
       const embed = buildGiveawayEmbed(
         gw.prize,
         new Date(gw.endsAt),
@@ -155,6 +163,7 @@ async function execute(interaction: ChatInputCommandInteraction): Promise<void> 
         entries.length,
         true,
         winners,
+        design,
       );
       const msg = await channel.messages.fetch(gw.messageId).catch(() => null);
       if (msg) await msg.edit({ embeds: [embed], components: [] }).catch(() => {});

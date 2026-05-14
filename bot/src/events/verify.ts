@@ -28,9 +28,16 @@ async function handleVerify(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
+  function render(template: string): string {
+    return template
+      .replaceAll('{user}', interaction.user.username)
+      .replaceAll('{mention}', `<@${interaction.user.id}>`)
+      .replaceAll('{server}', interaction.guild?.name ?? '');
+  }
+
   if (member.roles.cache.has(cfg.roleId)) {
     await interaction.reply({
-      content: '✓ Du bist bereits verifiziert.',
+      content: render(cfg.replyAlready ?? '✓ Du bist bereits verifiziert.'),
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -58,7 +65,7 @@ async function handleVerify(interaction: ButtonInteraction): Promise<void> {
   try {
     await member.roles.add(cfg.roleId, 'Verify-Button');
     await interaction.reply({
-      content: `✓ Verifiziert — willkommen!`,
+      content: render(cfg.replySuccess ?? '✓ Verifiziert — willkommen!'),
       flags: MessageFlags.Ephemeral,
     });
   } catch (err) {

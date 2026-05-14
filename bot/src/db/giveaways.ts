@@ -1,5 +1,11 @@
 import { getDb } from '../db.js';
 
+export type GiveawayButtonStyle =
+  | 'primary'
+  | 'secondary'
+  | 'success'
+  | 'danger';
+
 export type Giveaway = {
   id: string;
   guildId: string;
@@ -11,6 +17,12 @@ export type Giveaway = {
   createdByUserId: string;
   ended: boolean;
   winnerUserIds: string[] | null;
+  embedColor: number | null;
+  embedTitle: string | null;
+  embedDescription: string | null;
+  buttonLabel: string | null;
+  buttonEmoji: string | null;
+  buttonStyle: GiveawayButtonStyle | null;
 };
 
 type GiveawayRow = {
@@ -24,6 +36,12 @@ type GiveawayRow = {
   created_by_user_id: string;
   ended: boolean;
   winner_user_ids: unknown;
+  embed_color: number | null;
+  embed_title: string | null;
+  embed_description: string | null;
+  button_label: string | null;
+  button_emoji: string | null;
+  button_style: string | null;
 };
 
 function map(r: GiveawayRow): Giveaway {
@@ -42,6 +60,12 @@ function map(r: GiveawayRow): Giveaway {
           (v): v is string => typeof v === 'string',
         )
       : null,
+    embedColor: r.embed_color,
+    embedTitle: r.embed_title,
+    embedDescription: r.embed_description,
+    buttonLabel: r.button_label,
+    buttonEmoji: r.button_emoji,
+    buttonStyle: (r.button_style as GiveawayButtonStyle | null) ?? null,
   };
 }
 
@@ -52,6 +76,12 @@ export async function createGiveaway(input: {
   winnersCount: number;
   endsAt: Date;
   createdByUserId: string;
+  embedColor?: number | null;
+  embedTitle?: string | null;
+  embedDescription?: string | null;
+  buttonLabel?: string | null;
+  buttonEmoji?: string | null;
+  buttonStyle?: GiveawayButtonStyle | null;
 }): Promise<Giveaway> {
   const db = getDb();
   const { data, error } = await db
@@ -63,6 +93,12 @@ export async function createGiveaway(input: {
       winners_count: input.winnersCount,
       ends_at: input.endsAt.toISOString(),
       created_by_user_id: input.createdByUserId,
+      embed_color: input.embedColor ?? null,
+      embed_title: input.embedTitle ?? null,
+      embed_description: input.embedDescription ?? null,
+      button_label: input.buttonLabel ?? null,
+      button_emoji: input.buttonEmoji ?? null,
+      button_style: input.buttonStyle ?? null,
     })
     .select('*')
     .single();

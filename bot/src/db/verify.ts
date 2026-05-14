@@ -6,6 +6,8 @@ export type VerifyConfig = {
   roleId: string | null;
   message: string | null;
   panelMessageId: string | null;
+  replySuccess: string | null;
+  replyAlready: string | null;
 };
 
 export async function getVerifyConfig(
@@ -15,7 +17,7 @@ export async function getVerifyConfig(
   const { data, error } = await db
     .from('bot_guilds')
     .select(
-      'verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id',
+      'verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_reply_success, verify_reply_already',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -27,6 +29,8 @@ export async function getVerifyConfig(
     roleId: data.verify_role_id ?? null,
     message: data.verify_message ?? null,
     panelMessageId: data.verify_panel_message_id ?? null,
+    replySuccess: data.verify_reply_success ?? null,
+    replyAlready: data.verify_reply_already ?? null,
   };
 }
 

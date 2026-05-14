@@ -529,6 +529,10 @@ export async function updateVerifyConfig(
     )
       ? buttonStyleRaw
       : 'primary';
+    const replySuccess =
+      (formData.get('reply_success') as string | null)?.trim() || null;
+    const replyAlready =
+      (formData.get('reply_already') as string | null)?.trim() || null;
 
     if (enabled && (!channelId || !roleId)) {
       return {
@@ -549,6 +553,8 @@ export async function updateVerifyConfig(
         verify_button_label: buttonLabel,
         verify_button_emoji: buttonEmoji,
         verify_button_style: buttonStyle,
+        verify_reply_success: replySuccess,
+        verify_reply_already: replyAlready,
         updated_at: new Date().toISOString(),
       })
       .eq('guild_id', guildId);
@@ -766,6 +772,40 @@ export async function listGuildGiveaways(
   }
 }
 
+type GiveawayButtonStyleAct = 'primary' | 'secondary' | 'success' | 'danger';
+const GW_STYLE_MAP: Record<GiveawayButtonStyleAct, number> = {
+  primary: 1,
+  secondary: 2,
+  success: 3,
+  danger: 4,
+};
+
+function applyGwTemplate(
+  template: string,
+  ctx: { prize: string; endsAtUnix: number; winners: number; entries: number },
+): string {
+  return template
+    .replaceAll('{prize}', ctx.prize)
+    .replaceAll('{winners}', String(ctx.winners))
+    .replaceAll('{entries}', String(ctx.entries))
+    .replaceAll('{ends}', `<t:${ctx.endsAtUnix}:R>`)
+    .replaceAll('{ends_long}', `<t:${ctx.endsAtUnix}:F>`);
+}
+
+function parseGwEmoji(
+  raw: string | null,
+): { id?: string; name?: string; animated?: boolean } | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const customMatch = trimmed.match(/^<(a?):([\w~]+):(\d+)>$/);
+  if (customMatch) {
+    const [, animated, name, id] = customMatch;
+    return { id, name, animated: animated === 'a' };
+  }
+  return { name: trimmed };
+}
+
 export async function createGiveawayFromWeb(
   guildId: string,
   input: {
@@ -773,6 +813,12 @@ export async function createGiveawayFromWeb(
     prize: string;
     winnersCount: number;
     durationMs: number;
+    embedColor?: number | null;
+    embedTitle?: string | null;
+    embedDescription?: string | null;
+    buttonLabel?: string | null;
+    buttonEmoji?: string | null;
+    buttonStyle?: GiveawayButtonStyleAct | null;
   },
 ): Promise<{ ok: boolean; error?: string; id?: string }> {
   try {
@@ -797,38 +843,56 @@ export async function createGiveawayFromWeb(
         winners_count: input.winnersCount,
         ends_at: endsAt.toISOString(),
         created_by_user_id: userId,
+        embed_color: input.embedColor ?? null,
+        embed_title: input.embedTitle ?? null,
+        embed_description: input.embedDescription ?? null,
+        button_label: input.buttonLabel ?? null,
+        button_emoji: input.buttonEmoji ?? null,
+        button_style: input.buttonStyle ?? null,
       })
       .select('id')
       .single();
     if (insErr || !gw) throw insErr ?? new Error('Insert fehlgeschlagen.');
 
     const endsAtUnix = Math.floor(endsAt.getTime() / 1000);
+    const ctx = {
+      prize: input.prize.trim(),
+      endsAtUnix,
+      winners: input.winnersCount,
+      entries: 0,
+    };
+    const titleTemplate = input.embedTitle?.trim() || '🎉  {prize}';
+    const descTemplate =
+      input.embedDescription?.trim() ||
+      [
+        'Endet: {ends}',
+        'Gewinner: **{winners}**',
+        'Teilnehmer: **{entries}**',
+        '',
+        'Klick auf den Button, um mitzumachen.',
+      ].join('\n');
+    const buttonStyle = GW_STYLE_MAP[input.buttonStyle ?? 'primary'] ?? 1;
+    const buttonComponent: Record<string, unknown> = {
+      type: 2,
+      style: buttonStyle,
+      custom_id: `gw:join:${gw.id}`,
+      label: (input.buttonLabel?.trim() || 'Teilnehmen').slice(0, 80),
+    };
+    const emoji = parseGwEmoji(input.buttonEmoji?.trim() || '🎉');
+    if (emoji) buttonComponent.emoji = emoji;
+
     const payload = {
       embeds: [
         {
-          title: `🎉  ${input.prize.trim()}`,
-          description: [
-            `Endet: <t:${endsAtUnix}:R>`,
-            `Gewinner: **${input.winnersCount}**`,
-            `Teilnehmer: **0**`,
-            '',
-            'Klick auf **Teilnehmen**, um mitzumachen.',
-          ].join('\n'),
-          color: 0xa855f7,
+          title: applyGwTemplate(titleTemplate, ctx).slice(0, 256),
+          description: applyGwTemplate(descTemplate, ctx).slice(0, 4000),
+          color: input.embedColor ?? 0xa855f7,
         },
       ],
       components: [
         {
           type: 1,
-          components: [
-            {
-              type: 2,
-              style: 1,
-              custom_id: `gw:join:${gw.id}`,
-              label: 'Teilnehmen',
-              emoji: { name: '🎉' },
-            },
-          ],
+          components: [buttonComponent],
         },
       ],
     };

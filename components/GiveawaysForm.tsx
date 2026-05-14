@@ -9,8 +9,22 @@ import {
 import { toast } from '@/store/toastStore';
 import { confirm } from '@/store/confirmStore';
 import { Button } from './ui/Button';
+import { ColorPicker } from './ui/ColorPicker';
 import { FormSection, FormRow } from './ui/FormSection';
 import { StatusPill, StatusBanner } from './ui/Status';
+
+type GwButtonStyle = 'primary' | 'secondary' | 'success' | 'danger';
+
+const GW_BUTTON_STYLES: Array<{
+  value: GwButtonStyle;
+  label: string;
+  classes: string;
+}> = [
+  { value: 'primary', label: 'Blurple', classes: 'bg-[#5865F2] text-white' },
+  { value: 'secondary', label: 'Grau', classes: 'bg-[#4E5058] text-white' },
+  { value: 'success', label: 'Grün', classes: 'bg-[#248046] text-white' },
+  { value: 'danger', label: 'Rot', classes: 'bg-[#DA373C] text-white' },
+];
 
 type Giveaway = {
   id: string;
@@ -56,6 +70,15 @@ export function GiveawaysForm({ guildId, channels, initial }: Props) {
   const [newChannelId, setNewChannelId] = useState(channels[0]?.id ?? '');
   const [newWinners, setNewWinners] = useState(1);
   const [newDurationMs, setNewDurationMs] = useState(DURATION_PRESETS[1].ms);
+  const [showDesign, setShowDesign] = useState(false);
+  const [embedColor, setEmbedColor] = useState('#A855F7');
+  const [embedTitle, setEmbedTitle] = useState('🎉  {prize}');
+  const [embedDescription, setEmbedDescription] = useState(
+    'Endet: {ends}\nGewinner: **{winners}**\nTeilnehmer: **{entries}**\n\nKlick auf den Button, um mitzumachen.',
+  );
+  const [buttonLabel, setButtonLabel] = useState('Teilnehmen');
+  const [buttonEmoji, setButtonEmoji] = useState('🎉');
+  const [buttonStyle, setButtonStyle] = useState<GwButtonStyle>('primary');
   const [pending, startTransition] = useTransition();
 
   const channelById = new Map(channels.map((c) => [c.id, c.name]));
@@ -64,12 +87,21 @@ export function GiveawaysForm({ guildId, channels, initial }: Props) {
 
   const create = () => {
     if (!newPrize.trim() || !newChannelId) return;
+    const colorInt = /^#?[0-9a-f]{6}$/i.test(embedColor)
+      ? parseInt(embedColor.replace('#', ''), 16)
+      : null;
     startTransition(async () => {
       const r = await createGiveawayFromWeb(guildId, {
         prize: newPrize.trim(),
         channelId: newChannelId,
         winnersCount: newWinners,
         durationMs: newDurationMs,
+        embedColor: colorInt,
+        embedTitle: embedTitle.trim() || null,
+        embedDescription: embedDescription.trim() || null,
+        buttonLabel: buttonLabel.trim() || null,
+        buttonEmoji: buttonEmoji.trim() || null,
+        buttonStyle,
       });
       if (r.ok && r.id) {
         toast.success('Giveaway gestartet 🎉');
@@ -206,6 +238,117 @@ export function GiveawaysForm({ guildId, channels, initial }: Props) {
             })}
           </div>
         </FormRow>
+
+        <div className="rounded-lg border border-line bg-elev/30">
+          <button
+            type="button"
+            onClick={() => setShowDesign((v) => !v)}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 text-left hover:bg-elev/50 transition-colors"
+          >
+            <div>
+              <div className="text-[12.5px] font-medium text-fg">
+                Embed anpassen
+              </div>
+              <div className="text-[11px] text-subtle">
+                Titel, Farbe, Button-Style — alles optional
+              </div>
+            </div>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`h-4 w-4 text-subtle transition-transform ${
+                showDesign ? 'rotate-180' : ''
+              }`}
+              aria-hidden
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {showDesign && (
+            <div className="px-3.5 py-3 border-t border-line space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormRow label="Titel-Template">
+                  <input
+                    type="text"
+                    value={embedTitle}
+                    onChange={(e) => setEmbedTitle(e.target.value.slice(0, 200))}
+                    placeholder="🎉  {prize}"
+                    className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                  />
+                </FormRow>
+                <FormRow label="Embed-Farbe">
+                  <ColorPicker value={embedColor} onChange={setEmbedColor} />
+                </FormRow>
+              </div>
+              <FormRow
+                label="Beschreibung"
+                hint="Platzhalter: {prize} {winners} {entries} {ends} {ends_long}"
+              >
+                <textarea
+                  value={embedDescription}
+                  onChange={(e) =>
+                    setEmbedDescription(e.target.value.slice(0, 2000))
+                  }
+                  rows={4}
+                  className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg font-mono focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-y transition-all"
+                />
+              </FormRow>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormRow label="Button-Label">
+                  <input
+                    type="text"
+                    value={buttonLabel}
+                    onChange={(e) => setButtonLabel(e.target.value.slice(0, 80))}
+                    placeholder="Teilnehmen"
+                    className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                  />
+                </FormRow>
+                <FormRow label="Button-Emoji" hint="Unicode oder <:name:id>">
+                  <input
+                    type="text"
+                    value={buttonEmoji}
+                    onChange={(e) => setButtonEmoji(e.target.value.slice(0, 80))}
+                    placeholder="🎉"
+                    className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                  />
+                </FormRow>
+              </div>
+              <FormRow label="Button-Farbe">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {GW_BUTTON_STYLES.map((s) => {
+                    const active = buttonStyle === s.value;
+                    return (
+                      <button
+                        key={s.value}
+                        type="button"
+                        onClick={() => setButtonStyle(s.value)}
+                        className={`text-left rounded-lg border p-2.5 transition-all ${
+                          active
+                            ? 'border-accent bg-accent/10'
+                            : 'border-line bg-surface hover:border-line-strong'
+                        }`}
+                      >
+                        <div
+                          className={`inline-block px-2.5 py-1 rounded text-[11px] font-semibold ${s.classes}`}
+                        >
+                          {buttonLabel || 'Button'}
+                        </div>
+                        <div className="text-[11px] text-muted mt-1">
+                          {s.label}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </FormRow>
+            </div>
+          )}
+        </div>
 
         <div className="flex justify-end">
           <Button

@@ -34,14 +34,24 @@ async function refreshGiveawayMessage(
   const msg = await channel.messages.fetch(gw.messageId).catch(() => null);
   if (!msg) return;
   const entries = await listEntries(giveawayId);
+  const design = {
+    embedColor: gw.embedColor,
+    embedTitle: gw.embedTitle,
+    embedDescription: gw.embedDescription,
+    buttonLabel: gw.buttonLabel,
+    buttonEmoji: gw.buttonEmoji,
+    buttonStyle: gw.buttonStyle,
+  };
   const embed = buildGiveawayEmbed(
     gw.prize,
     new Date(gw.endsAt),
     gw.winnersCount,
     entries.length,
     false,
+    undefined,
+    design,
   );
-  const components = buildGiveawayComponents(giveawayId, false);
+  const components = buildGiveawayComponents(giveawayId, false, design);
   await msg.edit({ embeds: [embed], components }).catch(() => {});
 }
 

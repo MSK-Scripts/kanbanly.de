@@ -29,6 +29,8 @@ type Props = {
     buttonLabel: string | null;
     buttonEmoji: string | null;
     buttonStyle: ButtonStyle;
+    replySuccess: string | null;
+    replyAlready: string | null;
   };
 };
 
@@ -66,6 +68,12 @@ export function VerifyForm({ guildId, channels, roles, initial }: Props) {
   const [buttonStyle, setButtonStyle] = useState<ButtonStyle>(
     initial.buttonStyle ?? 'primary',
   );
+  const [replySuccess, setReplySuccess] = useState(
+    initial.replySuccess ?? '✓ Verifiziert — willkommen auf {server}!',
+  );
+  const [replyAlready, setReplyAlready] = useState(
+    initial.replyAlready ?? '✓ Du bist bereits verifiziert.',
+  );
   const [pending, startTransition] = useTransition();
   const [posting, setPosting] = useState(false);
 
@@ -81,6 +89,8 @@ export function VerifyForm({ guildId, channels, roles, initial }: Props) {
     fd.set('button_label', buttonLabel);
     fd.set('button_emoji', buttonEmoji);
     fd.set('button_style', buttonStyle);
+    fd.set('reply_success', replySuccess);
+    fd.set('reply_already', replyAlready);
     startTransition(async () => {
       const r = await updateVerifyConfig(guildId, fd);
       if (r.ok) toast.success('Verify gespeichert');
@@ -269,6 +279,48 @@ export function VerifyForm({ guildId, channels, roles, initial }: Props) {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </FormSection>
+
+      <FormSection
+        title="Antwort-Nachrichten"
+        description="Die ephemeralen Nachrichten, die der User nach einem Klick sieht (nur für ihn sichtbar)."
+      >
+        <div
+          className={
+            enabled ? 'space-y-4' : 'space-y-4 opacity-50 pointer-events-none'
+          }
+        >
+          <FormRow
+            label="Erfolg"
+            hint="Wird nach erfolgreicher Verifizierung angezeigt."
+          >
+            <textarea
+              value={replySuccess}
+              onChange={(e) => setReplySuccess(e.target.value.slice(0, 500))}
+              rows={2}
+              placeholder="✓ Verifiziert — willkommen!"
+              className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle font-mono focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-y transition-all"
+            />
+          </FormRow>
+
+          <FormRow
+            label="Bereits verifiziert"
+            hint="Wird angezeigt, wenn der User schon die Rolle hat."
+          >
+            <textarea
+              value={replyAlready}
+              onChange={(e) => setReplyAlready(e.target.value.slice(0, 500))}
+              rows={2}
+              placeholder="✓ Du bist bereits verifiziert."
+              className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle font-mono focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-y transition-all"
+            />
+          </FormRow>
+
+          <div className="text-[11px] text-subtle">
+            Platzhalter: <code>{'{user}'}</code> <code>{'{mention}'}</code>{' '}
+            <code>{'{server}'}</code>
           </div>
         </div>
       </FormSection>
