@@ -319,12 +319,24 @@ export default async function GuildSettingsPage({
   return (
     <div className="flex-1 overflow-y-auto p-3 sm:p-6">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-4">
+        <div className="mb-5">
           <Link
             href="/integrations/discord"
-            className="text-xs text-muted hover:text-fg transition-colors"
+            className="group inline-flex items-center gap-2 rounded-lg border border-line bg-surface hover:bg-elev hover:border-line-strong px-3 py-1.5 text-[12.5px] text-muted hover:text-fg transition-all"
           >
-            ← zurück zur Server-Übersicht
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5"
+              aria-hidden
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Server-Übersicht
           </Link>
         </div>
 
