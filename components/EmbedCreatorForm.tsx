@@ -58,7 +58,12 @@ function fromTemplate(tpl: EmbedTemplate): MessagePayloadV2 {
   };
 }
 
-export function EmbedCreatorForm({ guildId, channels, initialTemplates = [] }: Props) {
+export function EmbedCreatorForm({
+  guildId,
+  channels,
+  roles = [],
+  initialTemplates = [],
+}: Props) {
   const [channelId, setChannelId] = useState('');
   const [content, setContent] = useState('');
   const [embeds, setEmbeds] = useState<EmbedV2[]>([emptyEmbed()]);
@@ -364,7 +369,7 @@ export function EmbedCreatorForm({ guildId, channels, initialTemplates = [] }: P
       </div>
 
       {/* Components (Link-Buttons) */}
-      <ComponentsEditor rows={componentRows} onChange={setComponentRows} />
+      <ComponentsEditor rows={componentRows} onChange={setComponentRows} roles={roles} />
 
       {/* Attachments */}
       <AttachmentsEditor files={files} onChange={setFiles} />
@@ -823,12 +828,22 @@ const BUTTON_STYLE_CLASSES: Record<NonNullable<LinkButton['style']>, string> = {
   link: 'bg-[#4E5058] text-white',
 };
 
+const ACTION_STYLE_CLASSES: Record<NonNullable<LinkButton['style']>, string> = {
+  primary: 'bg-[#5865F2] text-white',
+  secondary: 'bg-[#4E5058] text-white',
+  success: 'bg-[#248046] text-white',
+  danger: 'bg-[#DA373C] text-white',
+  link: 'bg-[#4E5058] text-white',
+};
+
 function ComponentsEditor({
   rows,
   onChange,
+  roles,
 }: {
   rows: ComponentRow[];
   onChange: (next: ComponentRow[]) => void;
+  roles: Role[];
 }) {
   const totalButtons = rows.reduce((acc, r) => acc + r.buttons.length, 0);
 
@@ -844,7 +859,10 @@ function ComponentsEditor({
     if (row.buttons.length >= 5) return;
     const next = [...rows];
     next[rowIdx] = {
-      buttons: [...row.buttons, { label: 'Klick', url: '', style: 'link' }],
+      buttons: [
+        ...row.buttons,
+        { kind: 'link', label: 'Klick', url: '', style: 'link' },
+      ],
     };
     onChange(next);
   };
@@ -874,7 +892,7 @@ function ComponentsEditor({
   return (
     <FormSection
       title={`Buttons / Components (${totalButtons}/25)`}
-      description="Link-Buttons unter der Nachricht. Max 5 Reihen × 5 Buttons = 25. Aktuell nur URL-Buttons unterstützt."
+      description="Button-Reihen unter der Nachricht. Pro Button: Link (URL) oder Rolle togglen. Max 5 Reihen × 5 Buttons."
     >
       {rows.length === 0 ? (
         <div className="text-[12.5px] text-subtle text-center py-2">
@@ -899,57 +917,163 @@ function ComponentsEditor({
                 Reihe entfernen
               </Button>
             </div>
-            {row.buttons.map((btn, btnIdx) => (
-              <div
-                key={btnIdx}
-                className="rounded-md border border-line bg-surface p-3 space-y-2"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-subtle font-mono">
-                    Button {btnIdx + 1}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => removeButton(rowIdx, btnIdx)}
-                  >
-                    ×
-                  </Button>
+            {row.buttons.map((btn, btnIdx) => {
+              const kind = btn.kind ?? 'link';
+              const actionStyle = (btn.style ?? 'secondary') as NonNullable<LinkButton['style']>;
+              const previewStyle = kind === 'link' ? 'link' : actionStyle;
+              return (
+                <div
+                  key={btnIdx}
+                  className="rounded-md border border-line bg-surface p-3 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-subtle font-mono">
+                      Button {btnIdx + 1}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateButton(rowIdx, btnIdx, {
+                            kind: 'link',
+                            style: 'link',
+                          })
+                        }
+                        className={`text-[11px] rounded-md px-2 py-1 border transition-all ${
+                          kind === 'link'
+                            ? 'bg-accent text-white border-accent'
+                            : 'bg-elev border-line-strong text-fg-soft hover:border-fg-soft/40'
+                        }`}
+                      >
+                        Link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateButton(rowIdx, btnIdx, {
+                            kind: 'role',
+                            style:
+                              actionStyle === 'link' ? 'secondary' : actionStyle,
+                            url: undefined,
+                          })
+                        }
+                        className={`text-[11px] rounded-md px-2 py-1 border transition-all ${
+                          kind === 'role'
+                            ? 'bg-accent text-white border-accent'
+                            : 'bg-elev border-line-strong text-fg-soft hover:border-fg-soft/40'
+                        }`}
+                      >
+                        Rolle togglen
+                      </button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeButton(rowIdx, btnIdx)}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-[1fr_140px] gap-2">
+                    <input
+                      type="text"
+                      value={btn.label}
+                      onChange={(e) =>
+                        updateButton(rowIdx, btnIdx, {
+                          label: e.target.value.slice(0, 80),
+                        })
+                      }
+                      placeholder="Label"
+                      className="rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                    />
+                    <input
+                      type="text"
+                      value={btn.emoji ?? ''}
+                      onChange={(e) =>
+                        updateButton(rowIdx, btnIdx, {
+                          emoji: e.target.value.slice(0, 80) || undefined,
+                        })
+                      }
+                      placeholder="Emoji (opt)"
+                      className="rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                    />
+                  </div>
+
+                  {kind === 'link' ? (
+                    <input
+                      type="url"
+                      value={btn.url ?? ''}
+                      onChange={(e) =>
+                        updateButton(rowIdx, btnIdx, { url: e.target.value })
+                      }
+                      placeholder="https://example.com"
+                      className="w-full rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      <select
+                        value={btn.roleId ?? ''}
+                        onChange={(e) =>
+                          updateButton(rowIdx, btnIdx, {
+                            roleId: e.target.value || undefined,
+                          })
+                        }
+                        className="w-full rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
+                      >
+                        <option value="">— Rolle wählen —</option>
+                        {roles.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10.5px] text-subtle mr-1">
+                          Style:
+                        </span>
+                        {(['primary', 'secondary', 'success', 'danger'] as const).map(
+                          (s) => {
+                            const active = actionStyle === s;
+                            return (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() =>
+                                  updateButton(rowIdx, btnIdx, { style: s })
+                                }
+                                className={`text-[10.5px] rounded px-2 py-0.5 transition-all ${
+                                  ACTION_STYLE_CLASSES[s]
+                                } ${
+                                  active
+                                    ? 'ring-2 ring-fg/40'
+                                    : 'opacity-50 hover:opacity-100'
+                                }`}
+                              >
+                                {s}
+                              </button>
+                            );
+                          },
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Live-Preview */}
+                  <div className="pt-1">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[11.5px] font-semibold ${
+                        ACTION_STYLE_CLASSES[previewStyle]
+                      }`}
+                    >
+                      {btn.emoji && <span>{btn.emoji}</span>}
+                      {btn.label || 'Button'}
+                    </span>
+                  </div>
                 </div>
-                <div className="grid grid-cols-[1fr_140px] gap-2">
-                  <input
-                    type="text"
-                    value={btn.label}
-                    onChange={(e) =>
-                      updateButton(rowIdx, btnIdx, {
-                        label: e.target.value.slice(0, 80),
-                      })
-                    }
-                    placeholder="Label"
-                    className="rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
-                  />
-                  <input
-                    type="text"
-                    value={btn.emoji ?? ''}
-                    onChange={(e) =>
-                      updateButton(rowIdx, btnIdx, {
-                        emoji: e.target.value.slice(0, 80) || undefined,
-                      })
-                    }
-                    placeholder="Emoji (opt)"
-                    className="rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
-                  />
-                </div>
-                <input
-                  type="url"
-                  value={btn.url}
-                  onChange={(e) => updateButton(rowIdx, btnIdx, { url: e.target.value })}
-                  placeholder="https://example.com"
-                  className="w-full rounded-md bg-elev border border-line-strong px-2.5 py-1.5 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all"
-                />
-              </div>
-            ))}
+              );
+            })}
             <button
               type="button"
               onClick={() => addButton(rowIdx)}
