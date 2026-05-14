@@ -199,6 +199,43 @@ export default async function LandingPage() {
           </div>
         </section>
 
+        <section className="px-4 sm:px-6 pb-16 sm:pb-20">
+          <div className="max-w-5xl mx-auto rounded-md bg-surface border border-line p-6 sm:p-10">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center mb-6">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-accent-soft font-mono mb-1">
+                  Mini-Tool
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-semibold text-fg tracking-tight">
+                  Linkvertise / Boost-Link Bypass
+                </h3>
+                <p className="text-sm text-muted mt-2 max-w-xl">
+                  Verkürzungs- und Werbe-Link-Dienste (Linkvertise, Boost.ink,
+                  Lootlinks, Rekonise, AdFly und mehr) führen oft zu langen
+                  Captcha-Ketten. Wirf den Link in unser kostenloses Bypass-Tool —
+                  zurück kommt das echte Ziel.
+                </p>
+              </div>
+              <Link
+                href="/bypass"
+                className="rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium px-5 py-2.5 transition-colors text-center shrink-0"
+              >
+                Bypass öffnen
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <BotFeature label="Linkvertise &amp; link-to.net" />
+              <BotFeature label="Boost.ink, mboost.me" />
+              <BotFeature label="Sub2unlock, Rekonise" />
+              <BotFeature label="Lootlinks, Lootdest" />
+              <BotFeature label="AdFly, Shorte.st, AdFoc.us" />
+              <BotFeature label="ouo.io, bit.ly, tinyurl" />
+              <BotFeature label="Kostenlos, ohne Login" />
+              <BotFeature label="Kein Tracking" />
+            </div>
+          </div>
+        </section>
+
         <section className="px-4 sm:px-6 pb-20 sm:pb-24">
           <div className="max-w-3xl mx-auto rounded-md bg-surface border border-line p-6 sm:p-8 text-center">
             <h3 className="text-xl font-semibold text-fg mb-2">
