@@ -1,5 +1,7 @@
 import { getDb } from '../db.js';
 
+export type TicketButtonStyle = 'primary' | 'secondary' | 'success' | 'danger';
+
 export type TicketPanel = {
   id: string;
   guildId: string;
@@ -8,6 +10,22 @@ export type TicketPanel = {
   staffRoleId: string;
   categoryId: string | null;
   createdBy: string;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  buttonEmoji: string | null;
+  buttonStyle: TicketButtonStyle;
+  color: number | null;
+  welcomeMessage: string | null;
+};
+
+export type TranscriptMessage = {
+  id: string;
+  author: { id: string; username: string; avatarUrl: string | null };
+  content: string;
+  timestamp: string;
+  attachments: Array<{ url: string; name: string }>;
+  embedsCount: number;
 };
 
 export type Ticket = {
@@ -29,6 +47,13 @@ type PanelRow = {
   staff_role_id: string;
   category_id: string | null;
   created_by: string;
+  title: string | null;
+  description: string | null;
+  button_label: string | null;
+  button_emoji: string | null;
+  button_style: string | null;
+  color: number | null;
+  welcome_message: string | null;
 };
 
 type TicketRow = {
@@ -51,8 +76,20 @@ function mapPanel(r: PanelRow): TicketPanel {
     staffRoleId: r.staff_role_id,
     categoryId: r.category_id,
     createdBy: r.created_by,
+    title: r.title ?? '🎫 Support öffnen',
+    description:
+      r.description ??
+      'Klick den Button unten, um ein privates Ticket zu eröffnen.',
+    buttonLabel: r.button_label ?? 'Ticket öffnen',
+    buttonEmoji: r.button_emoji ?? null,
+    buttonStyle: (r.button_style as TicketButtonStyle | null) ?? 'primary',
+    color: r.color ?? null,
+    welcomeMessage: r.welcome_message ?? null,
   };
 }
+
+const PANEL_SELECT =
+  'id, guild_id, channel_id, message_id, staff_role_id, category_id, created_by, title, description, button_label, button_emoji, button_style, color, welcome_message';
 
 function mapTicket(r: TicketRow): Ticket {
   return {
@@ -86,7 +123,7 @@ export async function createPanel(args: {
       category_id: args.categoryId,
       created_by: args.createdBy,
     })
-    .select('id, guild_id, channel_id, message_id, staff_role_id, category_id, created_by')
+    .select(PANEL_SELECT)
     .single();
   if (error || !data) throw error ?? new Error('Panel-Insert lieferte keine Daten.');
   return mapPanel(data as PanelRow);
@@ -96,7 +133,7 @@ export async function getPanelByMessage(messageId: string): Promise<TicketPanel 
   const db = getDb();
   const { data, error } = await db
     .from('bot_ticket_panels')
-    .select('id, guild_id, channel_id, message_id, staff_role_id, category_id, created_by')
+    .select(PANEL_SELECT)
     .eq('message_id', messageId)
     .maybeSingle();
   if (error) throw error;
@@ -118,7 +155,7 @@ export async function listPanelsForGuild(guildId: string): Promise<TicketPanel[]
   const db = getDb();
   const { data, error } = await db
     .from('bot_ticket_panels')
-    .select('id, guild_id, channel_id, message_id, staff_role_id, category_id, created_by')
+    .select(PANEL_SELECT)
     .eq('guild_id', guildId);
   if (error) throw error;
   return (data ?? []).map((r) => mapPanel(r as PanelRow));
@@ -185,4 +222,18 @@ export async function closeTicket(channelId: string, closedBy: string): Promise<
     })
     .eq('channel_id', channelId)
     .is('closed_at', null);
+}
+
+export async function saveTicketTranscript(
+  channelId: string,
+  transcript: TranscriptMessage[],
+): Promise<void> {
+  const db = getDb();
+  await db
+    .from('bot_tickets')
+    .update({
+      transcript,
+      transcript_saved_at: new Date().toISOString(),
+    })
+    .eq('channel_id', channelId);
 }

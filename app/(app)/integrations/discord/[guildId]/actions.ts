@@ -2079,6 +2079,418 @@ export async function deleteTeamlist(
   }
 }
 
+// ============== Tickets v2 ==============
+
+type TicketButtonStyleAct = 'primary' | 'secondary' | 'success' | 'danger';
+const TICKET_STYLE_MAP: Record<TicketButtonStyleAct, number> = {
+  primary: 1,
+  secondary: 2,
+  success: 3,
+  danger: 4,
+};
+
+export type TicketPanelRow = {
+  id: string;
+  channelId: string;
+  messageId: string;
+  staffRoleId: string;
+  categoryId: string | null;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  buttonEmoji: string | null;
+  buttonStyle: TicketButtonStyleAct;
+  color: number | null;
+  welcomeMessage: string | null;
+};
+
+export type TicketSummary = {
+  id: string;
+  channelId: string;
+  ownerUserId: string;
+  ownerName: string | null;
+  ownerAvatarUrl: string | null;
+  panelId: string | null;
+  createdAt: string;
+  closedAt: string | null;
+  closedBy: string | null;
+  hasTranscript: boolean;
+};
+
+export type TranscriptMessageAct = {
+  id: string;
+  author: { id: string; username: string; avatarUrl: string | null };
+  content: string;
+  timestamp: string;
+  attachments: Array<{ url: string; name: string }>;
+  embedsCount: number;
+};
+
+function parseTicketEmoji(
+  raw: string | null,
+): { id?: string; name?: string; animated?: boolean } | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const customMatch = trimmed.match(/^<(a?):([\w~]+):(\d+)>$/);
+  if (customMatch) {
+    const [, animated, name, id] = customMatch;
+    return { id, name, animated: animated === 'a' };
+  }
+  return { name: trimmed };
+}
+
+async function buildTicketPanelPayload(
+  panel: Pick<
+    TicketPanelRow,
+    'id' | 'title' | 'description' | 'buttonLabel' | 'buttonEmoji' | 'buttonStyle' | 'color'
+  >,
+): Promise<Record<string, unknown>> {
+  const buttonComponent: Record<string, unknown> = {
+    type: 2,
+    style: TICKET_STYLE_MAP[panel.buttonStyle] ?? 1,
+    custom_id: `ticket-open:${panel.id}`,
+    label: panel.buttonLabel.slice(0, 80),
+  };
+  const emoji = parseTicketEmoji(panel.buttonEmoji);
+  if (emoji) buttonComponent.emoji = emoji;
+  return {
+    embeds: [
+      {
+        title: panel.title.slice(0, 256),
+        description: panel.description.slice(0, 4000),
+        color: panel.color ?? 0x380d52,
+      },
+    ],
+    components: [{ type: 1, components: [buttonComponent] }],
+  };
+}
+
+export async function listTicketPanels(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; panels?: TicketPanelRow[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_ticket_panels')
+      .select(
+        'id, channel_id, message_id, staff_role_id, category_id, title, description, button_label, button_emoji, button_style, color, welcome_message',
+      )
+      .eq('guild_id', guildId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return {
+      ok: true,
+      panels: (data ?? []).map((r) => ({
+        id: r.id as string,
+        channelId: r.channel_id as string,
+        messageId: r.message_id as string,
+        staffRoleId: r.staff_role_id as string,
+        categoryId: (r.category_id as string | null) ?? null,
+        title: (r.title as string) ?? '🎫 Support öffnen',
+        description: (r.description as string) ?? '',
+        buttonLabel: (r.button_label as string) ?? 'Ticket öffnen',
+        buttonEmoji: (r.button_emoji as string | null) ?? null,
+        buttonStyle:
+          ((r.button_style as TicketButtonStyleAct | null) ?? 'primary'),
+        color: (r.color as number | null) ?? null,
+        welcomeMessage: (r.welcome_message as string | null) ?? null,
+      })),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function createTicketPanelWeb(
+  guildId: string,
+  input: {
+    channelId: string;
+    staffRoleId: string;
+    categoryId: string | null;
+    title: string;
+    description: string;
+    buttonLabel: string;
+    buttonEmoji: string | null;
+    buttonStyle: TicketButtonStyleAct;
+    color: number | null;
+    welcomeMessage: string | null;
+  },
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    const { userId } = await assertCanManage(guildId);
+    if (!input.channelId || !input.staffRoleId || !input.title.trim()) {
+      return { ok: false, error: 'Channel, Staff-Rolle und Titel sind nötig.' };
+    }
+    const admin = createAdminClient();
+
+    // Insert (mit Platzhalter-message_id, wird gleich aktualisiert).
+    const tempMessageId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const { data: panel, error: insertError } = await admin
+      .from('bot_ticket_panels')
+      .insert({
+        guild_id: guildId,
+        channel_id: input.channelId,
+        message_id: tempMessageId,
+        staff_role_id: input.staffRoleId,
+        category_id: input.categoryId,
+        created_by: userId,
+        title: input.title.trim().slice(0, 256),
+        description: input.description.trim().slice(0, 4000),
+        button_label: input.buttonLabel.trim().slice(0, 80) || 'Ticket öffnen',
+        button_emoji: input.buttonEmoji?.trim() || null,
+        button_style: input.buttonStyle,
+        color: input.color ?? null,
+        welcome_message: input.welcomeMessage?.trim() || null,
+      })
+      .select('id')
+      .single();
+    if (insertError || !panel) throw insertError ?? new Error('Insert fehlgeschlagen.');
+
+    // Panel-Embed posten
+    const payload = await buildTicketPanelPayload({
+      id: panel.id as string,
+      title: input.title.trim(),
+      description: input.description.trim(),
+      buttonLabel: input.buttonLabel.trim() || 'Ticket öffnen',
+      buttonEmoji: input.buttonEmoji?.trim() || null,
+      buttonStyle: input.buttonStyle,
+      color: input.color ?? null,
+    });
+
+    try {
+      const posted = await postMessage(input.channelId, payload);
+      await admin
+        .from('bot_ticket_panels')
+        .update({ message_id: posted.id })
+        .eq('id', panel.id);
+    } catch (err) {
+      // Cleanup
+      await admin.from('bot_ticket_panels').delete().eq('id', panel.id);
+      return {
+        ok: false,
+        error: `Discord-Post fehlgeschlagen: ${
+          err instanceof Error ? err.message : 'unbekannt'
+        }`,
+      };
+    }
+
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: panel.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updateTicketPanelWeb(
+  guildId: string,
+  panelId: string,
+  input: {
+    title: string;
+    description: string;
+    buttonLabel: string;
+    buttonEmoji: string | null;
+    buttonStyle: TicketButtonStyleAct;
+    color: number | null;
+    welcomeMessage: string | null;
+    staffRoleId: string;
+    categoryId: string | null;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_ticket_panels')
+      .update({
+        title: input.title.trim().slice(0, 256),
+        description: input.description.trim().slice(0, 4000),
+        button_label: input.buttonLabel.trim().slice(0, 80) || 'Ticket öffnen',
+        button_emoji: input.buttonEmoji?.trim() || null,
+        button_style: input.buttonStyle,
+        color: input.color ?? null,
+        welcome_message: input.welcomeMessage?.trim() || null,
+        staff_role_id: input.staffRoleId,
+        category_id: input.categoryId,
+      })
+      .eq('id', panelId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+
+    // Existierendes Embed editieren
+    const { data: row } = await admin
+      .from('bot_ticket_panels')
+      .select('channel_id, message_id')
+      .eq('id', panelId)
+      .maybeSingle();
+    if (row?.message_id && row?.channel_id) {
+      const payload = await buildTicketPanelPayload({
+        id: panelId,
+        title: input.title.trim(),
+        description: input.description.trim(),
+        buttonLabel: input.buttonLabel.trim() || 'Ticket öffnen',
+        buttonEmoji: input.buttonEmoji?.trim() || null,
+        buttonStyle: input.buttonStyle,
+        color: input.color ?? null,
+      });
+      await editMessage(
+        row.channel_id as string,
+        row.message_id as string,
+        payload,
+      ).catch((err) => console.error('[ticket-panel] editMessage:', err));
+    }
+
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteTicketPanelWeb(
+  guildId: string,
+  panelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: row } = await admin
+      .from('bot_ticket_panels')
+      .select('channel_id, message_id')
+      .eq('id', panelId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (row?.message_id) {
+      await deleteMessage(row.channel_id as string, row.message_id as string).catch(
+        () => {},
+      );
+    }
+    const { error } = await admin
+      .from('bot_ticket_panels')
+      .delete()
+      .eq('id', panelId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function listTicketsForGuild(
+  guildId: string,
+  status: 'open' | 'closed' | 'all' = 'all',
+): Promise<{ ok: boolean; error?: string; tickets?: TicketSummary[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    let query = admin
+      .from('bot_tickets')
+      .select(
+        'id, channel_id, owner_user_id, panel_id, created_at, closed_at, closed_by, transcript_saved_at',
+      )
+      .eq('guild_id', guildId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (status === 'open') query = query.is('closed_at', null);
+    if (status === 'closed') query = query.not('closed_at', 'is', null);
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // User-Infos parallel laden
+    const userIds = Array.from(
+      new Set((data ?? []).map((r) => r.owner_user_id as string)),
+    );
+    const userMap = new Map<
+      string,
+      { username: string | null; avatarUrl: string | null }
+    >();
+    await Promise.all(
+      userIds.map(async (id) => {
+        const u = await fetchUserBasic(id);
+        userMap.set(id, {
+          username: u?.global_name ?? u?.username ?? null,
+          avatarUrl: u ? userAvatarUrl({ id: u.id, avatar: u.avatar }) : null,
+        });
+      }),
+    );
+
+    return {
+      ok: true,
+      tickets: (data ?? []).map((r) => {
+        const info = userMap.get(r.owner_user_id as string);
+        return {
+          id: r.id as string,
+          channelId: r.channel_id as string,
+          ownerUserId: r.owner_user_id as string,
+          ownerName: info?.username ?? null,
+          ownerAvatarUrl: info?.avatarUrl ?? null,
+          panelId: (r.panel_id as string | null) ?? null,
+          createdAt: r.created_at as string,
+          closedAt: (r.closed_at as string | null) ?? null,
+          closedBy: (r.closed_by as string | null) ?? null,
+          hasTranscript: Boolean(r.transcript_saved_at),
+        };
+      }),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function getTicketTranscript(
+  guildId: string,
+  ticketId: string,
+): Promise<{
+  ok: boolean;
+  error?: string;
+  ticket?: TicketSummary;
+  messages?: TranscriptMessageAct[];
+}> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_tickets')
+      .select(
+        'id, channel_id, owner_user_id, panel_id, created_at, closed_at, closed_by, transcript, transcript_saved_at',
+      )
+      .eq('id', ticketId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return { ok: false, error: 'Ticket nicht gefunden.' };
+
+    const owner = await fetchUserBasic(data.owner_user_id as string);
+    const transcript = Array.isArray(data.transcript)
+      ? (data.transcript as TranscriptMessageAct[])
+      : [];
+
+    return {
+      ok: true,
+      ticket: {
+        id: data.id as string,
+        channelId: data.channel_id as string,
+        ownerUserId: data.owner_user_id as string,
+        ownerName: owner?.global_name ?? owner?.username ?? null,
+        ownerAvatarUrl: owner
+          ? userAvatarUrl({ id: owner.id, avatar: owner.avatar })
+          : null,
+        panelId: (data.panel_id as string | null) ?? null,
+        createdAt: data.created_at as string,
+        closedAt: (data.closed_at as string | null) ?? null,
+        closedBy: (data.closed_by as string | null) ?? null,
+        hasTranscript: Boolean(data.transcript_saved_at),
+      },
+      messages: transcript,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
 // ============== Modul-Toggle (Übersicht) ==============
 
 type ModuleKey =
@@ -2103,7 +2515,8 @@ type ModuleKey =
   | 'helpdesk'
   | 'tempvoice'
   | 'dailyimage'
-  | 'teamlist';
+  | 'teamlist'
+  | 'tickets';
 
 export async function toggleBotModule(
   guildId: string,

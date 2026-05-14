@@ -29,7 +29,8 @@ export type ModuleKey =
   | 'helpdesk'
   | 'tempvoice'
   | 'dailyimage'
-  | 'teamlist';
+  | 'teamlist'
+  | 'tickets';
 
 type ModuleDef = {
   key: ModuleKey;

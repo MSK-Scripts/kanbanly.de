@@ -18,6 +18,7 @@ import {
   getTicketByChannel,
   listPanelsForGuild,
 } from '../db/tickets.js';
+import { captureAndSaveTranscript } from '../lib/ticketTranscript.js';
 
 export const TICKET_OPEN_BUTTON_PREFIX = 'ticket-open:';
 export const TICKET_CLOSE_BUTTON_PREFIX = 'ticket-close:';
@@ -197,8 +198,17 @@ async function execute(interaction: ChatInputCommandInteraction): Promise<void> 
     await interaction.reply({
       content: `🔒 Ticket geschlossen von <@${interaction.user.id}>.${
         reason ? `\n**Grund:** ${reason}` : ''
-      }\n_Channel wird in 10 Sekunden gelöscht._`,
+      }\n_Transcript wird gespeichert, Channel wird in 10s gelöscht._`,
     });
+
+    // Transcript erfassen bevor der Channel gelöscht wird.
+    if (interaction.channel) {
+      try {
+        await captureAndSaveTranscript(interaction.channel);
+      } catch (err) {
+        console.error('[ticket-cmd] transcript:', err);
+      }
+    }
 
     setTimeout(() => {
       interaction.channel?.delete?.('Ticket geschlossen').catch(() => {});

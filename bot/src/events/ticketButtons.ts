@@ -23,6 +23,7 @@ import {
   getTicketByChannel,
 } from '../db/tickets.js';
 import { getDb } from '../db.js';
+import { captureAndSaveTranscript } from '../lib/ticketTranscript.js';
 
 async function handleOpen(interaction: ButtonInteraction, panelId: string): Promise<void> {
   if (!interaction.guild) return;
@@ -44,7 +45,9 @@ async function handleOpen(interaction: ButtonInteraction, panelId: string): Prom
   const db = getDb();
   const { data: panel } = await db
     .from('bot_ticket_panels')
-    .select('id, guild_id, channel_id, message_id, staff_role_id, category_id')
+    .select(
+      'id, guild_id, channel_id, message_id, staff_role_id, category_id, color, welcome_message',
+    )
     .eq('id', panelId)
     .maybeSingle();
   if (!panel) {
@@ -109,12 +112,16 @@ async function handleOpen(interaction: ButtonInteraction, panelId: string): Prom
   });
 
   // Welcome-Message + Close-Button.
+  const welcomeText =
+    (panel.welcome_message as string | null)?.trim() ||
+    `Hi <@${interaction.user.id}>, beschreib dein Anliegen — das Staff-Team meldet sich gleich.\nWenn dein Anliegen erledigt ist, klick auf **Schließen**.`;
+  const renderedWelcome = welcomeText
+    .replaceAll('{user}', interaction.user.username)
+    .replaceAll('{mention}', `<@${interaction.user.id}>`);
   const embed = new EmbedBuilder()
-    .setTitle('🎫 Ticket eröffnet')
-    .setDescription(
-      `Hi <@${interaction.user.id}>, beschreib dein Anliegen — das Staff-Team meldet sich gleich.\nWenn dein Anliegen erledigt ist, klick auf **Schließen**.`,
-    )
-    .setColor(0x6366f1)
+    .setTitle('Ticket eröffnet')
+    .setDescription(renderedWelcome)
+    .setColor((panel.color as number | null) ?? 0x380d52)
     .setTimestamp();
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -166,8 +173,19 @@ async function handleClose(interaction: ButtonInteraction): Promise<void> {
 
   await closeTicket(ticket.channelId, interaction.user.id);
   await interaction.reply({
-    content: `🔒 Ticket geschlossen von <@${interaction.user.id}>. Channel wird in 10s gelöscht.`,
+    content: `🔒 Ticket geschlossen von <@${interaction.user.id}>. Transcript wird gespeichert, Channel wird in 10s gelöscht.`,
   });
+
+  // Transcript erfassen bevor der Channel gelöscht wird.
+  if (interaction.channel) {
+    try {
+      const count = await captureAndSaveTranscript(interaction.channel);
+      console.log(`[ticket] transcript saved: ${count} Nachrichten`);
+    } catch (err) {
+      console.error('[ticket] transcript save:', err);
+    }
+  }
+
   setTimeout(() => {
     interaction.channel?.delete?.('Ticket geschlossen').catch(() => {});
   }, 10_000);

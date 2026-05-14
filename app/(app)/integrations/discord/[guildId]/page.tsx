@@ -40,6 +40,8 @@ import {
 import { HelpdeskForm } from '@/components/HelpdeskForm';
 import { TempVoiceForm } from '@/components/TempVoiceForm';
 import { DailyImageForm, TeamlistsForm } from '@/components/QuickWinsForms';
+import { TicketsForm } from '@/components/TicketsForm';
+import type { TicketPanelRow } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import type { EmbedTemplate, MessagePayloadV2 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
@@ -209,6 +211,7 @@ type LoadResult =
         roleIds: string[];
         color: number | null;
       }>;
+      ticketPanels: TicketPanelRow[];
       giveaways: Array<{
         id: string;
         channelId: string;
@@ -497,6 +500,30 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     items: itemsByPanel.get(p.id as string) ?? [],
   }));
 
+  const { data: ticketPanelsRaw } = await admin
+    .from('bot_ticket_panels')
+    .select(
+      'id, channel_id, message_id, staff_role_id, category_id, title, description, button_label, button_emoji, button_style, color, welcome_message',
+    )
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false });
+  const ticketPanels: TicketPanelRow[] = (ticketPanelsRaw ?? []).map((r) => ({
+    id: r.id as string,
+    channelId: r.channel_id as string,
+    messageId: r.message_id as string,
+    staffRoleId: r.staff_role_id as string,
+    categoryId: (r.category_id as string | null) ?? null,
+    title: (r.title as string) ?? '🎫 Support öffnen',
+    description: (r.description as string) ?? '',
+    buttonLabel: (r.button_label as string) ?? 'Ticket öffnen',
+    buttonEmoji: (r.button_emoji as string | null) ?? null,
+    buttonStyle:
+      ((r.button_style as 'primary' | 'secondary' | 'success' | 'danger' | null) ??
+        'primary'),
+    color: (r.color as number | null) ?? null,
+    welcomeMessage: (r.welcome_message as string | null) ?? null,
+  }));
+
   const { data: teamlistsRaw } = await admin
     .from('bot_teamlists')
     .select('id, channel_id, message_id, title, role_ids, color')
@@ -622,6 +649,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
         : [],
     },
     teamlists,
+    ticketPanels,
     giveaways,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
@@ -776,6 +804,7 @@ export default async function GuildSettingsPage({
             tempvoice={result.tempvoice}
             dailyImage={result.dailyImage}
             teamlists={result.teamlists}
+            ticketPanels={result.ticketPanels}
           />
         )}
       </div>
@@ -815,6 +844,7 @@ function GuildSettingsView({
   tempvoice,
   dailyImage,
   teamlists,
+  ticketPanels,
 }: {
   guildName: string;
   guildId: string;
@@ -978,6 +1008,7 @@ function GuildSettingsView({
     roleIds: string[];
     color: number | null;
   }>;
+  ticketPanels: TicketPanelRow[];
 }) {
   const moduleDefs = [
     {
@@ -1183,6 +1214,15 @@ function GuildSettingsView({
       toggleable: false,
       count: teamlists.length > 0 ? teamlists.length : undefined,
       isNew: true,
+    },
+    {
+      key: 'tickets' as const,
+      name: 'Tickets',
+      description: 'Support-Tickets als private Channels mit Staff-Rolle, Transcripts & Panel-Management.',
+      tab: 'tickets',
+      enabled: ticketPanels.length > 0,
+      toggleable: false,
+      count: ticketPanels.length > 0 ? ticketPanels.length : undefined,
     },
   ];
 
@@ -1438,6 +1478,20 @@ function GuildSettingsView({
           channels={channels}
           roles={roles}
           initial={teamlists}
+        />
+      ),
+    },
+    {
+      id: 'tickets',
+      label: 'Tickets',
+      icon: '',
+      description: 'Support-Tickets mit Panel-Management & Transcripts.',
+      content: (
+        <TicketsForm
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initialPanels={ticketPanels}
         />
       ),
     },
