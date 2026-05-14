@@ -4,13 +4,16 @@ import { useState, useTransition } from 'react';
 import {
   createGiveawayFromWeb,
   endGiveawayFromWeb,
+  listGiveawayParticipants,
   rerollGiveawayFromWeb,
+  type GiveawayEntry,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { toast } from '@/store/toastStore';
 import { confirm } from '@/store/confirmStore';
 import { Button } from './ui/Button';
 import { ColorPicker } from './ui/ColorPicker';
 import { FormSection, FormRow } from './ui/FormSection';
+import { Spinner } from './ui/Spinner';
 import { StatusPill, StatusBanner } from './ui/Status';
 
 type GwButtonStyle = 'primary' | 'secondary' | 'success' | 'danger';
@@ -377,6 +380,7 @@ export function GiveawaysForm({ guildId, channels, initial }: Props) {
             {active.map((g) => (
               <GiveawayRow
                 key={g.id}
+                guildId={guildId}
                 giveaway={g}
                 channelName={channelById.get(g.channelId) ?? g.channelId}
                 onEnd={() => end(g)}
@@ -402,6 +406,7 @@ export function GiveawaysForm({ guildId, channels, initial }: Props) {
             {ended.map((g) => (
               <GiveawayRow
                 key={g.id}
+                guildId={guildId}
                 giveaway={g}
                 channelName={channelById.get(g.channelId) ?? g.channelId}
                 onEnd={() => end(g)}
@@ -424,78 +429,159 @@ export function GiveawaysForm({ guildId, channels, initial }: Props) {
 }
 
 function GiveawayRow({
+  guildId,
   giveaway: g,
   channelName,
   onEnd,
   onReroll,
   pending,
 }: {
+  guildId: string;
   giveaway: Giveaway;
   channelName: string;
   onEnd: () => void;
   onReroll: () => void;
   pending: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const [entries, setEntries] = useState<GiveawayEntry[] | null>(null);
+  const [loadingEntries, setLoadingEntries] = useState(false);
+  const winnerIds = new Set(g.winnerUserIds ?? []);
+
+  const toggleExpand = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && entries === null && g.entriesCount > 0) {
+      setLoadingEntries(true);
+      const r = await listGiveawayParticipants(guildId, g.id);
+      if (r.ok && r.entries) setEntries(r.entries);
+      setLoadingEntries(false);
+    }
+  };
+
   return (
-    <li className="rounded-xl border border-line bg-surface p-4 flex items-center justify-between gap-4 flex-wrap">
-      <div className="min-w-0 flex-1 flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-elev border border-line grid place-items-center shrink-0">
-          🎉
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[14px] font-semibold text-fg truncate max-w-[280px]">
-              {g.prize}
-            </span>
-            {g.ended ? (
-              <StatusPill kind="neutral" dot>
-                Beendet
-              </StatusPill>
-            ) : (
-              <StatusPill kind="success" dot>
-                Aktiv
-              </StatusPill>
-            )}
+    <li className="rounded-xl border border-line bg-surface overflow-hidden">
+      <div className="p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div className="min-w-0 flex-1 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-elev border border-line grid place-items-center shrink-0">
+            🎉
           </div>
-          <div className="text-[11.5px] text-muted mt-0.5">
-            <span className="text-accent">#{channelName}</span> ·{' '}
-            {g.winnersCount} Gewinner · {g.entriesCount} Teilnehmer · {relativeFromNow(g.endsAt)}
-          </div>
-          {g.ended && g.winnerUserIds && g.winnerUserIds.length > 0 && (
-            <div className="text-[11.5px] text-fg-soft mt-1">
-              Gewinner:{' '}
-              {g.winnerUserIds.map((u) => (
-                <code key={u} className="rounded bg-elev px-1 mr-1">
-                  &lt;@{u}&gt;
-                </code>
-              ))}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[14px] font-semibold text-fg truncate max-w-[280px]">
+                {g.prize}
+              </span>
+              {g.ended ? (
+                <StatusPill kind="neutral" dot>
+                  Beendet
+                </StatusPill>
+              ) : (
+                <StatusPill kind="success" dot>
+                  Aktiv
+                </StatusPill>
+              )}
             </div>
+            <div className="text-[11.5px] text-muted mt-0.5">
+              <span className="text-accent">#{channelName}</span> ·{' '}
+              {g.winnersCount} Gewinner · {g.entriesCount} Teilnehmer ·{' '}
+              {relativeFromNow(g.endsAt)}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            type="button"
+            onClick={toggleExpand}
+            size="sm"
+            variant="ghost"
+            disabled={g.entriesCount === 0 && !expanded}
+          >
+            {expanded ? 'Ausblenden' : `Teilnehmer (${g.entriesCount})`}
+          </Button>
+          {g.ended ? (
+            <Button
+              type="button"
+              onClick={onReroll}
+              disabled={pending || g.entriesCount === 0}
+              size="sm"
+              variant="secondary"
+            >
+              Reroll
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={onEnd}
+              disabled={pending}
+              size="sm"
+              variant="ghost"
+            >
+              Beenden
+            </Button>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {g.ended ? (
-          <Button
-            type="button"
-            onClick={onReroll}
-            disabled={pending || g.entriesCount === 0}
-            size="sm"
-            variant="secondary"
-          >
-            Reroll
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            onClick={onEnd}
-            disabled={pending}
-            size="sm"
-            variant="ghost"
-          >
-            Beenden
-          </Button>
-        )}
-      </div>
+
+      {expanded && (
+        <div className="border-t border-line bg-elev/30 px-4 py-3">
+          {loadingEntries ? (
+            <div className="flex items-center gap-2 text-[12px] text-subtle">
+              <Spinner size="xs" /> Lade Teilnehmer…
+            </div>
+          ) : entries === null || entries.length === 0 ? (
+            <div className="text-[12px] text-subtle text-center py-4">
+              Keine Teilnehmer.
+            </div>
+          ) : (
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+              {entries.map((e) => {
+                const isWinner = winnerIds.has(e.userId);
+                const displayName =
+                  e.globalName || e.username || `Unknown (${e.userId})`;
+                return (
+                  <li
+                    key={e.userId}
+                    className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-[12px] ${
+                      isWinner
+                        ? 'border-[var(--warning-line)] bg-[var(--warning-soft)]'
+                        : 'border-line bg-surface'
+                    }`}
+                    title={
+                      e.username
+                        ? `@${e.username} · joined ${new Date(e.joinedAt).toLocaleString('de-DE')}`
+                        : e.userId
+                    }
+                  >
+                    {e.avatarUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={e.avatarUrl}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="h-6 w-6 rounded-full shrink-0"
+                      />
+                    ) : (
+                      <div className="h-6 w-6 rounded-full bg-elev border border-line grid place-items-center text-[10px] text-muted shrink-0">
+                        {displayName.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-fg truncate flex-1">{displayName}</span>
+                    {isWinner && (
+                      <span
+                        className="text-[10px] font-bold text-[var(--warning)] shrink-0"
+                        aria-label="Gewinner"
+                      >
+                        🏆
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
     </li>
   );
 }

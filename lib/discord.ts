@@ -107,6 +107,42 @@ export async function fetchCurrentUser(accessToken: string): Promise<DiscordUser
   return (await res.json()) as DiscordUser;
 }
 
+// User-Basic-Info-Cache: 15min — global, kein Guild-Scope nötig.
+const userBasicCache = new Map<
+  string,
+  { value: DiscordUser | null; expires: number }
+>();
+const USER_BASIC_TTL_MS = 15 * 60_000;
+
+export async function fetchUserBasic(userId: string): Promise<DiscordUser | null> {
+  const now = Date.now();
+  const cached = userBasicCache.get(userId);
+  if (cached && cached.expires > now) return cached.value;
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return null;
+  try {
+    const data = await discordGet<DiscordUser>(`/users/${userId}`, token);
+    userBasicCache.set(userId, { value: data, expires: now + USER_BASIC_TTL_MS });
+    return data;
+  } catch (err) {
+    // Bei 404/Rate-Limit kurz cachen, damit nicht ständig nachgefragt wird.
+    userBasicCache.set(userId, { value: null, expires: now + 60_000 });
+    if (!(err instanceof DiscordRateLimitError)) {
+      console.error('[fetchUserBasic]', userId, err);
+    }
+    return null;
+  }
+}
+
+export function userAvatarUrl(user: {
+  id: string;
+  avatar: string | null;
+}): string | null {
+  if (!user.avatar) return null;
+  const ext = user.avatar.startsWith('a_') ? 'gif' : 'png';
+  return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${ext}?size=64`;
+}
+
 export type DiscordGuild = {
   id: string;
   name: string;

@@ -12,7 +12,7 @@ import {
   postMessage,
   removeOwnReaction,
 } from '@/lib/discordBot';
-import { invalidateGuildCache } from '@/lib/discord';
+import { invalidateGuildCache, fetchUserBasic, userAvatarUrl } from '@/lib/discord';
 import {
   buildReactionRoleEmbed,
   buildRrComponents,
@@ -916,6 +916,60 @@ export async function createGiveawayFromWeb(
 
     revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true, id: gw.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export type GiveawayEntry = {
+  userId: string;
+  username: string | null;
+  globalName: string | null;
+  avatarUrl: string | null;
+  joinedAt: string;
+};
+
+export async function listGiveawayParticipants(
+  guildId: string,
+  giveawayId: string,
+): Promise<{ ok: boolean; error?: string; entries?: GiveawayEntry[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    // Sicherstellen dass das Giveaway zum Guild gehört (RLS umgangen → manuell prüfen).
+    const { data: gw } = await admin
+      .from('bot_giveaways')
+      .select('id')
+      .eq('id', giveawayId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!gw) return { ok: false, error: 'Giveaway nicht gefunden.' };
+
+    const { data: rows, error } = await admin
+      .from('bot_giveaway_entries')
+      .select('user_id, joined_at')
+      .eq('giveaway_id', giveawayId)
+      .order('joined_at', { ascending: true })
+      .limit(500);
+    if (error) throw error;
+
+    // User-Infos parallel laden (gecacht, max 500 Calls beim ersten Aufruf).
+    const entries: GiveawayEntry[] = await Promise.all(
+      (rows ?? []).map(async (r) => {
+        const userId = r.user_id as string;
+        const user = await fetchUserBasic(userId);
+        return {
+          userId,
+          username: user?.username ?? null,
+          globalName: user?.global_name ?? null,
+          avatarUrl: user
+            ? userAvatarUrl({ id: user.id, avatar: user.avatar })
+            : null,
+          joinedAt: r.joined_at as string,
+        };
+      }),
+    );
+    return { ok: true, entries };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
   }
