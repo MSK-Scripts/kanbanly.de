@@ -1302,6 +1302,7 @@ function GuildSettingsView({
         <EmbedCreatorForm
           guildId={guildId}
           channels={channels}
+          roles={roles}
           initialTemplates={embedTemplates}
         />
       ),

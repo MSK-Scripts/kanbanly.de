@@ -105,39 +105,30 @@ export default async function DiscordIntegrationPage({
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-5xl mx-auto p-3 sm:p-6">
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-lg border border-line bg-surface p-6 sm:p-10 mb-6">
-          <div
-            className="pointer-events-none absolute -top-32 -left-24 h-80 w-80 rounded-full bg-[#5865F2]/30 blur-3xl"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-violet-500/25 blur-3xl"
-            aria-hidden
-          />
-          <div className="relative flex items-start justify-between gap-6 flex-wrap">
-            <div className="min-w-0 max-w-2xl">
-              <div className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[#5865F2] font-mono mb-3 rounded-full border border-[#5865F2]/30 bg-[#5865F2]/10 px-2.5 py-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#5865F2]" />
-                Discord-Integration
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight leading-tight">
-                Kanbanly für{' '}
-                <span className="bg-gradient-to-r from-[#5865F2] to-violet-500 bg-clip-text text-transparent">
-                  Discord
-                </span>
-              </h1>
-              <p className="text-sm sm:text-base text-muted mt-3 leading-relaxed">
-                Welcome-Messages, Auto-Roles, Moderation, AutoMod, Logging,
-                Leveling, Tickets, Reminders &amp; mehr — alles aus einem Dashboard.
-              </p>
+        <div className="mb-8 flex items-end justify-between gap-6 flex-wrap">
+          <div className="min-w-0 max-w-2xl">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-mono text-accent-soft mb-3">
+              Discord-Integration
             </div>
-            {data.status === 'connected' && (
-              <div className="grid grid-cols-2 gap-3 shrink-0">
-                <Stat label="Aktiv" value={activeCount} accent />
-                <Stat label="Verwaltbar" value={totalCount} />
-              </div>
-            )}
+            <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight leading-tight">
+              Discord-Server verwalten
+            </h1>
+            <p className="text-[14px] text-muted mt-2 leading-relaxed">
+              Welcome-Messages, Moderation, AutoMod, Logging, Leveling, Tickets,
+              Giveaways &amp; mehr — alles aus einem Dashboard.
+            </p>
           </div>
+          {data.status === 'connected' && (
+            <div className="flex items-center gap-2 shrink-0 text-[12px] font-mono tabular-nums">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--success-line)] bg-[var(--success-soft)] px-2.5 py-1 text-[var(--success)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
+                {activeCount} aktiv
+              </span>
+              <span className="rounded-md border border-line bg-surface px-2.5 py-1 text-fg-soft">
+                {totalCount} verwaltbar
+              </span>
+            </div>
+          )}
         </div>
 
         {errorParam && (
@@ -171,22 +162,24 @@ export default async function DiscordIntegrationPage({
           </div>
         ) : (
           <>
-            <div className="rounded-md bg-surface border border-line p-4 mb-6 flex items-center justify-between gap-3">
+            <div className="rounded-lg bg-surface border border-line px-4 py-3 mb-6 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="h-9 w-9 rounded-full bg-[#5865F2]/15 grid place-items-center text-[#5865F2] text-sm font-semibold shrink-0">
+                <div className="h-8 w-8 rounded-full bg-elev border border-line grid place-items-center text-fg-soft text-[11px] font-semibold shrink-0">
                   {data.discordUsername.slice(0, 2).toUpperCase()}
                 </div>
-                <div className="min-w-0">
-                  <div className="text-[11px] text-subtle">Verbunden als</div>
-                  <div className="text-sm text-fg font-medium truncate">
+                <div className="min-w-0 flex items-baseline gap-2">
+                  <span className="text-[11px] text-subtle uppercase tracking-wider">
+                    Verbunden als
+                  </span>
+                  <span className="text-[13.5px] text-fg font-medium truncate">
                     {data.discordUsername}
-                  </div>
+                  </span>
                 </div>
               </div>
               <form action="/api/discord/disconnect" method="post">
                 <button
                   type="submit"
-                  className="text-xs rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev-hover text-fg-soft hover:text-fg px-3 py-1.5 transition-colors"
+                  className="text-[11px] rounded-md border border-line-strong hover:border-fg-soft bg-elev hover:bg-elev-hover text-fg-soft hover:text-fg px-3 py-1.5 transition-colors"
                 >
                   Trennen
                 </button>

@@ -18,9 +18,12 @@ import { Button } from './ui/Button';
 import { ColorPicker } from './ui/ColorPicker';
 import { FormSection, FormRow } from './ui/FormSection';
 
+type Role = { id: string; name: string; color: number };
+
 type Props = {
   guildId: string;
   channels: { id: string; name: string }[];
+  roles?: Role[];
   initialTemplates?: EmbedTemplate[];
 };
 
