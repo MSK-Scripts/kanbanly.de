@@ -11,6 +11,7 @@ import {
   fetchCurrentUserGuilds,
   fetchGuildChannels,
   fetchGuildRoles,
+  guildIconUrl,
   type DiscordChannel,
   type DiscordGuild,
   type DiscordRole,
@@ -105,6 +106,15 @@ type LoadResult =
         maxMentions: number | null;
         bannedWords: string[];
       };
+      embedTemplates: Array<{
+        id: string;
+        name: string;
+        title: string | null;
+        description: string | null;
+        color: number | null;
+        footer: string | null;
+        imageUrl: string | null;
+      }>;
     };
 
 async function load(userId: string, guildId: string): Promise<LoadResult> {
@@ -226,6 +236,21 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       label: (r.label as string | null) ?? null,
     });
   }
+  const { data: tplRaw } = await admin
+    .from('bot_embed_templates')
+    .select('id, name, title, description, color, footer, image_url')
+    .eq('guild_id', guildId)
+    .order('updated_at', { ascending: false });
+  const embedTemplates = (tplRaw ?? []).map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    title: (r.title as string | null) ?? null,
+    description: (r.description as string | null) ?? null,
+    color: (r.color as number | null) ?? null,
+    footer: (r.footer as string | null) ?? null,
+    imageUrl: (r.image_url as string | null) ?? null,
+  }));
+
   const reactionRoleMessages = (rrMsgRaw ?? []).map((m) => ({
     messageId: m.message_id as string,
     channelId: m.channel_id as string,
@@ -263,6 +288,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     stickyMessages,
     channelModes,
     reactionRoleMessages,
+    embedTemplates,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
       roleIds: autoRoleIds,
@@ -371,15 +397,19 @@ export default async function GuildSettingsPage({
         )}
 
         {result.kind === 'rate-limited' && (
-          <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-6">
-            <p className="text-sm text-amber-700 dark:text-amber-300 font-medium mb-1">
-              Discord hat uns kurz ausgebremst (Rate-Limit).
-            </p>
-            <p className="text-xs text-amber-700/80 dark:text-amber-300/80">
-              In ~{result.retryAfterSec} Sekunden nochmal die Seite neu laden.
-              Das passiert wenn schnell hintereinander gespeichert wird —
-              ist kein Fehler in deinen Einstellungen.
-            </p>
+          <div className="rounded-xl border border-[var(--warning-line)] bg-[var(--warning-soft)] p-4 flex items-start gap-3">
+            <div className="h-8 w-8 shrink-0 rounded-full bg-[var(--warning-soft)] grid place-items-center text-[var(--warning)] text-sm font-bold border border-[var(--warning-line)]">
+              !
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13.5px] font-semibold text-[var(--warning)]">
+                Kurze Pause — Discord-Rate-Limit
+              </p>
+              <p className="text-[12px] text-[var(--warning)]/80 mt-0.5">
+                In ~{Math.max(1, result.retryAfterSec)}s wieder verfügbar.
+                Passiert manchmal nach vielen schnellen Aktionen — kein Fehler.
+              </p>
+            </div>
           </div>
         )}
 
@@ -387,6 +417,7 @@ export default async function GuildSettingsPage({
           <GuildSettingsView
             guildName={result.guild.name}
             guildId={result.guild.id}
+            guildIcon={guildIconUrl(result.guild)}
             channels={result.channels.map((c) => ({ id: c.id, name: c.name }))}
             roles={result.roles.map((r) => ({
               id: r.id,
@@ -403,6 +434,7 @@ export default async function GuildSettingsPage({
             level={result.level}
             levelRewards={result.levelRewards}
             automod={result.automod}
+            embedTemplates={result.embedTemplates}
           />
         )}
       </div>
@@ -413,6 +445,7 @@ export default async function GuildSettingsPage({
 function GuildSettingsView({
   guildName,
   guildId,
+  guildIcon,
   channels,
   roles,
   welcome,
@@ -425,9 +458,11 @@ function GuildSettingsView({
   level,
   levelRewards,
   automod,
+  embedTemplates,
 }: {
   guildName: string;
   guildId: string;
+  guildIcon: string | null;
   channels: Array<{ id: string; name: string }>;
   roles: Array<{ id: string; name: string; color: number }>;
   welcome: {
@@ -491,6 +526,15 @@ function GuildSettingsView({
     maxMentions: number | null;
     bannedWords: string[];
   };
+  embedTemplates: Array<{
+    id: string;
+    name: string;
+    title: string | null;
+    description: string | null;
+    color: number | null;
+    footer: string | null;
+    imageUrl: string | null;
+  }>;
 }) {
   const moduleDefs = [
     {
@@ -698,33 +742,50 @@ function GuildSettingsView({
       label: 'Embed-Creator',
       icon: '🎨',
       description: 'Baue custom Embeds und sende sie als Bot.',
-      content: <EmbedCreatorForm guildId={guildId} channels={channels} />,
+      content: (
+        <EmbedCreatorForm
+          guildId={guildId}
+          channels={channels}
+          initialTemplates={embedTemplates}
+        />
+      ),
     },
   ];
 
   return (
     <>
-      <div className="relative mb-6 overflow-hidden rounded-lg border border-line bg-surface p-5 sm:p-7">
-        <div
-          className="pointer-events-none absolute -top-24 -left-20 h-72 w-72 rounded-full bg-[#5865F2]/30 blur-3xl"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl"
-          aria-hidden
-        />
-        <div className="relative flex items-center gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-[#5865F2] font-mono mb-1 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Bot verbunden
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-fg leading-tight truncate tracking-tight">
-              {guildName}
-            </h1>
-            <p className="text-[11px] text-subtle mt-1 font-mono">
-              ID · {guildId}
-            </p>
+      <div className="mb-6 flex items-center gap-4 rounded-xl border border-line bg-surface p-4">
+        <div className="relative shrink-0">
+          <div className="h-14 w-14 rounded-2xl bg-elev flex items-center justify-center overflow-hidden ring-1 ring-line">
+            {guildIcon ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={guildIcon}
+                alt=""
+                width={56}
+                height={56}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-base text-muted font-semibold">
+                {guildName.slice(0, 2).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-[var(--success)] border-2 border-surface"
+            title="Bot aktiv"
+            aria-hidden
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-bold text-fg leading-tight truncate">
+            {guildName}
+          </h1>
+          <div className="flex items-center gap-2 mt-1 text-[11.5px] text-muted">
+            <span className="text-[var(--success)] font-medium">Bot aktiv</span>
+            <span className="text-faint">·</span>
+            <span className="font-mono text-subtle truncate">{guildId}</span>
           </div>
         </div>
       </div>
