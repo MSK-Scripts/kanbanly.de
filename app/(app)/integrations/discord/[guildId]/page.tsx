@@ -41,7 +41,10 @@ import { HelpdeskForm } from '@/components/HelpdeskForm';
 import { TempVoiceForm } from '@/components/TempVoiceForm';
 import { DailyImageForm, TeamlistsForm } from '@/components/QuickWinsForms';
 import { TicketsForm } from '@/components/TicketsForm';
-import type { TicketPanelRow } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import {
+  listTicketPanels,
+  type TicketPanelRow,
+} from '@/app/(app)/integrations/discord/[guildId]/actions';
 import type { EmbedTemplate, MessagePayloadV2 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
@@ -500,29 +503,8 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     items: itemsByPanel.get(p.id as string) ?? [],
   }));
 
-  const { data: ticketPanelsRaw } = await admin
-    .from('bot_ticket_panels')
-    .select(
-      'id, channel_id, message_id, staff_role_id, category_id, title, description, button_label, button_emoji, button_style, color, welcome_message',
-    )
-    .eq('guild_id', guildId)
-    .order('created_at', { ascending: false });
-  const ticketPanels: TicketPanelRow[] = (ticketPanelsRaw ?? []).map((r) => ({
-    id: r.id as string,
-    channelId: r.channel_id as string,
-    messageId: r.message_id as string,
-    staffRoleId: r.staff_role_id as string,
-    categoryId: (r.category_id as string | null) ?? null,
-    title: (r.title as string) ?? '🎫 Support öffnen',
-    description: (r.description as string) ?? '',
-    buttonLabel: (r.button_label as string) ?? 'Ticket öffnen',
-    buttonEmoji: (r.button_emoji as string | null) ?? null,
-    buttonStyle:
-      ((r.button_style as 'primary' | 'secondary' | 'success' | 'danger' | null) ??
-        'primary'),
-    color: (r.color as number | null) ?? null,
-    welcomeMessage: (r.welcome_message as string | null) ?? null,
-  }));
+  const ticketListRes = await listTicketPanels(guildId);
+  const ticketPanels: TicketPanelRow[] = ticketListRes.ok ? ticketListRes.panels ?? [] : [];
 
   const { data: teamlistsRaw } = await admin
     .from('bot_teamlists')

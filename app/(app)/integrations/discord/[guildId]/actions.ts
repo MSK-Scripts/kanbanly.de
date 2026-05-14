@@ -2079,7 +2079,7 @@ export async function deleteTeamlist(
   }
 }
 
-// ============== Tickets v2 ==============
+// ============== Tickets v3 ==============
 
 type TicketButtonStyleAct = 'primary' | 'secondary' | 'success' | 'danger';
 const TICKET_STYLE_MAP: Record<TicketButtonStyleAct, number> = {
@@ -2089,11 +2089,62 @@ const TICKET_STYLE_MAP: Record<TicketButtonStyleAct, number> = {
   danger: 4,
 };
 
+export type FeedbackModeAct = 'dm' | 'channel' | 'both';
+
+export type PanelTicketButtonAct = {
+  id: string;
+  kind: 'ticket';
+  label: string;
+  emoji?: string | null;
+  style: TicketButtonStyleAct;
+  categoryId?: string | null;
+  staffRoleIds?: string[];
+  welcomeMessage?: string | null;
+  namePattern?: string | null;
+};
+export type PanelLinkButtonAct = {
+  id: string;
+  kind: 'link';
+  label: string;
+  emoji?: string | null;
+  url: string;
+};
+export type PanelButtonAct = PanelTicketButtonAct | PanelLinkButtonAct;
+
+export type PanelSelectMenuAct = {
+  enabled: boolean;
+  placeholder: string;
+  options: Array<{
+    label: string;
+    description?: string | null;
+    emoji?: string | null;
+    buttonId: string;
+  }>;
+};
+
+export type PanelEmbedFieldAct = {
+  name: string;
+  value: string;
+  inline?: boolean;
+};
+
+export type PanelEmbedPayloadAct = {
+  title?: string | null;
+  description?: string | null;
+  color?: number | null;
+  imageUrl?: string | null;
+  thumbnailUrl?: string | null;
+  footer?: string | null;
+  author?: string | null;
+  fields?: PanelEmbedFieldAct[];
+};
+
 export type TicketPanelRow = {
   id: string;
   channelId: string;
   messageId: string;
   staffRoleId: string;
+  staffRoleIds: string[];
   categoryId: string | null;
   title: string;
   description: string;
@@ -2102,6 +2153,25 @@ export type TicketPanelRow = {
   buttonStyle: TicketButtonStyleAct;
   color: number | null;
   welcomeMessage: string | null;
+  buttons: PanelButtonAct[];
+  selectMenu: PanelSelectMenuAct | null;
+  embedPayload: PanelEmbedPayloadAct | null;
+  feedbackEnabled: boolean;
+  feedbackMode: FeedbackModeAct;
+  feedbackQuestion: string;
+  inactivityHours: number | null;
+  autoCloseHours: number | null;
+  staffSlaMinutes: number | null;
+  namePattern: string;
+};
+
+export type TicketFeedbackRow = {
+  id: string;
+  ticketId: string;
+  userId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
 };
 
 export type TicketSummary = {
@@ -2140,29 +2210,148 @@ function parseTicketEmoji(
   return { name: trimmed };
 }
 
-async function buildTicketPanelPayload(
-  panel: Pick<
-    TicketPanelRow,
-    'id' | 'title' | 'description' | 'buttonLabel' | 'buttonEmoji' | 'buttonStyle' | 'color'
-  >,
-): Promise<Record<string, unknown>> {
-  const buttonComponent: Record<string, unknown> = {
-    type: 2,
-    style: TICKET_STYLE_MAP[panel.buttonStyle] ?? 1,
-    custom_id: `ticket-open:${panel.id}`,
-    label: panel.buttonLabel.slice(0, 80),
-  };
-  const emoji = parseTicketEmoji(panel.buttonEmoji);
-  if (emoji) buttonComponent.emoji = emoji;
+function buildEmbedFromPayload(
+  panel: Pick<TicketPanelRow, 'title' | 'description' | 'color' | 'embedPayload'>,
+): Record<string, unknown> {
+  const p = panel.embedPayload;
+  if (p && (p.title || p.description || p.imageUrl || (p.fields && p.fields.length > 0))) {
+    const embed: Record<string, unknown> = {
+      color: p.color ?? panel.color ?? 0x380d52,
+    };
+    if (p.title) embed.title = String(p.title).slice(0, 256);
+    if (p.description) embed.description = String(p.description).slice(0, 4000);
+    if (p.author) embed.author = { name: String(p.author).slice(0, 256) };
+    if (p.footer) embed.footer = { text: String(p.footer).slice(0, 2048) };
+    if (p.imageUrl) embed.image = { url: p.imageUrl };
+    if (p.thumbnailUrl) embed.thumbnail = { url: p.thumbnailUrl };
+    if (p.fields && p.fields.length > 0) {
+      embed.fields = p.fields.slice(0, 25).map((f) => ({
+        name: (f.name || '​').slice(0, 256),
+        value: (f.value || '​').slice(0, 1024),
+        inline: Boolean(f.inline),
+      }));
+    }
+    return embed;
+  }
   return {
-    embeds: [
-      {
-        title: panel.title.slice(0, 256),
-        description: panel.description.slice(0, 4000),
-        color: panel.color ?? 0x380d52,
-      },
-    ],
-    components: [{ type: 1, components: [buttonComponent] }],
+    title: panel.title.slice(0, 256),
+    description: panel.description.slice(0, 4000),
+    color: panel.color ?? 0x380d52,
+  };
+}
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+async function buildTicketPanelPayload(panel: TicketPanelRow): Promise<Record<string, unknown>> {
+  const embed = buildEmbedFromPayload(panel);
+
+  const buttons: PanelButtonAct[] =
+    panel.buttons && panel.buttons.length > 0
+      ? panel.buttons
+      : [
+          {
+            id: 'default',
+            kind: 'ticket',
+            label: panel.buttonLabel || 'Ticket öffnen',
+            emoji: panel.buttonEmoji,
+            style: panel.buttonStyle,
+          },
+        ];
+
+  const components: Array<Record<string, unknown>> = [];
+
+  if (panel.selectMenu?.enabled && panel.selectMenu.options.length > 0) {
+    const opts = panel.selectMenu.options.slice(0, 25).map((o) => {
+      const obj: Record<string, unknown> = {
+        label: o.label.slice(0, 100),
+        value: o.buttonId,
+      };
+      if (o.description) obj.description = String(o.description).slice(0, 100);
+      const emoji = parseTicketEmoji(o.emoji ?? null);
+      if (emoji) obj.emoji = emoji;
+      return obj;
+    });
+    components.push({
+      type: 1,
+      components: [
+        {
+          type: 3,
+          custom_id: `ticket-select:${panel.id}`,
+          placeholder: (panel.selectMenu.placeholder || 'Kategorie wählen…').slice(0, 100),
+          options: opts,
+          min_values: 1,
+          max_values: 1,
+        },
+      ],
+    });
+  } else {
+    for (const row of chunkArray(buttons.slice(0, 25), 5)) {
+      components.push({
+        type: 1,
+        components: row.map((b) => {
+          const obj: Record<string, unknown> = {
+            type: 2,
+            label: (b.label || 'Button').slice(0, 80),
+          };
+          const emoji = parseTicketEmoji(b.emoji ?? null);
+          if (emoji) obj.emoji = emoji;
+          if (b.kind === 'link') {
+            obj.style = 5;
+            obj.url = b.url;
+          } else {
+            obj.style = TICKET_STYLE_MAP[b.style] ?? 1;
+            obj.custom_id = `ticket-open:${panel.id}:${b.id}`;
+          }
+          return obj;
+        }),
+      });
+    }
+  }
+
+  return { embeds: [embed], components };
+}
+
+const PANEL_COLUMNS =
+  'id, channel_id, message_id, staff_role_id, staff_role_ids, category_id, title, description, button_label, button_emoji, button_style, color, welcome_message, buttons, select_menu, embed_payload, feedback_enabled, feedback_mode, feedback_question, inactivity_hours, auto_close_hours, staff_sla_minutes, name_pattern';
+
+function mapPanelRow(r: Record<string, unknown>): TicketPanelRow {
+  const staffArr = Array.isArray(r.staff_role_ids) ? (r.staff_role_ids as string[]) : [];
+  const staffSingle = (r.staff_role_id as string | null) ?? '';
+  return {
+    id: r.id as string,
+    channelId: r.channel_id as string,
+    messageId: r.message_id as string,
+    staffRoleId: staffSingle,
+    staffRoleIds: staffArr.length > 0 ? staffArr : staffSingle ? [staffSingle] : [],
+    categoryId: (r.category_id as string | null) ?? null,
+    title: (r.title as string) ?? '🎫 Support öffnen',
+    description: (r.description as string) ?? '',
+    buttonLabel: (r.button_label as string) ?? 'Ticket öffnen',
+    buttonEmoji: (r.button_emoji as string | null) ?? null,
+    buttonStyle: ((r.button_style as TicketButtonStyleAct | null) ?? 'primary'),
+    color: (r.color as number | null) ?? null,
+    welcomeMessage: (r.welcome_message as string | null) ?? null,
+    buttons: Array.isArray(r.buttons) ? (r.buttons as PanelButtonAct[]) : [],
+    selectMenu:
+      r.select_menu && typeof r.select_menu === 'object'
+        ? (r.select_menu as PanelSelectMenuAct)
+        : null,
+    embedPayload:
+      r.embed_payload && typeof r.embed_payload === 'object'
+        ? (r.embed_payload as PanelEmbedPayloadAct)
+        : null,
+    feedbackEnabled: Boolean(r.feedback_enabled),
+    feedbackMode: ((r.feedback_mode as FeedbackModeAct | null) ?? 'dm'),
+    feedbackQuestion:
+      (r.feedback_question as string | null) ?? 'Wie zufrieden warst du mit dem Support?',
+    inactivityHours: (r.inactivity_hours as number | null) ?? null,
+    autoCloseHours: (r.auto_close_hours as number | null) ?? null,
+    staffSlaMinutes: (r.staff_sla_minutes as number | null) ?? null,
+    namePattern: (r.name_pattern as string | null) ?? 'ticket-{user}',
   };
 }
 
@@ -2174,99 +2363,106 @@ export async function listTicketPanels(
     const admin = createAdminClient();
     const { data, error } = await admin
       .from('bot_ticket_panels')
-      .select(
-        'id, channel_id, message_id, staff_role_id, category_id, title, description, button_label, button_emoji, button_style, color, welcome_message',
-      )
+      .select(PANEL_COLUMNS)
       .eq('guild_id', guildId)
       .order('created_at', { ascending: false });
     if (error) throw error;
     return {
       ok: true,
-      panels: (data ?? []).map((r) => ({
-        id: r.id as string,
-        channelId: r.channel_id as string,
-        messageId: r.message_id as string,
-        staffRoleId: r.staff_role_id as string,
-        categoryId: (r.category_id as string | null) ?? null,
-        title: (r.title as string) ?? '🎫 Support öffnen',
-        description: (r.description as string) ?? '',
-        buttonLabel: (r.button_label as string) ?? 'Ticket öffnen',
-        buttonEmoji: (r.button_emoji as string | null) ?? null,
-        buttonStyle:
-          ((r.button_style as TicketButtonStyleAct | null) ?? 'primary'),
-        color: (r.color as number | null) ?? null,
-        welcomeMessage: (r.welcome_message as string | null) ?? null,
-      })),
+      panels: (data ?? []).map((r) => mapPanelRow(r as Record<string, unknown>)),
     };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
   }
 }
 
+export type TicketPanelInput = {
+  channelId: string;
+  staffRoleIds: string[];
+  categoryId: string | null;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  buttonEmoji: string | null;
+  buttonStyle: TicketButtonStyleAct;
+  color: number | null;
+  welcomeMessage: string | null;
+  buttons: PanelButtonAct[];
+  selectMenu: PanelSelectMenuAct | null;
+  embedPayload: PanelEmbedPayloadAct | null;
+  feedbackEnabled: boolean;
+  feedbackMode: FeedbackModeAct;
+  feedbackQuestion: string;
+  inactivityHours: number | null;
+  autoCloseHours: number | null;
+  staffSlaMinutes: number | null;
+  namePattern: string;
+};
+
+function sanitizePanelInput(input: TicketPanelInput) {
+  const staffArr = Array.from(new Set(input.staffRoleIds.filter(Boolean)));
+  return {
+    channel_id: input.channelId,
+    staff_role_id: staffArr[0] ?? '',
+    staff_role_ids: staffArr,
+    category_id: input.categoryId,
+    title: input.title.trim().slice(0, 256) || '🎫 Support öffnen',
+    description: input.description.trim().slice(0, 4000),
+    button_label: input.buttonLabel.trim().slice(0, 80) || 'Ticket öffnen',
+    button_emoji: input.buttonEmoji?.trim() || null,
+    button_style: input.buttonStyle,
+    color: input.color ?? null,
+    welcome_message: input.welcomeMessage?.trim() || null,
+    buttons: input.buttons ?? [],
+    select_menu: input.selectMenu,
+    embed_payload: input.embedPayload,
+    feedback_enabled: input.feedbackEnabled,
+    feedback_mode: input.feedbackMode,
+    feedback_question:
+      input.feedbackQuestion.trim().slice(0, 200) ||
+      'Wie zufrieden warst du mit dem Support?',
+    inactivity_hours: input.inactivityHours,
+    auto_close_hours: input.autoCloseHours,
+    staff_sla_minutes: input.staffSlaMinutes,
+    name_pattern: input.namePattern.trim().slice(0, 50) || 'ticket-{user}',
+  };
+}
+
 export async function createTicketPanelWeb(
   guildId: string,
-  input: {
-    channelId: string;
-    staffRoleId: string;
-    categoryId: string | null;
-    title: string;
-    description: string;
-    buttonLabel: string;
-    buttonEmoji: string | null;
-    buttonStyle: TicketButtonStyleAct;
-    color: number | null;
-    welcomeMessage: string | null;
-  },
+  input: TicketPanelInput,
 ): Promise<{ ok: boolean; error?: string; id?: string }> {
   try {
     const { userId } = await assertCanManage(guildId);
-    if (!input.channelId || !input.staffRoleId || !input.title.trim()) {
-      return { ok: false, error: 'Channel, Staff-Rolle und Titel sind nötig.' };
+    if (!input.channelId || input.staffRoleIds.length === 0 || !input.title.trim()) {
+      return { ok: false, error: 'Channel, mindestens eine Staff-Rolle und Titel sind nötig.' };
     }
     const admin = createAdminClient();
 
-    // Insert (mit Platzhalter-message_id, wird gleich aktualisiert).
     const tempMessageId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const payload = sanitizePanelInput(input);
     const { data: panel, error: insertError } = await admin
       .from('bot_ticket_panels')
       .insert({
         guild_id: guildId,
-        channel_id: input.channelId,
         message_id: tempMessageId,
-        staff_role_id: input.staffRoleId,
-        category_id: input.categoryId,
         created_by: userId,
-        title: input.title.trim().slice(0, 256),
-        description: input.description.trim().slice(0, 4000),
-        button_label: input.buttonLabel.trim().slice(0, 80) || 'Ticket öffnen',
-        button_emoji: input.buttonEmoji?.trim() || null,
-        button_style: input.buttonStyle,
-        color: input.color ?? null,
-        welcome_message: input.welcomeMessage?.trim() || null,
+        ...payload,
       })
-      .select('id')
+      .select(PANEL_COLUMNS)
       .single();
     if (insertError || !panel) throw insertError ?? new Error('Insert fehlgeschlagen.');
 
-    // Panel-Embed posten
-    const payload = await buildTicketPanelPayload({
-      id: panel.id as string,
-      title: input.title.trim(),
-      description: input.description.trim(),
-      buttonLabel: input.buttonLabel.trim() || 'Ticket öffnen',
-      buttonEmoji: input.buttonEmoji?.trim() || null,
-      buttonStyle: input.buttonStyle,
-      color: input.color ?? null,
-    });
+    const panelRow = mapPanelRow(panel as Record<string, unknown>);
+    const discordPayload = await buildTicketPanelPayload(panelRow);
 
     try {
-      const posted = await postMessage(input.channelId, payload);
+      const posted = await postMessage(input.channelId, discordPayload);
       await admin
         .from('bot_ticket_panels')
         .update({ message_id: posted.id })
         .eq('id', panel.id);
     } catch (err) {
-      // Cleanup
       await admin.from('bot_ticket_panels').delete().eq('id', panel.id);
       return {
         ok: false,
@@ -2286,63 +2482,64 @@ export async function createTicketPanelWeb(
 export async function updateTicketPanelWeb(
   guildId: string,
   panelId: string,
-  input: {
-    title: string;
-    description: string;
-    buttonLabel: string;
-    buttonEmoji: string | null;
-    buttonStyle: TicketButtonStyleAct;
-    color: number | null;
-    welcomeMessage: string | null;
-    staffRoleId: string;
-    categoryId: string | null;
-  },
+  input: TicketPanelInput,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await assertCanManage(guildId);
+    if (input.staffRoleIds.length === 0) {
+      return { ok: false, error: 'Mindestens eine Staff-Rolle nötig.' };
+    }
     const admin = createAdminClient();
-    const { error } = await admin
-      .from('bot_ticket_panels')
-      .update({
-        title: input.title.trim().slice(0, 256),
-        description: input.description.trim().slice(0, 4000),
-        button_label: input.buttonLabel.trim().slice(0, 80) || 'Ticket öffnen',
-        button_emoji: input.buttonEmoji?.trim() || null,
-        button_style: input.buttonStyle,
-        color: input.color ?? null,
-        welcome_message: input.welcomeMessage?.trim() || null,
-        staff_role_id: input.staffRoleId,
-        category_id: input.categoryId,
-      })
-      .eq('id', panelId)
-      .eq('guild_id', guildId);
-    if (error) throw error;
+    const patch = sanitizePanelInput(input);
 
-    // Existierendes Embed editieren
-    const { data: row } = await admin
+    const { data: updated, error } = await admin
       .from('bot_ticket_panels')
-      .select('channel_id, message_id')
+      .update(patch)
       .eq('id', panelId)
+      .eq('guild_id', guildId)
+      .select(PANEL_COLUMNS)
       .maybeSingle();
-    if (row?.message_id && row?.channel_id) {
-      const payload = await buildTicketPanelPayload({
-        id: panelId,
-        title: input.title.trim(),
-        description: input.description.trim(),
-        buttonLabel: input.buttonLabel.trim() || 'Ticket öffnen',
-        buttonEmoji: input.buttonEmoji?.trim() || null,
-        buttonStyle: input.buttonStyle,
-        color: input.color ?? null,
-      });
-      await editMessage(
-        row.channel_id as string,
-        row.message_id as string,
-        payload,
-      ).catch((err) => console.error('[ticket-panel] editMessage:', err));
+    if (error) throw error;
+    if (!updated) return { ok: false, error: 'Panel nicht gefunden.' };
+
+    const panelRow = mapPanelRow(updated as Record<string, unknown>);
+    if (panelRow.messageId && panelRow.channelId && !panelRow.messageId.startsWith('temp-')) {
+      const discordPayload = await buildTicketPanelPayload(panelRow);
+      await editMessage(panelRow.channelId, panelRow.messageId, discordPayload).catch((err) =>
+        console.error('[ticket-panel] editMessage:', err),
+      );
     }
 
     revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function listTicketFeedbackForGuild(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; feedback?: TicketFeedbackRow[]; avgRating?: number }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_ticket_feedback')
+      .select('id, ticket_id, user_id, rating, comment, created_at')
+      .eq('guild_id', guildId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    const rows: TicketFeedbackRow[] = (data ?? []).map((r) => ({
+      id: r.id as string,
+      ticketId: r.ticket_id as string,
+      userId: r.user_id as string,
+      rating: r.rating as number,
+      comment: (r.comment as string | null) ?? null,
+      createdAt: r.created_at as string,
+    }));
+    const avg = rows.length > 0 ? rows.reduce((s, r) => s + r.rating, 0) / rows.length : 0;
+    return { ok: true, feedback: rows, avgRating: avg };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
   }
