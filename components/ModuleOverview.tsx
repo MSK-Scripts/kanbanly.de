@@ -31,7 +31,8 @@ export type ModuleKey =
   | 'dailyimage'
   | 'teamlist'
   | 'tickets'
-  | 'pricelist';
+  | 'pricelist'
+  | 'shop';
 
 type ModuleDef = {
   key: ModuleKey;

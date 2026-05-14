@@ -42,6 +42,7 @@ import { TempVoiceForm } from '@/components/TempVoiceForm';
 import { DailyImageForm, TeamlistsForm } from '@/components/QuickWinsForms';
 import { TicketsForm } from '@/components/TicketsForm';
 import { PricelistForm } from '@/components/PricelistForm';
+import { ShopForm } from '@/components/ShopForm';
 import {
   listTicketPanels,
   listSuggestionPanels,
@@ -1307,6 +1308,15 @@ function GuildSettingsView({
       count: pricelistPanels.length > 0 ? pricelistPanels.length : undefined,
       isNew: true,
     },
+    {
+      key: 'shop' as const,
+      name: 'Bestellsystem',
+      description: 'Stripe-Bestellungen mit Order-Channels & Admin-Übersicht.',
+      tab: 'shop',
+      enabled: false,
+      toggleable: false,
+      isNew: true,
+    },
   ];
 
   const tabs: Tab[] = [
@@ -1591,6 +1601,13 @@ function GuildSettingsView({
           initialPanels={pricelistPanels}
         />
       ),
+    },
+    {
+      id: 'shop',
+      label: 'Bestellsystem',
+      icon: '🛒',
+      description: 'Stripe-Bestellungen direkt aus Discord — Produkte, Checkout, Order-Channels.',
+      content: <ShopForm guildId={guildId} channels={channels} roles={roles} />,
     },
   ];
 

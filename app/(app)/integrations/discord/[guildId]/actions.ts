@@ -2880,7 +2880,8 @@ type ModuleKey =
   | 'dailyimage'
   | 'teamlist'
   | 'tickets'
-  | 'pricelist';
+  | 'pricelist'
+  | 'shop';
 
 export async function toggleBotModule(
   guildId: string,
@@ -3814,6 +3815,325 @@ export async function sendTestSuggestionPanel(
       embeds: embeds as unknown as EmbedPayload[],
       components: payload.components as Record<string, unknown>[],
     });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Shop / Bestellsystem ==============
+
+export type ShopStripeStatus = {
+  connected: boolean;
+  chargesEnabled: boolean;
+  detailsSubmitted: boolean;
+  accountId: string | null;
+};
+
+export type ShopSettings = {
+  orderCategoryId: string | null;
+  staffRoleId: string | null;
+  currency: string;
+  platformFeeBps: number;
+};
+
+export type ProductRow = {
+  id: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  currency: string;
+  imageUrl: string | null;
+  active: boolean;
+  stock: number | null;
+  position: number;
+};
+
+export type OrderRow = {
+  id: string;
+  userId: string;
+  productId: string | null;
+  productName: string;
+  amountCents: number;
+  currency: string;
+  status: 'pending' | 'paid' | 'cancelled' | 'refunded' | 'fulfilled' | 'failed';
+  ticketChannelId: string | null;
+  customerEmail: string | null;
+  createdAt: string;
+  paidAt: string | null;
+  fulfilledAt: string | null;
+};
+
+export async function getShopStatus(
+  guildId: string,
+): Promise<{
+  ok: boolean;
+  error?: string;
+  stripe?: ShopStripeStatus;
+  settings?: ShopSettings;
+}> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_guilds')
+      .select(
+        'stripe_account_id, stripe_charges_enabled, stripe_details_submitted, shop_order_category_id, shop_staff_role_id, shop_currency, shop_platform_fee_bps',
+      )
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (error) throw error;
+    return {
+      ok: true,
+      stripe: {
+        connected: Boolean(data?.stripe_account_id),
+        chargesEnabled: Boolean(data?.stripe_charges_enabled),
+        detailsSubmitted: Boolean(data?.stripe_details_submitted),
+        accountId: (data?.stripe_account_id as string | null) ?? null,
+      },
+      settings: {
+        orderCategoryId: (data?.shop_order_category_id as string | null) ?? null,
+        staffRoleId: (data?.shop_staff_role_id as string | null) ?? null,
+        currency: (data?.shop_currency as string) ?? 'eur',
+        platformFeeBps: (data?.shop_platform_fee_bps as number) ?? 0,
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updateShopSettings(
+  guildId: string,
+  input: {
+    orderCategoryId: string | null;
+    staffRoleId: string | null;
+    currency: string;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        shop_order_category_id: input.orderCategoryId,
+        shop_staff_role_id: input.staffRoleId,
+        shop_currency: input.currency.toLowerCase().slice(0, 3) || 'eur',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function disconnectStripe(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        stripe_account_id: null,
+        stripe_charges_enabled: false,
+        stripe_details_submitted: false,
+        stripe_onboarded_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function listProducts(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; products?: ProductRow[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_products')
+      .select(
+        'id, name, description, price_cents, currency, image_url, active, stock, position',
+      )
+      .eq('guild_id', guildId)
+      .order('position');
+    if (error) throw error;
+    return {
+      ok: true,
+      products: (data ?? []).map((r) => ({
+        id: r.id as string,
+        name: r.name as string,
+        description: (r.description as string | null) ?? '',
+        priceCents: (r.price_cents as number) ?? 0,
+        currency: (r.currency as string) ?? 'eur',
+        imageUrl: (r.image_url as string | null) ?? null,
+        active: Boolean(r.active),
+        stock: (r.stock as number | null) ?? null,
+        position: (r.position as number) ?? 0,
+      })),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export type ProductInput = {
+  name: string;
+  description: string;
+  priceCents: number;
+  currency: string;
+  imageUrl: string | null;
+  active: boolean;
+  stock: number | null;
+};
+
+export async function upsertProduct(
+  guildId: string,
+  id: string | null,
+  input: ProductInput,
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    const { userId } = await assertCanManage(guildId);
+    if (!input.name.trim() || input.priceCents < 0) {
+      return { ok: false, error: 'Name und gültiger Preis nötig.' };
+    }
+    const admin = createAdminClient();
+    if (id) {
+      const { error } = await admin
+        .from('bot_products')
+        .update({
+          name: input.name.trim().slice(0, 200),
+          description: input.description.trim().slice(0, 4000),
+          price_cents: Math.floor(input.priceCents),
+          currency: input.currency.toLowerCase().slice(0, 3),
+          image_url: input.imageUrl?.trim() || null,
+          active: input.active,
+          stock: input.stock,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('guild_id', guildId);
+      if (error) throw error;
+      revalidatePath(`/integrations/discord/${guildId}`);
+      return { ok: true, id };
+    }
+    const { count } = await admin
+      .from('bot_products')
+      .select('id', { count: 'exact', head: true })
+      .eq('guild_id', guildId);
+    const position = count ?? 0;
+    const { data, error } = await admin
+      .from('bot_products')
+      .insert({
+        guild_id: guildId,
+        name: input.name.trim().slice(0, 200),
+        description: input.description.trim().slice(0, 4000),
+        price_cents: Math.floor(input.priceCents),
+        currency: input.currency.toLowerCase().slice(0, 3),
+        image_url: input.imageUrl?.trim() || null,
+        active: input.active,
+        stock: input.stock,
+        position,
+        created_by: userId,
+      })
+      .select('id')
+      .single();
+    if (error || !data) throw error ?? new Error('Insert fehlgeschlagen.');
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: data.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteProduct(
+  guildId: string,
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_products')
+      .delete()
+      .eq('id', id)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function listOrders(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; orders?: OrderRow[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_orders')
+      .select(
+        'id, user_id, product_id, product_name, amount_cents, currency, status, ticket_channel_id, customer_email, created_at, paid_at, fulfilled_at',
+      )
+      .eq('guild_id', guildId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    return {
+      ok: true,
+      orders: (data ?? []).map((r) => ({
+        id: r.id as string,
+        userId: r.user_id as string,
+        productId: (r.product_id as string | null) ?? null,
+        productName: r.product_name as string,
+        amountCents: (r.amount_cents as number) ?? 0,
+        currency: (r.currency as string) ?? 'eur',
+        status:
+          (r.status as OrderRow['status']) ?? 'pending',
+        ticketChannelId: (r.ticket_channel_id as string | null) ?? null,
+        customerEmail: (r.customer_email as string | null) ?? null,
+        createdAt: r.created_at as string,
+        paidAt: (r.paid_at as string | null) ?? null,
+        fulfilledAt: (r.fulfilled_at as string | null) ?? null,
+      })),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function markOrderFulfilled(
+  guildId: string,
+  orderId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { userId } = await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_orders')
+      .update({
+        status: 'fulfilled',
+        fulfilled_at: new Date().toISOString(),
+        fulfilled_by: userId,
+      })
+      .eq('id', orderId)
+      .eq('guild_id', guildId)
+      .eq('status', 'paid');
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
