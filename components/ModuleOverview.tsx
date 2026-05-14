@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState } from 'react';
 import { toggleBotModule } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { toast } from '@/store/toastStore';
 import { Switch } from './Switch';
+import { Spinner } from './ui/Spinner';
 import { StatusPill } from './ui/Status';
 
 export type ModuleKey =
@@ -68,8 +69,8 @@ const SearchIcon = () => (
 
 export function ModuleOverview({ guildId, modules }: Props) {
   const [query, setQuery] = useState('');
-  const [pending, startTransition] = useTransition();
   const [optimisticState, setOptimisticState] = useState<Record<string, boolean>>({});
+  const [busyKeys, setBusyKeys] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -90,25 +91,37 @@ export function ModuleOverview({ guildId, modules }: Props) {
     window.location.hash = tab;
   };
 
-  const onToggle = (mod: ModuleDef, next: boolean) => {
+  const onToggle = async (mod: ModuleDef, next: boolean) => {
     if (!mod.toggleable) {
       navigate(mod.tab);
       return;
     }
+    // Optimistisches Update — UI reagiert sofort.
     setOptimisticState((prev) => ({ ...prev, [mod.key]: next }));
-    startTransition(async () => {
+    setBusyKeys((prev) => {
+      const s = new Set(prev);
+      s.add(mod.key);
+      return s;
+    });
+    try {
       const r = await toggleBotModule(guildId, mod.key, next);
       if (r.ok) {
         toast.success(`${mod.name} ${next ? 'aktiviert' : 'deaktiviert'}`);
       } else {
-        setOptimisticState((prev) => {
-          const copy = { ...prev };
-          delete copy[mod.key];
-          return copy;
-        });
+        // Roll back optimistic.
+        setOptimisticState((prev) => ({ ...prev, [mod.key]: !next }));
         toast.error('Konnte nicht ändern', r.error);
       }
-    });
+    } catch (err) {
+      setOptimisticState((prev) => ({ ...prev, [mod.key]: !next }));
+      toast.error('Konnte nicht ändern', err instanceof Error ? err.message : undefined);
+    } finally {
+      setBusyKeys((prev) => {
+        const s = new Set(prev);
+        s.delete(mod.key);
+        return s;
+      });
+    }
   };
 
   return (
@@ -168,13 +181,19 @@ export function ModuleOverview({ guildId, modules }: Props) {
                         <StatusPill kind="info">Tool</StatusPill>
                       )}
                     </div>
-                    <Switch
-                      checked={live}
-                      onChange={(next) => onToggle(m, next)}
-                      disabled={pending && optimisticState[m.key] !== undefined}
-                      size="sm"
-                      ariaLabel={`${m.name} umschalten`}
-                    />
+                    <div className="flex items-center gap-2 shrink-0">
+                      {busyKeys.has(m.key) && (
+                        <span className="text-subtle">
+                          <Spinner size="xs" />
+                        </span>
+                      )}
+                      <Switch
+                        checked={live}
+                        onChange={(next) => onToggle(m, next)}
+                        size="sm"
+                        ariaLabel={`${m.name} umschalten`}
+                      />
+                    </div>
                   </div>
                   <p className="text-[12.5px] text-muted leading-relaxed line-clamp-2">
                     {m.description}

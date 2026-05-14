@@ -19,6 +19,10 @@ import {
   type RrMode,
 } from '@/lib/reactionRoles';
 
+// Cache pro User+Guild: 60s. Verhindert dass jeder Toggle-Click eine Discord-API-Roundtrip braucht.
+const manageCheckCache = new Map<string, { ok: boolean; expires: number }>();
+const MANAGE_CACHE_TTL_MS = 60_000;
+
 async function assertCanManage(guildId: string): Promise<{ userId: string }> {
   const supabase = await createClient();
   const {
@@ -26,15 +30,28 @@ async function assertCanManage(guildId: string): Promise<{ userId: string }> {
   } = await supabase.auth.getUser();
   if (!user) throw new Error('Nicht eingeloggt.');
 
+  const cacheKey = `${user.id}:${guildId}`;
+  const now = Date.now();
+  const cached = manageCheckCache.get(cacheKey);
+  if (cached && cached.expires > now) {
+    if (!cached.ok) throw new Error('Keine Berechtigung.');
+    return { userId: user.id };
+  }
+
   const token = await getFreshAccessToken(user.id);
   if (!token) throw new Error('Discord-Verbindung abgelaufen.');
 
   const guilds = await fetchCurrentUserGuilds(token);
   const g = guilds.find((x) => x.id === guildId);
-  if (!g) throw new Error('Server nicht gefunden.');
+  if (!g) {
+    manageCheckCache.set(cacheKey, { ok: false, expires: now + MANAGE_CACHE_TTL_MS });
+    throw new Error('Server nicht gefunden.');
+  }
   if (!g.owner && !canManageGuild(g.permissions)) {
+    manageCheckCache.set(cacheKey, { ok: false, expires: now + MANAGE_CACHE_TTL_MS });
     throw new Error('Keine Berechtigung.');
   }
+  manageCheckCache.set(cacheKey, { ok: true, expires: now + MANAGE_CACHE_TTL_MS });
   return { userId: user.id };
 }
 
