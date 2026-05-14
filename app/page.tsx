@@ -174,27 +174,35 @@ export default async function LandingPage() {
                   Discord-Bot für deine Community
                 </h3>
                 <p className="text-sm text-muted mt-2 max-w-xl">
-                  Welcome-Messages, Reaction-Roles, Auto-Roles, Moderation,
-                  Logging und ein XP-/Leveling-System. Alles über ein Web-Dashboard
-                  konfigurierbar — keine Slash-Commands raten.
+                  40+ Module: Welcome, Reaction-Roles, Auto-Roles, Tickets,
+                  Helpdesk, Verify, Anti-Raid, Giveaways, XP/Level, Moderation,
+                  Logging und mehr. Alles über das Web-Dashboard konfigurierbar.
                 </p>
               </div>
-              <Link
-                href={signedIn ? '/integrations/discord' : '/register'}
-                className="rounded-md bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-medium px-5 py-2.5 transition-colors text-center shrink-0"
-              >
-                {signedIn ? 'Bot einrichten' : 'Jetzt starten'}
-              </Link>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                <Link
+                  href="/bot"
+                  className="rounded-md border border-line-strong hover:border-fg-soft bg-surface hover:bg-elev text-fg text-sm font-medium px-5 py-2.5 transition-colors text-center"
+                >
+                  Alle Module ansehen
+                </Link>
+                <Link
+                  href={signedIn ? '/integrations/discord' : '/register'}
+                  className="rounded-md bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-medium px-5 py-2.5 transition-colors text-center"
+                >
+                  {signedIn ? 'Bot einrichten' : 'Jetzt starten'}
+                </Link>
+              </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <BotFeature label="Welcome &amp; Reaction-Roles" />
-              <BotFeature label="Auto-Roles beim Join" />
+              <BotFeature label="Tickets &amp; Helpdesk" />
+              <BotFeature label="Verify &amp; Anti-Raid" />
+              <BotFeature label="Giveaways" />
+              <BotFeature label="XP-System &amp; Level-Rewards" />
               <BotFeature label="Moderation /warn /kick /ban" />
               <BotFeature label="Logging der Events" />
-              <BotFeature label="XP-System &amp; Levels" />
-              <BotFeature label="Level-Rewards (Rollen)" />
-              <BotFeature label="Leaderboard /rank" />
-              <BotFeature label="Pro Server konfigurierbar" />
+              <BotFeature label="40+ Module insgesamt" />
             </div>
           </div>
         </section>

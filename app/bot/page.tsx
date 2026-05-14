@@ -125,7 +125,7 @@ export default async function BotLandingPage() {
                 href={signedIn ? '/integrations/discord' : '/login?next=/integrations/discord'}
                 className="inline-flex items-center gap-2 rounded-md border border-line-strong hover:border-fg-soft bg-surface hover:bg-elev text-fg text-sm font-medium px-5 py-2.5 transition-colors"
               >
-                Zum Dashboard →
+                Zum Dashboard
               </Link>
             </div>
           </div>
@@ -237,7 +237,7 @@ export default async function BotLandingPage() {
                 href={signedIn ? '/integrations/discord' : '/login?next=/integrations/discord'}
                 className="text-sm text-muted hover:text-fg transition-colors px-4 py-3"
               >
-                Dashboard öffnen →
+                Dashboard öffnen
               </Link>
             </div>
           </div>
