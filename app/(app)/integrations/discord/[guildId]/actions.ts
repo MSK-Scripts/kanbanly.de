@@ -560,11 +560,13 @@ export async function sendBotMessage(
   }
 }
 
-// ============== Components (Link-Buttons) ==============
+// ============== Components (Link- + Action-Buttons) ==============
 
 export type LinkButton = {
+  kind?: 'link' | 'role';
   label: string;
-  url: string;
+  url?: string;
+  roleId?: string;
   emoji?: string;
   style?: 'primary' | 'secondary' | 'success' | 'danger' | 'link';
 };
@@ -600,25 +602,33 @@ function buildComponentsPayload(rows: ComponentRow[]): unknown[] {
     .slice(0, 5)
     .map((row) => ({
       type: 1,
-      components: row.buttons.slice(0, 5).map((b) => {
-        // Link-Buttons müssen url haben, kein custom_id
-        const isLink = b.url && (b.style ?? 'link') === 'link';
-        const btn: Record<string, unknown> = {
-          type: 2,
-          style: isLink ? 5 : BUTTON_STYLE_MAP[b.style ?? 'link'] ?? 5,
-          label: b.label.slice(0, 80),
-        };
-        if (isLink) {
-          btn.url = b.url;
-        } else {
-          // Nicht-link Buttons brauchen custom_id — als Pseudo-noop
-          btn.url = b.url;
-          btn.style = 5;
-        }
-        const emoji = parseLinkButtonEmoji(b.emoji);
-        if (emoji) btn.emoji = emoji;
-        return btn;
-      }),
+      components: row.buttons
+        .slice(0, 5)
+        .map((b) => {
+          const kind = b.kind ?? 'link';
+          const btn: Record<string, unknown> = {
+            type: 2,
+            label: (b.label || ' ').slice(0, 80),
+          };
+          if (kind === 'role') {
+            if (!b.roleId) return null;
+            btn.custom_id = `ec:role:${b.roleId}`;
+            btn.style =
+              BUTTON_STYLE_MAP[(b.style ?? 'secondary') as NonNullable<LinkButton['style']>] ??
+              2;
+            // Link-Style geht nicht für custom_id-Buttons → fallback secondary
+            if (btn.style === 5) btn.style = 2;
+          } else {
+            // Link-Button
+            if (!b.url) return null;
+            btn.style = 5;
+            btn.url = b.url;
+          }
+          const emoji = parseLinkButtonEmoji(b.emoji);
+          if (emoji) btn.emoji = emoji;
+          return btn;
+        })
+        .filter((b): b is Record<string, unknown> => b !== null),
     }))
     .filter((row) => Array.isArray(row.components) && row.components.length > 0);
 }
@@ -2092,7 +2102,8 @@ type ModuleKey =
   | 'invitetracker'
   | 'helpdesk'
   | 'tempvoice'
-  | 'dailyimage';
+  | 'dailyimage'
+  | 'teamlist';
 
 export async function toggleBotModule(
   guildId: string,

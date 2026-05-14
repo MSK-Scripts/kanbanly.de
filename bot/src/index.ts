@@ -29,6 +29,7 @@ import { registerHelpdesk } from './events/helpdesk.js';
 import { registerTempVoice } from './events/tempVoice.js';
 import { startDailyImageScheduler } from './events/dailyImageScheduler.js';
 import { startTeamlistScheduler } from './events/teamlistScheduler.js';
+import { registerEmbedActions } from './events/embedActions.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -109,6 +110,7 @@ registerHelpdesk(client);
 registerTempVoice(client);
 startDailyImageScheduler(client);
 startTeamlistScheduler(client);
+registerEmbedActions(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);
