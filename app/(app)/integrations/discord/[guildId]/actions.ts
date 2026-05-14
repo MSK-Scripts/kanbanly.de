@@ -12,6 +12,7 @@ import {
   postMessage,
   removeOwnReaction,
 } from '@/lib/discordBot';
+import { invalidateGuildCache } from '@/lib/discord';
 import {
   buildReactionRoleEmbed,
   buildRrComponents,
@@ -511,6 +512,23 @@ export async function updateVerifyConfig(
     const message =
       (formData.get('message') as string | null)?.trim() ||
       'Willkommen! Klick auf den Button unten, um dich zu verifizieren und Zugriff auf den Server zu bekommen.';
+    const panelTitle = (formData.get('panel_title') as string | null)?.trim() || null;
+    const panelColorRaw = (formData.get('panel_color') as string | null)?.trim() || null;
+    const panelColor =
+      panelColorRaw && /^#?[0-9a-f]{6}$/i.test(panelColorRaw)
+        ? parseInt(panelColorRaw.replace('#', ''), 16)
+        : null;
+    const buttonLabel =
+      (formData.get('button_label') as string | null)?.trim() || null;
+    const buttonEmoji =
+      (formData.get('button_emoji') as string | null)?.trim() || null;
+    const buttonStyleRaw =
+      (formData.get('button_style') as string | null)?.trim() || 'primary';
+    const buttonStyle = ['primary', 'secondary', 'success', 'danger'].includes(
+      buttonStyleRaw,
+    )
+      ? buttonStyleRaw
+      : 'primary';
 
     if (enabled && (!channelId || !roleId)) {
       return {
@@ -526,6 +544,11 @@ export async function updateVerifyConfig(
         verify_channel_id: channelId,
         verify_role_id: roleId,
         verify_message: message,
+        verify_panel_title: panelTitle,
+        verify_panel_color: panelColor,
+        verify_button_label: buttonLabel,
+        verify_button_emoji: buttonEmoji,
+        verify_button_style: buttonStyle,
         updated_at: new Date().toISOString(),
       })
       .eq('guild_id', guildId);
@@ -537,6 +560,30 @@ export async function updateVerifyConfig(
   }
 }
 
+const STYLE_TO_NUM: Record<string, number> = {
+  primary: 1,
+  secondary: 2,
+  success: 3,
+  danger: 4,
+};
+
+function parseButtonEmoji(
+  raw: string | null,
+): { id?: string; name?: string; animated?: boolean } | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  // Custom-Emoji-Format: <:name:id> oder <a:name:id>
+  const customMatch = trimmed.match(/^<(a?):([\w~]+):(\d+)>$/);
+  if (customMatch) {
+    const [, animated, name, id] = customMatch;
+    return { id, name, animated: animated === 'a' };
+  }
+  // Unicode-Emoji — Discord akzeptiert nur „echte" Emojis,
+  // keine Unicode-Symbole wie ✓. Wir geben den String direkt durch.
+  return { name: trimmed };
+}
+
 export async function postVerifyPanel(
   guildId: string,
 ): Promise<{ ok: boolean; error?: string; messageId?: string }> {
@@ -545,7 +592,9 @@ export async function postVerifyPanel(
     const admin = createAdminClient();
     const { data: row } = await admin
       .from('bot_guilds')
-      .select('verify_channel_id, verify_message, verify_panel_message_id')
+      .select(
+        'verify_channel_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style',
+      )
       .eq('guild_id', guildId)
       .maybeSingle();
     if (!row?.verify_channel_id) {
@@ -555,6 +604,15 @@ export async function postVerifyPanel(
     const message =
       (row.verify_message as string | null) ??
       'Klick auf **Verifizieren**, um Zugriff zu bekommen.';
+    const title =
+      (row.verify_panel_title as string | null) ?? '🛡️ Verifizierung';
+    const color = (row.verify_panel_color as number | null) ?? 0x5865f2;
+    const buttonLabel =
+      (row.verify_button_label as string | null) ?? 'Verifizieren';
+    const buttonEmojiRaw = (row.verify_button_emoji as string | null) ?? null;
+    const buttonStyleStr =
+      (row.verify_button_style as string | null) ?? 'primary';
+    const buttonStyle = STYLE_TO_NUM[buttonStyleStr] ?? 1;
 
     // Alte Panel-Nachricht löschen, falls vorhanden.
     if (row.verify_panel_message_id) {
@@ -563,26 +621,27 @@ export async function postVerifyPanel(
       );
     }
 
+    const buttonComponent: Record<string, unknown> = {
+      type: 2,
+      style: buttonStyle,
+      custom_id: 'verify:btn',
+      label: buttonLabel,
+    };
+    const emoji = parseButtonEmoji(buttonEmojiRaw);
+    if (emoji) buttonComponent.emoji = emoji;
+
     const payload = {
       embeds: [
         {
-          title: '🛡️  Verifizierung',
+          title,
           description: message,
-          color: 0x5865f2,
+          color,
         },
       ],
       components: [
         {
           type: 1,
-          components: [
-            {
-              type: 2,
-              style: 1,
-              custom_id: 'verify:btn',
-              label: 'Verifizieren',
-              emoji: { name: '✓' },
-            },
-          ],
+          components: [buttonComponent],
         },
       ],
     };
@@ -869,6 +928,19 @@ export async function rerollGiveawayFromWeb(
     }
     revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true, winners };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function refreshGuildCache(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    invalidateGuildCache(guildId);
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
   }

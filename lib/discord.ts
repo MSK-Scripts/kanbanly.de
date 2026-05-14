@@ -183,9 +183,8 @@ async function discordGet<T>(path: string, token: string, tokenKind: 'Bot' | 'Be
   return (await res.json()) as T;
 }
 
-// Bot-Token Channel/Role-Lookups cachen — Discord Gateway hat das eigentlich live,
-// aber wir gehen den REST-Weg, also cachen wir aggressiv (5min).
-// Hintergrund-Updates via Bot-Gateway-Events sind ein späteres TODO.
+// Channel/Role-Lookups: 60s Cache — kurz genug dass neue Channels/Rollen schnell auftauchen,
+// lang genug um Rate-Limits zu vermeiden bei Tab-Wechseln.
 const guildChannelsCache = new Map<
   string,
   { value: DiscordChannel[]; expires: number }
@@ -194,7 +193,7 @@ const guildRolesCache = new Map<
   string,
   { value: DiscordRole[]; expires: number }
 >();
-const GUILD_DATA_TTL_MS = 5 * 60_000;
+const GUILD_DATA_TTL_MS = 60_000;
 
 export function invalidateGuildCache(guildId: string): void {
   guildChannelsCache.delete(guildId);

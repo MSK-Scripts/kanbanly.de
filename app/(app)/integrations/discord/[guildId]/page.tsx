@@ -125,6 +125,11 @@ type LoadResult =
         roleId: string | null;
         message: string | null;
         panelMessageId: string | null;
+        panelTitle: string | null;
+        panelColor: number | null;
+        buttonLabel: string | null;
+        buttonEmoji: string | null;
+        buttonStyle: 'primary' | 'secondary' | 'success' | 'danger';
       };
       antiraid: {
         enabled: boolean;
@@ -182,7 +187,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow, error: guildRowError } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -374,6 +379,17 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       roleId: (guildRow.verify_role_id as string | null) ?? null,
       message: (guildRow.verify_message as string | null) ?? null,
       panelMessageId: (guildRow.verify_panel_message_id as string | null) ?? null,
+      panelTitle: (guildRow.verify_panel_title as string | null) ?? null,
+      panelColor: (guildRow.verify_panel_color as number | null) ?? null,
+      buttonLabel: (guildRow.verify_button_label as string | null) ?? null,
+      buttonEmoji: (guildRow.verify_button_emoji as string | null) ?? null,
+      buttonStyle:
+        ((guildRow.verify_button_style as
+          | 'primary'
+          | 'secondary'
+          | 'success'
+          | 'danger'
+          | null) ?? 'primary'),
     },
     antiraid: {
       enabled: Boolean(guildRow.antiraid_enabled),
@@ -636,6 +652,11 @@ function GuildSettingsView({
     roleId: string | null;
     message: string | null;
     panelMessageId: string | null;
+    panelTitle: string | null;
+    panelColor: number | null;
+    buttonLabel: string | null;
+    buttonEmoji: string | null;
+    buttonStyle: 'primary' | 'secondary' | 'success' | 'danger';
   };
   antiraid: {
     enabled: boolean;
