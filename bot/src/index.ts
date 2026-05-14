@@ -16,6 +16,10 @@ import { registerSticky } from './events/sticky.js';
 import { registerChannelMode } from './events/channelMode.js';
 import { startChannelModeRealtime } from './db/channelModes.js';
 import { registerRrInteractions } from './events/rrInteractions.js';
+import { registerVerify } from './events/verify.js';
+import { registerAntiRaid } from './events/antiraid.js';
+import { registerGiveawayButtons } from './events/giveawayButtons.js';
+import { startGiveawayScheduler } from './events/giveawayScheduler.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -81,6 +85,10 @@ registerSticky(client);
 registerChannelMode(client);
 registerRrInteractions(client);
 startChannelModeRealtime();
+registerVerify(client);
+registerAntiRaid(client);
+registerGiveawayButtons(client);
+startGiveawayScheduler(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

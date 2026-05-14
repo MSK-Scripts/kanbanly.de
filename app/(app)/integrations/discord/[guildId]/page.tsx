@@ -27,6 +27,9 @@ import { ChannelModesForm } from '@/components/ChannelModesForm';
 import { EmbedCreatorForm } from '@/components/EmbedCreatorForm';
 import { ReactionRolesManager } from '@/components/ReactionRolesManager';
 import { ModuleOverview } from '@/components/ModuleOverview';
+import { VerifyForm } from '@/components/VerifyForm';
+import { AntiRaidForm } from '@/components/AntiRaidForm';
+import { GiveawaysForm } from '@/components/GiveawaysForm';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
@@ -116,6 +119,31 @@ type LoadResult =
         footer: string | null;
         imageUrl: string | null;
       }>;
+      verify: {
+        enabled: boolean;
+        channelId: string | null;
+        roleId: string | null;
+        message: string | null;
+        panelMessageId: string | null;
+      };
+      antiraid: {
+        enabled: boolean;
+        joinThreshold: number;
+        joinWindowSec: number;
+        action: 'alert' | 'kick' | 'lockdown';
+        alertChannelId: string | null;
+      };
+      giveaways: Array<{
+        id: string;
+        channelId: string;
+        messageId: string | null;
+        prize: string;
+        winnersCount: number;
+        endsAt: string;
+        ended: boolean;
+        winnerUserIds: string[] | null;
+        entriesCount: number;
+      }>;
     };
 
 async function load(userId: string, guildId: string): Promise<LoadResult> {
@@ -154,7 +182,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow, error: guildRowError } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -267,6 +295,40 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     imageUrl: (r.image_url as string | null) ?? null,
   }));
 
+  const { data: giveawayRaw } = await admin
+    .from('bot_giveaways')
+    .select('id, channel_id, message_id, prize, winners_count, ends_at, ended, winner_user_ids')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  const gwIds = (giveawayRaw ?? []).map((r) => r.id as string);
+  const gwCount = new Map<string, number>();
+  if (gwIds.length) {
+    const { data: ents } = await admin
+      .from('bot_giveaway_entries')
+      .select('giveaway_id')
+      .in('giveaway_id', gwIds);
+    for (const e of ents ?? []) {
+      const id = e.giveaway_id as string;
+      gwCount.set(id, (gwCount.get(id) ?? 0) + 1);
+    }
+  }
+  const giveaways = (giveawayRaw ?? []).map((r) => ({
+    id: r.id as string,
+    channelId: r.channel_id as string,
+    messageId: (r.message_id as string | null) ?? null,
+    prize: r.prize as string,
+    winnersCount: r.winners_count as number,
+    endsAt: r.ends_at as string,
+    ended: Boolean(r.ended),
+    winnerUserIds: Array.isArray(r.winner_user_ids)
+      ? (r.winner_user_ids as unknown[]).filter(
+          (v): v is string => typeof v === 'string',
+        )
+      : null,
+    entriesCount: gwCount.get(r.id as string) ?? 0,
+  }));
+
   const reactionRoleMessages = (rrMsgRaw ?? []).map((m) => ({
     messageId: m.message_id as string,
     channelId: m.channel_id as string,
@@ -306,6 +368,24 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     channelModes,
     reactionRoleMessages,
     embedTemplates,
+    verify: {
+      enabled: Boolean(guildRow.verify_enabled),
+      channelId: (guildRow.verify_channel_id as string | null) ?? null,
+      roleId: (guildRow.verify_role_id as string | null) ?? null,
+      message: (guildRow.verify_message as string | null) ?? null,
+      panelMessageId: (guildRow.verify_panel_message_id as string | null) ?? null,
+    },
+    antiraid: {
+      enabled: Boolean(guildRow.antiraid_enabled),
+      joinThreshold: (guildRow.antiraid_join_threshold as number | null) ?? 5,
+      joinWindowSec: (guildRow.antiraid_join_window_sec as number | null) ?? 10,
+      action:
+        ((guildRow.antiraid_action as 'alert' | 'kick' | 'lockdown' | null) ??
+          'alert'),
+      alertChannelId:
+        (guildRow.antiraid_alert_channel_id as string | null) ?? null,
+    },
+    giveaways,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
       roleIds: autoRoleIds,
@@ -444,6 +524,9 @@ export default async function GuildSettingsPage({
             levelRewards={result.levelRewards}
             automod={result.automod}
             embedTemplates={result.embedTemplates}
+            verify={result.verify}
+            antiraid={result.antiraid}
+            giveaways={result.giveaways}
           />
         )}
       </div>
@@ -468,6 +551,9 @@ function GuildSettingsView({
   levelRewards,
   automod,
   embedTemplates,
+  verify,
+  antiraid,
+  giveaways,
 }: {
   guildName: string;
   guildId: string;
@@ -543,6 +629,31 @@ function GuildSettingsView({
     color: number | null;
     footer: string | null;
     imageUrl: string | null;
+  }>;
+  verify: {
+    enabled: boolean;
+    channelId: string | null;
+    roleId: string | null;
+    message: string | null;
+    panelMessageId: string | null;
+  };
+  antiraid: {
+    enabled: boolean;
+    joinThreshold: number;
+    joinWindowSec: number;
+    action: 'alert' | 'kick' | 'lockdown';
+    alertChannelId: string | null;
+  };
+  giveaways: Array<{
+    id: string;
+    channelId: string;
+    messageId: string | null;
+    prize: string;
+    winnersCount: number;
+    endsAt: string;
+    ended: boolean;
+    winnerUserIds: string[] | null;
+    entriesCount: number;
   }>;
 }) {
   const moduleDefs = [
@@ -635,6 +746,36 @@ function GuildSettingsView({
       tab: 'embed',
       enabled: false,
       toggleable: false,
+      isNew: true,
+    },
+    {
+      key: 'verify' as const,
+      name: 'Verifizierung',
+      description: 'Button-Verify schützt vor Selfbots — neue Member klicken, um die Verified-Rolle zu bekommen.',
+      tab: 'verify',
+      enabled: verify.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'antiraid' as const,
+      name: 'Anti-Raid',
+      description: 'Burst-Detection: X Joins in Y Sekunden → Alert, Kick oder Lockdown.',
+      tab: 'antiraid',
+      enabled: antiraid.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'giveaways' as const,
+      name: 'Giveaways',
+      description: 'Verlose Preise mit Button-Teilnahme, automatischem Ende und Reroll.',
+      tab: 'giveaways',
+      enabled: giveaways.some((g) => !g.ended),
+      toggleable: false,
+      count: giveaways.some((g) => !g.ended)
+        ? giveaways.filter((g) => !g.ended).length
+        : undefined,
       isNew: true,
     },
   ];
@@ -757,6 +898,38 @@ function GuildSettingsView({
           channels={channels}
           initialTemplates={embedTemplates}
         />
+      ),
+    },
+    {
+      id: 'verify',
+      label: 'Verifizierung',
+      icon: '🛡️',
+      description: 'Button-Verify — schützt vor Selfbots und Raid-Accounts.',
+      content: (
+        <VerifyForm
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initial={verify}
+        />
+      ),
+    },
+    {
+      id: 'antiraid',
+      label: 'Anti-Raid',
+      icon: '🚨',
+      description: 'Burst-Detection: X Joins in Y Sekunden → Alert/Kick/Lockdown.',
+      content: (
+        <AntiRaidForm guildId={guildId} channels={channels} initial={antiraid} />
+      ),
+    },
+    {
+      id: 'giveaways',
+      label: 'Giveaways',
+      icon: '🎉',
+      description: 'Preise verlosen mit Button-Teilnahme und automatischem Ende.',
+      content: (
+        <GiveawaysForm guildId={guildId} channels={channels} initial={giveaways} />
       ),
     },
   ];

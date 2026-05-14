@@ -38,6 +38,11 @@ const command: SlashCommand = {
             '`/ticket panel create` · Button-Panel zum Ticket-Öffnen\n`/ticket close` · Ticket schließen\n`/serverstats add|remove|list` · Live-Counter in Voice-Channels',
         },
         {
+          name: '🎉 Events',
+          value:
+            '`/giveaway start prize:… duration:… [winners:…]` · Giveaway starten\n`/giveaway end id:…` · sofort beenden\n`/giveaway reroll id:…` · neue Gewinner auslosen',
+        },
+        {
           name: '🌐 Dashboard',
           value:
             'Web öffnen: [kanbanly.de/integrations/discord](https://kanbanly.de/integrations/discord)\nDort: AutoMod, Logging, Auto-Roles, Welcome, Levels & mehr konfigurieren.',

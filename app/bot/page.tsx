@@ -183,6 +183,33 @@ const MODULES: Module[] = [
     features: ['Live-Preview', '6 Farbpresets', 'Markdown'],
     accent: 'from-purple-500/30 to-indigo-500/15 text-purple-500',
   },
+  {
+    id: 'verify',
+    icon: '🛡️',
+    title: 'Verifizierung',
+    description:
+      'Button-Verify schützt vor Selfbots — neue Member klicken, um die Verified-Rolle zu bekommen.',
+    features: ['Button-Panel', 'Verified-Rolle', 'Anti-Selfbot'],
+    accent: 'from-blue-500/30 to-sky-500/15 text-blue-500',
+  },
+  {
+    id: 'antiraid',
+    icon: '🚨',
+    title: 'Anti-Raid',
+    description:
+      'Erkennt Burst-Joins (X Mitglieder in Y Sekunden) und reagiert automatisch.',
+    features: ['Burst-Detection', 'Alert / Kick / Lockdown', 'Alert-Channel'],
+    accent: 'from-red-500/30 to-orange-500/15 text-red-500',
+  },
+  {
+    id: 'giveaways',
+    icon: '🎉',
+    title: 'Giveaways',
+    description:
+      'Verlose Preise mit Button-Teilnahme, automatischem Ende und Reroll-Funktion.',
+    features: ['Button-Join', 'Auto-Ende', 'Reroll'],
+    accent: 'from-fuchsia-500/30 to-pink-500/15 text-fuchsia-500',
+  },
 ];
 
 const COMMANDS: Array<{ name: string; description: string }> = [
@@ -202,6 +229,7 @@ const COMMANDS: Array<{ name: string; description: string }> = [
   { name: '/reactionroles add', description: 'Reaction-Rolle einrichten.' },
   { name: '/slowmode 30', description: 'Slowmode im Channel setzen.' },
   { name: '/roleall @rolle', description: 'Rolle an alle Mitglieder.' },
+  { name: '/giveaway start', description: 'Giveaway mit Button-Teilnahme starten.' },
 ];
 
 export default async function BotLandingPage() {
@@ -311,8 +339,8 @@ export default async function BotLandingPage() {
             </div>
 
             <div className="mt-12 grid grid-cols-3 gap-4 max-w-md mx-auto text-center">
-              <HeroStat value="18" label="Module" />
-              <HeroStat value="19" label="Commands" />
+              <HeroStat value="21" label="Module" />
+              <HeroStat value="20" label="Commands" />
               <HeroStat value="0 €" label="Forever" />
             </div>
           </div>

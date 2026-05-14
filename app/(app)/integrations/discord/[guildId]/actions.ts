@@ -497,6 +497,383 @@ export async function sendBotEmbed(
   }
 }
 
+// ============== Verifizierung ==============
+
+export async function updateVerifyConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const roleId = (formData.get('role_id') as string | null)?.trim() || null;
+    const message =
+      (formData.get('message') as string | null)?.trim() ||
+      'Willkommen! Klick auf den Button unten, um dich zu verifizieren und Zugriff auf den Server zu bekommen.';
+
+    if (enabled && (!channelId || !roleId)) {
+      return {
+        ok: false,
+        error: 'Channel und Rolle sind nötig, wenn Verifizierung aktiv ist.',
+      };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        verify_enabled: enabled,
+        verify_channel_id: channelId,
+        verify_role_id: roleId,
+        verify_message: message,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function postVerifyPanel(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; messageId?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: row } = await admin
+      .from('bot_guilds')
+      .select('verify_channel_id, verify_message, verify_panel_message_id')
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!row?.verify_channel_id) {
+      return { ok: false, error: 'Kein Channel konfiguriert.' };
+    }
+    const channelId = row.verify_channel_id as string;
+    const message =
+      (row.verify_message as string | null) ??
+      'Klick auf **Verifizieren**, um Zugriff zu bekommen.';
+
+    // Alte Panel-Nachricht löschen, falls vorhanden.
+    if (row.verify_panel_message_id) {
+      await deleteMessage(channelId, row.verify_panel_message_id as string).catch(
+        () => {},
+      );
+    }
+
+    const payload = {
+      embeds: [
+        {
+          title: '🛡️  Verifizierung',
+          description: message,
+          color: 0x5865f2,
+        },
+      ],
+      components: [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 1,
+              custom_id: 'verify:btn',
+              label: 'Verifizieren',
+              emoji: { name: '✓' },
+            },
+          ],
+        },
+      ],
+    };
+    const posted = await postMessage(channelId, payload);
+    await admin
+      .from('bot_guilds')
+      .update({ verify_panel_message_id: posted.id })
+      .eq('guild_id', guildId);
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, messageId: posted.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Anti-Raid ==============
+
+export async function updateAntiRaidConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const threshold = Math.max(
+      2,
+      Math.min(50, parseInt(String(formData.get('threshold') ?? '5'), 10) || 5),
+    );
+    const windowSec = Math.max(
+      5,
+      Math.min(
+        300,
+        parseInt(String(formData.get('window_sec') ?? '10'), 10) || 10,
+      ),
+    );
+    const action = String(formData.get('action') ?? 'alert');
+    if (!['alert', 'kick', 'lockdown'].includes(action)) {
+      return { ok: false, error: 'Ungültige Aktion.' };
+    }
+    const alertChannelId =
+      (formData.get('alert_channel_id') as string | null)?.trim() || null;
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        antiraid_enabled: enabled,
+        antiraid_join_threshold: threshold,
+        antiraid_join_window_sec: windowSec,
+        antiraid_action: action,
+        antiraid_alert_channel_id: alertChannelId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Giveaways ==============
+
+export type GiveawayRow = {
+  id: string;
+  channelId: string;
+  messageId: string | null;
+  prize: string;
+  winnersCount: number;
+  endsAt: string;
+  ended: boolean;
+  winnerUserIds: string[] | null;
+  entriesCount: number;
+};
+
+export async function listGuildGiveaways(
+  guildId: string,
+): Promise<{ ok: boolean; error?: string; giveaways?: GiveawayRow[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: rows, error } = await admin
+      .from('bot_giveaways')
+      .select('id, channel_id, message_id, prize, winners_count, ends_at, ended, winner_user_ids')
+      .eq('guild_id', guildId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    const ids = (rows ?? []).map((r) => r.id as string);
+    const countMap = new Map<string, number>();
+    if (ids.length) {
+      const { data: entries } = await admin
+        .from('bot_giveaway_entries')
+        .select('giveaway_id')
+        .in('giveaway_id', ids);
+      for (const e of entries ?? []) {
+        const id = e.giveaway_id as string;
+        countMap.set(id, (countMap.get(id) ?? 0) + 1);
+      }
+    }
+    return {
+      ok: true,
+      giveaways: (rows ?? []).map((r) => ({
+        id: r.id as string,
+        channelId: r.channel_id as string,
+        messageId: (r.message_id as string | null) ?? null,
+        prize: r.prize as string,
+        winnersCount: r.winners_count as number,
+        endsAt: r.ends_at as string,
+        ended: Boolean(r.ended),
+        winnerUserIds: Array.isArray(r.winner_user_ids)
+          ? (r.winner_user_ids as unknown[]).filter(
+              (v): v is string => typeof v === 'string',
+            )
+          : null,
+        entriesCount: countMap.get(r.id as string) ?? 0,
+      })),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function createGiveawayFromWeb(
+  guildId: string,
+  input: {
+    channelId: string;
+    prize: string;
+    winnersCount: number;
+    durationMs: number;
+  },
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    const { userId } = await assertCanManage(guildId);
+    if (!input.prize.trim() || input.prize.length > 200) {
+      return { ok: false, error: 'Preis fehlt oder ist zu lang.' };
+    }
+    if (input.winnersCount < 1 || input.winnersCount > 20) {
+      return { ok: false, error: 'Gewinner-Anzahl muss zwischen 1 und 20 sein.' };
+    }
+    if (input.durationMs < 30_000 || input.durationMs > 30 * 86400 * 1000) {
+      return { ok: false, error: 'Dauer muss zwischen 30s und 30 Tagen liegen.' };
+    }
+    const endsAt = new Date(Date.now() + input.durationMs);
+    const admin = createAdminClient();
+    const { data: gw, error: insErr } = await admin
+      .from('bot_giveaways')
+      .insert({
+        guild_id: guildId,
+        channel_id: input.channelId,
+        prize: input.prize.trim(),
+        winners_count: input.winnersCount,
+        ends_at: endsAt.toISOString(),
+        created_by_user_id: userId,
+      })
+      .select('id')
+      .single();
+    if (insErr || !gw) throw insErr ?? new Error('Insert fehlgeschlagen.');
+
+    const endsAtUnix = Math.floor(endsAt.getTime() / 1000);
+    const payload = {
+      embeds: [
+        {
+          title: `🎉  ${input.prize.trim()}`,
+          description: [
+            `Endet: <t:${endsAtUnix}:R>`,
+            `Gewinner: **${input.winnersCount}**`,
+            `Teilnehmer: **0**`,
+            '',
+            'Klick auf **Teilnehmen**, um mitzumachen.',
+          ].join('\n'),
+          color: 0xa855f7,
+        },
+      ],
+      components: [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 1,
+              custom_id: `gw:join:${gw.id}`,
+              label: 'Teilnehmen',
+              emoji: { name: '🎉' },
+            },
+          ],
+        },
+      ],
+    };
+
+    try {
+      const posted = await postMessage(input.channelId, payload);
+      await admin
+        .from('bot_giveaways')
+        .update({ message_id: posted.id })
+        .eq('id', gw.id);
+    } catch (err) {
+      // Cleanup: das Giveaway-Row ohne Message ist nutzlos.
+      await admin.from('bot_giveaways').delete().eq('id', gw.id);
+      return {
+        ok: false,
+        error: `Discord-Post fehlgeschlagen: ${
+          err instanceof Error ? err.message : 'unbekannt'
+        }`,
+      };
+    }
+
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: gw.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function endGiveawayFromWeb(
+  guildId: string,
+  giveawayId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    // Setze ends_at auf jetzt — der Scheduler endet es innerhalb 30s.
+    const { error } = await admin
+      .from('bot_giveaways')
+      .update({ ends_at: new Date().toISOString() })
+      .eq('id', giveawayId)
+      .eq('guild_id', guildId)
+      .eq('ended', false);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function rerollGiveawayFromWeb(
+  guildId: string,
+  giveawayId: string,
+): Promise<{ ok: boolean; error?: string; winners?: string[] }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: gw } = await admin
+      .from('bot_giveaways')
+      .select('id, channel_id, message_id, prize, winners_count, ends_at, ended')
+      .eq('id', giveawayId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!gw) return { ok: false, error: 'Giveaway nicht gefunden.' };
+    if (!gw.ended) return { ok: false, error: 'Giveaway läuft noch — erst beenden.' };
+
+    const { data: entries } = await admin
+      .from('bot_giveaway_entries')
+      .select('user_id')
+      .eq('giveaway_id', giveawayId);
+    const pool = (entries ?? []).map((r) => r.user_id as string);
+    const count = (gw.winners_count as number) ?? 1;
+    const winners: string[] = [];
+    const remaining = [...pool];
+    for (let i = 0; i < count && remaining.length > 0; i++) {
+      const idx = Math.floor(Math.random() * remaining.length);
+      winners.push(remaining[idx]);
+      remaining.splice(idx, 1);
+    }
+    await admin
+      .from('bot_giveaways')
+      .update({ winner_user_ids: winners })
+      .eq('id', giveawayId);
+
+    // Posting im Channel.
+    if (gw.channel_id) {
+      const winnersTxt = winners.length
+        ? winners.map((u) => `<@${u}>`).join(' · ')
+        : '_Keine Teilnehmer_';
+      try {
+        await postMessage(gw.channel_id as string, {
+          content: `🎲 **Reroll**: ${winnersTxt} hat **${gw.prize}** gewonnen!`,
+        });
+      } catch (err) {
+        console.error('[giveaway/reroll post]', err);
+      }
+    }
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, winners };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
 // ============== Modul-Toggle (Übersicht) ==============
 
 type ModuleKey =
@@ -509,7 +886,10 @@ type ModuleKey =
   | 'booster'
   | 'sticky'
   | 'channelmodes'
-  | 'embed';
+  | 'embed'
+  | 'verify'
+  | 'antiraid'
+  | 'giveaways';
 
 export async function toggleBotModule(
   guildId: string,
@@ -536,6 +916,12 @@ export async function toggleBotModule(
         break;
       case 'booster':
         patch.booster_enabled = enabled;
+        break;
+      case 'verify':
+        patch.verify_enabled = enabled;
+        break;
+      case 'antiraid':
+        patch.antiraid_enabled = enabled;
         break;
       default:
         return {
