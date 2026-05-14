@@ -21,6 +21,7 @@ import roleall from './roleall.js';
 import giveaway from './giveaway.js';
 import birthday from './birthday.js';
 import suggest from './suggest.js';
+import guess from './guess.js';
 
 export const commands: SlashCommand[] = [
   ping,
@@ -45,5 +46,6 @@ export const commands: SlashCommand[] = [
   giveaway,
   birthday,
   suggest,
+  guess,
 ];
 export const commandMap = new Map(commands.map((c) => [c.data.name, c]));

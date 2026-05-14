@@ -27,6 +27,8 @@ import { registerSuggestions } from './events/suggestions.js';
 import { registerInviteTracker } from './events/inviteTracker.js';
 import { registerHelpdesk } from './events/helpdesk.js';
 import { registerTempVoice } from './events/tempVoice.js';
+import { startDailyImageScheduler } from './events/dailyImageScheduler.js';
+import { startTeamlistScheduler } from './events/teamlistScheduler.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -105,6 +107,8 @@ registerSuggestions(client);
 registerInviteTracker(client);
 registerHelpdesk(client);
 registerTempVoice(client);
+startDailyImageScheduler(client);
+startTeamlistScheduler(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

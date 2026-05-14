@@ -27,7 +27,9 @@ export type ModuleKey =
   | 'suggestions'
   | 'invitetracker'
   | 'helpdesk'
-  | 'tempvoice';
+  | 'tempvoice'
+  | 'dailyimage'
+  | 'teamlist';
 
 type ModuleDef = {
   key: ModuleKey;

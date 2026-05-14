@@ -39,6 +39,7 @@ import {
 } from '@/components/Phase2FinishForms';
 import { HelpdeskForm } from '@/components/HelpdeskForm';
 import { TempVoiceForm } from '@/components/TempVoiceForm';
+import { DailyImageForm, TeamlistsForm } from '@/components/QuickWinsForms';
 import type { EmbedTemplate, MessagePayloadV2 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
@@ -194,6 +195,20 @@ type LoadResult =
         nameTemplate: string | null;
         defaultLimit: number;
       };
+      dailyImage: {
+        enabled: boolean;
+        channelId: string | null;
+        hour: number;
+        urls: string[];
+      };
+      teamlists: Array<{
+        id: string;
+        channelId: string;
+        messageId: string | null;
+        title: string;
+        roleIds: string[];
+        color: number | null;
+      }>;
       giveaways: Array<{
         id: string;
         channelId: string;
@@ -243,7 +258,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow, error: guildRowError } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, verify_reply_success, verify_reply_already, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id, birthday_enabled, birthday_channel_id, birthday_message, role_badges_enabled, afk_enabled, afk_channel_id, afk_timeout_minutes, suggestions_enabled, suggestions_channel_id, suggestions_mod_role_id, invite_tracker_enabled, tempvoice_enabled, tempvoice_creator_channel_id, tempvoice_category_id, tempvoice_name_template, tempvoice_default_limit',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words, verify_enabled, verify_channel_id, verify_role_id, verify_message, verify_panel_message_id, verify_panel_title, verify_panel_color, verify_button_label, verify_button_emoji, verify_button_style, verify_reply_success, verify_reply_already, antiraid_enabled, antiraid_join_threshold, antiraid_join_window_sec, antiraid_action, antiraid_alert_channel_id, birthday_enabled, birthday_channel_id, birthday_message, role_badges_enabled, afk_enabled, afk_channel_id, afk_timeout_minutes, suggestions_enabled, suggestions_channel_id, suggestions_mod_role_id, invite_tracker_enabled, tempvoice_enabled, tempvoice_creator_channel_id, tempvoice_category_id, tempvoice_name_template, tempvoice_default_limit, daily_image_enabled, daily_image_channel_id, daily_image_hour, daily_image_urls',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -482,6 +497,22 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     items: itemsByPanel.get(p.id as string) ?? [],
   }));
 
+  const { data: teamlistsRaw } = await admin
+    .from('bot_teamlists')
+    .select('id, channel_id, message_id, title, role_ids, color')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false });
+  const teamlists = (teamlistsRaw ?? []).map((r) => ({
+    id: r.id as string,
+    channelId: r.channel_id as string,
+    messageId: (r.message_id as string | null) ?? null,
+    title: (r.title as string) ?? 'Team',
+    roleIds: Array.isArray(r.role_ids)
+      ? (r.role_ids as unknown[]).filter((v): v is string => typeof v === 'string')
+      : [],
+    color: (r.color as number | null) ?? null,
+  }));
+
   const reactionRoleMessages = (rrMsgRaw ?? []).map((m) => ({
     messageId: m.message_id as string,
     channelId: m.channel_id as string,
@@ -580,6 +611,17 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       nameTemplate: (guildRow.tempvoice_name_template as string | null) ?? null,
       defaultLimit: (guildRow.tempvoice_default_limit as number | null) ?? 0,
     },
+    dailyImage: {
+      enabled: Boolean(guildRow.daily_image_enabled),
+      channelId: (guildRow.daily_image_channel_id as string | null) ?? null,
+      hour: (guildRow.daily_image_hour as number | null) ?? 9,
+      urls: Array.isArray(guildRow.daily_image_urls)
+        ? (guildRow.daily_image_urls as unknown[]).filter(
+            (v): v is string => typeof v === 'string',
+          )
+        : [],
+    },
+    teamlists,
     giveaways,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
@@ -732,6 +774,8 @@ export default async function GuildSettingsPage({
             inviteTrackerEnabled={result.inviteTrackerEnabled}
             helpdeskPanels={result.helpdeskPanels}
             tempvoice={result.tempvoice}
+            dailyImage={result.dailyImage}
+            teamlists={result.teamlists}
           />
         )}
       </div>
@@ -769,6 +813,8 @@ function GuildSettingsView({
   inviteTrackerEnabled,
   helpdeskPanels,
   tempvoice,
+  dailyImage,
+  teamlists,
 }: {
   guildName: string;
   guildId: string;
@@ -918,6 +964,20 @@ function GuildSettingsView({
     nameTemplate: string | null;
     defaultLimit: number;
   };
+  dailyImage: {
+    enabled: boolean;
+    channelId: string | null;
+    hour: number;
+    urls: string[];
+  };
+  teamlists: Array<{
+    id: string;
+    channelId: string;
+    messageId: string | null;
+    title: string;
+    roleIds: string[];
+    color: number | null;
+  }>;
 }) {
   const moduleDefs = [
     {
@@ -1103,6 +1163,25 @@ function GuildSettingsView({
       tab: 'tempvoice',
       enabled: tempvoice.enabled,
       toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'dailyimage' as const,
+      name: 'Bild des Tages',
+      description: 'Bot postet täglich ein Bild aus einer URL-Liste — Rotation pro Tag.',
+      tab: 'dailyimage',
+      enabled: dailyImage.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'teamlist' as const,
+      name: 'Teamlisten',
+      description: 'Auto-aktualisierende Embeds mit Members pro Rolle — alle 30 Min.',
+      tab: 'teamlist',
+      enabled: teamlists.length > 0,
+      toggleable: false,
+      count: teamlists.length > 0 ? teamlists.length : undefined,
       isNew: true,
     },
   ];
@@ -1337,6 +1416,29 @@ function GuildSettingsView({
       icon: '🔊',
       description: 'Persönliche Voice-Channels auf Knopfdruck.',
       content: <TempVoiceForm guildId={guildId} initial={tempvoice} />,
+    },
+    {
+      id: 'dailyimage',
+      label: 'Bild des Tages',
+      icon: '',
+      description: 'Tägliches Bild zur konfigurierten Stunde.',
+      content: (
+        <DailyImageForm guildId={guildId} channels={channels} initial={dailyImage} />
+      ),
+    },
+    {
+      id: 'teamlist',
+      label: 'Teamlisten',
+      icon: '',
+      description: 'Auto-aktualisierende Embeds mit Team-Mitgliedern.',
+      content: (
+        <TeamlistsForm
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initial={teamlists}
+        />
+      ),
     },
   ];
 

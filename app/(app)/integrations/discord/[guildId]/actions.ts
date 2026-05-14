@@ -1920,6 +1920,155 @@ export async function updateTempVoiceConfig(
   }
 }
 
+// ============== Bild des Tages ==============
+
+export async function updateDailyImageConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const hour = Math.max(
+      0,
+      Math.min(23, parseInt(String(formData.get('hour') ?? '9'), 10) || 9),
+    );
+    const urlsRaw = String(formData.get('urls') ?? '');
+    const urls = urlsRaw
+      .split('\n')
+      .map((s) => s.trim())
+      .filter((s) => /^https?:\/\//i.test(s))
+      .slice(0, 365);
+    if (enabled && (!channelId || urls.length === 0)) {
+      return { ok: false, error: 'Channel und mindestens eine URL nötig.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        daily_image_enabled: enabled,
+        daily_image_channel_id: channelId,
+        daily_image_hour: hour,
+        daily_image_urls: urls,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Teamlisten ==============
+
+export type TeamlistRow = {
+  id: string;
+  channelId: string;
+  messageId: string | null;
+  title: string;
+  roleIds: string[];
+  color: number | null;
+};
+
+export async function createTeamlist(
+  guildId: string,
+  input: {
+    channelId: string;
+    title: string;
+    roleIds: string[];
+    color: number | null;
+  },
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (!input.channelId || !input.title.trim() || input.roleIds.length === 0) {
+      return { ok: false, error: 'Channel, Titel, mindestens eine Rolle nötig.' };
+    }
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('bot_teamlists')
+      .insert({
+        guild_id: guildId,
+        channel_id: input.channelId,
+        title: input.title.trim().slice(0, 100),
+        role_ids: input.roleIds,
+        color: input.color ?? null,
+      })
+      .select('id')
+      .single();
+    if (error || !data) throw error ?? new Error('Insert fehlgeschlagen.');
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, id: data.id as string };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updateTeamlist(
+  guildId: string,
+  id: string,
+  input: {
+    title: string;
+    roleIds: string[];
+    color: number | null;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_teamlists')
+      .update({
+        title: input.title.trim().slice(0, 100),
+        role_ids: input.roleIds,
+        color: input.color ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteTeamlist(
+  guildId: string,
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: row } = await admin
+      .from('bot_teamlists')
+      .select('channel_id, message_id')
+      .eq('id', id)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (row?.message_id) {
+      await deleteMessage(
+        row.channel_id as string,
+        row.message_id as string,
+      ).catch(() => {});
+    }
+    const { error } = await admin
+      .from('bot_teamlists')
+      .delete()
+      .eq('id', id)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
 // ============== Modul-Toggle (Übersicht) ==============
 
 type ModuleKey =
@@ -1942,7 +2091,8 @@ type ModuleKey =
   | 'suggestions'
   | 'invitetracker'
   | 'helpdesk'
-  | 'tempvoice';
+  | 'tempvoice'
+  | 'dailyimage';
 
 export async function toggleBotModule(
   guildId: string,
@@ -1993,6 +2143,9 @@ export async function toggleBotModule(
         break;
       case 'tempvoice':
         patch.tempvoice_enabled = enabled;
+        break;
+      case 'dailyimage':
+        patch.daily_image_enabled = enabled;
         break;
       default:
         return {
