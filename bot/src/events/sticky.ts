@@ -1,5 +1,6 @@
 import { Events, type Client, type Message, type TextChannel } from 'discord.js';
 import { getStickyForChannel, setStickyLastMessage } from '../db/sticky.js';
+import { sendStyled } from '../lib/sendStyled.js';
 
 // Per-Channel-Buffer um Bursts zu glätten: nach 3 Nachrichten oder 5s re-posten.
 const pending = new Map<string, { count: number; timer: NodeJS.Timeout | null }>();
@@ -19,12 +20,18 @@ async function repostSticky(channel: TextChannel, guildId: string): Promise<void
       if (old?.deletable) await old.delete().catch(() => {});
     }
 
-    const sent = await channel.send({
-      content: `📌 **Wichtig**\n${sticky.content}`,
+    const body = sticky.useEmbed ? sticky.content : `📌 **Wichtig**\n${sticky.content}`;
+    const sent = await sendStyled(channel, body, {
+      useEmbed: sticky.useEmbed,
+      embedColor: sticky.embedColor,
+      embedTitle: sticky.useEmbed ? '📌 Wichtig' : null,
     });
-    await setStickyLastMessage(guildId, channel.id, sent.id).catch((err) =>
-      console.error('[sticky] setLastMessage:', err),
-    );
+    const sentId = (sent as { id?: string } | null)?.id;
+    if (sentId) {
+      await setStickyLastMessage(guildId, channel.id, sentId).catch((err) =>
+        console.error('[sticky] setLastMessage:', err),
+      );
+    }
   } catch (err) {
     console.error('[sticky] repost:', err);
   }

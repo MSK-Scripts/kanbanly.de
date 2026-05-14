@@ -14,6 +14,7 @@ import { registerTicketButtons } from './events/ticketButtons.js';
 import { registerBooster } from './events/booster.js';
 import { registerSticky } from './events/sticky.js';
 import { registerChannelMode } from './events/channelMode.js';
+import { registerRrInteractions } from './events/rrInteractions.js';
 
 // Intents:
 // - Guilds: Slash-Commands, Channel/Role-Cache
@@ -77,6 +78,7 @@ registerTicketButtons(client);
 registerBooster(client);
 registerSticky(client);
 registerChannelMode(client);
+registerRrInteractions(client);
 
 const shutdown = (signal: string) => {
   console.log(`[bot] ${signal} empfangen, fahre runter…`);

@@ -10,13 +10,14 @@ import { confirm } from '@/store/confirmStore';
 type Props = {
   guildId: string;
   channels: { id: string; name: string }[];
-  initial: Array<{ channelId: string; content: string }>;
+  initial: Array<{ channelId: string; content: string; useEmbed: boolean }>;
 };
 
 export function StickyMessagesForm({ guildId, channels, initial }: Props) {
   const [items, setItems] = useState(initial);
   const [newChannelId, setNewChannelId] = useState('');
   const [newContent, setNewContent] = useState('');
+  const [newUseEmbed, setNewUseEmbed] = useState(false);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -28,14 +29,15 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
     if (!newChannelId || !newContent.trim()) return;
     setMsg(null);
     startTransition(async () => {
-      const r = await upsertStickyMessage(guildId, newChannelId, newContent);
+      const r = await upsertStickyMessage(guildId, newChannelId, newContent, newUseEmbed);
       if (r.ok) {
         setItems((prev) => [
           ...prev.filter((i) => i.channelId !== newChannelId),
-          { channelId: newChannelId, content: newContent.trim() },
+          { channelId: newChannelId, content: newContent.trim(), useEmbed: newUseEmbed },
         ]);
         setNewChannelId('');
         setNewContent('');
+        setNewUseEmbed(false);
         setMsg({ kind: 'ok', text: 'Sticky angelegt.' });
       } else {
         setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
@@ -43,12 +45,20 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
     });
   };
 
-  const updateSticky = (channelId: string, content: string) => {
+  const updateSticky = (channelId: string, content: string, useEmbed: boolean) => {
     setMsg(null);
     startTransition(async () => {
-      const r = await upsertStickyMessage(guildId, channelId, content);
-      if (r.ok) setMsg({ kind: 'ok', text: 'Aktualisiert.' });
-      else setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+      const r = await upsertStickyMessage(guildId, channelId, content, useEmbed);
+      if (r.ok) {
+        setItems((prev) =>
+          prev.map((i) =>
+            i.channelId === channelId ? { ...i, content, useEmbed } : i,
+          ),
+        );
+        setMsg({ kind: 'ok', text: 'Aktualisiert.' });
+      } else {
+        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+      }
     });
   };
 
@@ -88,7 +98,10 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
               channelName={channelById.get(item.channelId) ?? item.channelId}
               channelId={item.channelId}
               initialContent={item.content}
-              onSave={(content) => updateSticky(item.channelId, content)}
+              initialUseEmbed={item.useEmbed}
+              onSave={(content, useEmbed) =>
+                updateSticky(item.channelId, content, useEmbed)
+              }
               onRemove={() => removeSticky(item.channelId)}
               pending={pending}
             />
@@ -124,6 +137,17 @@ export function StickyMessagesForm({ guildId, channels, initial }: Props) {
           placeholder="Inhalt der Sticky-Message (Markdown ok)…"
           className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle font-mono focus:outline-none focus:ring-1 focus:ring-accent resize-y"
         />
+        <label className="flex items-center justify-between gap-3 text-xs text-fg-soft">
+          <span>
+            Als <strong>{newUseEmbed ? 'Embed' : 'Plain-Text'}</strong> senden
+          </span>
+          <input
+            type="checkbox"
+            checked={newUseEmbed}
+            onChange={(e) => setNewUseEmbed(e.target.checked)}
+            className="h-4 w-4 accent-accent"
+          />
+        </label>
         <button
           type="button"
           onClick={addSticky}
@@ -153,6 +177,7 @@ function StickyRow({
   channelName,
   channelId,
   initialContent,
+  initialUseEmbed,
   onSave,
   onRemove,
   pending,
@@ -160,12 +185,14 @@ function StickyRow({
   channelName: string;
   channelId: string;
   initialContent: string;
-  onSave: (content: string) => void;
+  initialUseEmbed: boolean;
+  onSave: (content: string, useEmbed: boolean) => void;
   onRemove: () => void;
   pending: boolean;
 }) {
   const [content, setContent] = useState(initialContent);
-  const dirty = content !== initialContent;
+  const [useEmbed, setUseEmbed] = useState(initialUseEmbed);
+  const dirty = content !== initialContent || useEmbed !== initialUseEmbed;
   return (
     <li className="rounded-md border border-line bg-elev/40 p-4">
       <div className="flex items-baseline justify-between mb-2">
@@ -181,10 +208,21 @@ function StickyRow({
         maxLength={1500}
         className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg font-mono focus:outline-none focus:ring-1 focus:ring-accent resize-y"
       />
+      <label className="flex items-center justify-between gap-3 text-xs text-fg-soft mt-2">
+        <span>
+          Format: <strong>{useEmbed ? 'Embed' : 'Plain-Text'}</strong>
+        </span>
+        <input
+          type="checkbox"
+          checked={useEmbed}
+          onChange={(e) => setUseEmbed(e.target.checked)}
+          className="h-4 w-4 accent-accent"
+        />
+      </label>
       <div className="flex items-center gap-2 mt-2">
         <button
           type="button"
-          onClick={() => onSave(content)}
+          onClick={() => onSave(content, useEmbed)}
           disabled={pending || !dirty || !content.trim()}
           className="rounded-md bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 transition-colors"
         >

@@ -1,5 +1,6 @@
 import { Events, type Client, type GuildMember, type TextChannel } from 'discord.js';
 import { getBoosterConfig } from '../db/guilds.js';
+import { sendStyled } from '../lib/sendStyled.js';
 
 function renderTemplate(
   template: string,
@@ -38,8 +39,9 @@ export function registerBooster(client: Client): void {
           memberCount: newMember.guild.memberCount,
         });
 
-        await (channel as TextChannel).send({
-          content: text,
+        await sendStyled(channel as TextChannel, text, {
+          useEmbed: cfg.useEmbed,
+          embedColor: cfg.embedColor,
           allowedMentions: { users: [newMember.id] },
         });
       } catch (err) {

@@ -5,6 +5,8 @@ export type StickyMessage = {
   channelId: string;
   content: string;
   lastMessageId: string | null;
+  useEmbed: boolean;
+  embedColor: number | null;
 };
 
 export async function getStickyForChannel(
@@ -14,7 +16,7 @@ export async function getStickyForChannel(
   const db = getDb();
   const { data, error } = await db
     .from('bot_sticky_messages')
-    .select('guild_id, channel_id, content, last_message_id')
+    .select('guild_id, channel_id, content, last_message_id, use_embed, embed_color')
     .eq('guild_id', guildId)
     .eq('channel_id', channelId)
     .maybeSingle();
@@ -25,6 +27,8 @@ export async function getStickyForChannel(
     channelId: data.channel_id,
     content: data.content,
     lastMessageId: data.last_message_id ?? null,
+    useEmbed: Boolean(data.use_embed),
+    embedColor: (data.embed_color as number | null) ?? null,
   };
 }
 

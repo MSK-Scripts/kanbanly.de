@@ -7,6 +7,12 @@ export type Update = {
 export const updates: Update[] = [
   {
     date: '2026-05-14',
+    title: 'Reaction-Rollen: Buttons + Dropdown + Plain/Embed-Toggle',
+    description:
+      'Reaction-Roles können jetzt in drei Modi laufen: klassische Reaktionen, Buttons (bis 25), Dropdown-Menü. Modus pro Nachricht umschaltbar. Klicks auf Buttons/Dropdown werden im Log-Channel mitgeloggt. Welcome, DM, Booster, Sticky bekommen einen Toggle „als Embed senden" mit Farb-Picker.',
+  },
+  {
+    date: '2026-05-14',
     title: 'Reaction-Rollen: Web-UI',
     description:
       'Reaction-Roles komplett über das Dashboard verwalten — Embed-Nachricht posten, Emoji↔Rolle-Zuordnungen hinzufügen/entfernen, alles mit Live-Discord-Aktionen. Slash-Command bleibt parallel verfügbar.',

@@ -11,8 +11,11 @@ type Props = {
     enabled: boolean;
     channelId: string | null;
     message: string | null;
+    useEmbed: boolean;
+    embedColor: number | null;
     dmEnabled: boolean;
     dmMessage: string | null;
+    dmUseEmbed: boolean;
   };
 };
 
@@ -43,8 +46,15 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [channelId, setChannelId] = useState(initial.channelId ?? '');
   const [message, setMessage] = useState(initial.message ?? DEFAULT_TEMPLATE);
+  const [useEmbed, setUseEmbed] = useState(initial.useEmbed);
+  const [embedColor, setEmbedColor] = useState(
+    initial.embedColor !== null
+      ? '#' + initial.embedColor.toString(16).padStart(6, '0')
+      : '#5865F2',
+  );
   const [dmEnabled, setDmEnabled] = useState(initial.dmEnabled);
   const [dmMessage, setDmMessage] = useState(initial.dmMessage ?? DEFAULT_DM_TEMPLATE);
+  const [dmUseEmbed, setDmUseEmbed] = useState(initial.dmUseEmbed);
   const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err'; text?: string }>({ kind: 'idle' });
   const [pending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -71,8 +81,11 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
     if (enabled) fd.set('enabled', 'on');
     fd.set('channel_id', channelId);
     fd.set('message', message);
+    if (useEmbed) fd.set('use_embed', 'on');
+    fd.set('embed_color', embedColor);
     if (dmEnabled) fd.set('dm_enabled', 'on');
     fd.set('dm_message', dmMessage);
+    if (dmUseEmbed) fd.set('dm_use_embed', 'on');
     startTransition(async () => {
       const r = await updateWelcomeConfig(guildId, fd);
       if (r.ok) setStatus({ kind: 'ok', text: 'Gespeichert.' });
@@ -143,6 +156,24 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
         <p className="text-[11px] text-subtle mt-1">
           Markdown unterstützt: <code>**fett**</code>, <code>*kursiv*</code>, <code>`code`</code>.
         </p>
+
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-line bg-elev/40 px-3 py-2">
+          <div className="text-xs text-fg-soft">
+            Als <strong>{useEmbed ? 'Embed' : 'Plain-Text'}</strong> senden
+          </div>
+          <div className="flex items-center gap-2">
+            {useEmbed && (
+              <input
+                type="color"
+                value={embedColor}
+                onChange={(e) => setEmbedColor(e.target.value)}
+                className="h-6 w-8 rounded border border-line-strong bg-elev cursor-pointer"
+                title="Embed-Farbe"
+              />
+            )}
+            <Switch checked={useEmbed} onChange={setUseEmbed} size="sm" ariaLabel="Als Embed senden" />
+          </div>
+        </div>
       </div>
 
       <div>
@@ -200,6 +231,13 @@ export function WelcomeForm({ guildId, channels, initial }: Props) {
         <p className="text-[11px] text-subtle mt-1">
           Gleiche Platzhalter wie oben.
         </p>
+
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-line bg-elev/40 px-3 py-2">
+          <div className="text-xs text-fg-soft">
+            Als <strong>{dmUseEmbed ? 'Embed' : 'Plain-Text'}</strong> senden
+          </div>
+          <Switch checked={dmUseEmbed} onChange={setDmUseEmbed} size="sm" ariaLabel="DM als Embed" />
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

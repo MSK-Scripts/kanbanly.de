@@ -6,8 +6,23 @@ import {
   createReactionRoleMessage,
   deleteReactionRoleMessage,
   removeReactionRoleMapping,
+  updateReactionRoleMode,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { confirm } from '@/store/confirmStore';
+
+type RrMode = 'reactions' | 'buttons' | 'select_menu';
+
+const MODE_LABEL: Record<RrMode, string> = {
+  reactions: '😀 Reaktionen',
+  buttons: '🟦 Buttons',
+  select_menu: '⬇️ Dropdown',
+};
+
+const MODE_HINT: Record<RrMode, string> = {
+  reactions: 'Klassisch — User klickt auf Emoji-Reaktion unter der Nachricht.',
+  buttons: 'Modern — bis zu 25 Buttons mit Emoji + Label.',
+  select_menu: 'Kompakt — Dropdown mit allen Rollen, Single- oder Multi-Pick.',
+};
 
 type Channel = { id: string; name: string };
 type Role = { id: string; name: string; color: number };
@@ -17,6 +32,7 @@ type RrMessage = {
   channelId: string;
   title: string | null;
   description: string | null;
+  mode: RrMode;
   roles: Array<{
     emojiKey: string;
     emojiDisplay: string;
@@ -43,6 +59,7 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
   const [newChannelId, setNewChannelId] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [newMode, setNewMode] = useState<RrMode>('reactions');
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -58,6 +75,7 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
         newChannelId,
         newTitle,
         newDesc || null,
+        newMode,
       );
       if (r.ok && r.messageId) {
         setItems((prev) => [
@@ -66,6 +84,7 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
             channelId: newChannelId,
             title: newTitle.trim(),
             description: newDesc.trim() || null,
+            mode: newMode,
             roles: [],
           },
           ...prev,
@@ -73,6 +92,7 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
         setNewChannelId('');
         setNewTitle('');
         setNewDesc('');
+        setNewMode('reactions');
         setCreating(false);
         setMsg({ kind: 'ok', text: 'Nachricht gepostet.' });
       } else {
@@ -146,6 +166,21 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
     });
   };
 
+  const changeMode = (messageId: string, mode: RrMode) => {
+    setMsg(null);
+    startTransition(async () => {
+      const r = await updateReactionRoleMode(guildId, messageId, mode);
+      if (r.ok) {
+        setItems((prev) =>
+          prev.map((m) => (m.messageId === messageId ? { ...m, mode } : m)),
+        );
+        setMsg({ kind: 'ok', text: `Modus auf ${MODE_LABEL[mode]} gesetzt.` });
+      } else {
+        setMsg({ kind: 'err', text: r.error ?? 'Fehler.' });
+      }
+    });
+  };
+
   const removeMapping = (
     messageId: string,
     emojiKey: string,
@@ -202,6 +237,7 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
               onRemoveMapping={(emojiKey, emojiDisplay) =>
                 removeMapping(m.messageId, emojiKey, emojiDisplay)
               }
+              onChangeMode={(mode) => changeMode(m.messageId, mode)}
               onDeleteMessage={() => removeMessage(m.messageId)}
               pending={pending}
             />
@@ -245,6 +281,32 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
             placeholder="Beschreibung (optional, Markdown ok)"
             className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg placeholder:text-subtle font-mono focus:outline-none focus:ring-1 focus:ring-accent resize-y"
           />
+          <div>
+            <label className="block text-[11px] font-medium text-muted mb-1.5">
+              Modus
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {(['reactions', 'buttons', 'select_menu'] as RrMode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setNewMode(m)}
+                  className={`text-left rounded-md border p-2 transition-colors ${
+                    newMode === m
+                      ? 'border-accent bg-accent/10'
+                      : 'border-line bg-surface hover:border-line-strong'
+                  }`}
+                >
+                  <div className="text-xs font-medium text-fg">
+                    {MODE_LABEL[m]}
+                  </div>
+                  <div className="text-[10px] text-subtle mt-0.5 leading-tight">
+                    {MODE_HINT[m]}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -301,6 +363,7 @@ function RrMessageCard({
   roleById,
   onAddMapping,
   onRemoveMapping,
+  onChangeMode,
   onDeleteMessage,
   pending,
 }: {
@@ -311,6 +374,7 @@ function RrMessageCard({
   roleById: Map<string, Role>;
   onAddMapping: (emoji: string, roleId: string, label: string) => void;
   onRemoveMapping: (emojiKey: string, emojiDisplay: string) => void;
+  onChangeMode: (mode: RrMode) => void;
   onDeleteMessage: () => void;
   pending: boolean;
 }) {
@@ -340,14 +404,27 @@ function RrMessageCard({
             <span className="font-mono">{message.messageId}</span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onDeleteMessage}
-          disabled={pending}
-          className="text-[11px] text-subtle hover:text-rose-500 px-2 py-1 transition-colors shrink-0"
-        >
-          Löschen
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <select
+            value={message.mode}
+            onChange={(e) => onChangeMode(e.target.value as RrMode)}
+            disabled={pending}
+            className="text-[11px] rounded bg-surface border border-line-strong text-fg-soft px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-accent"
+            title={MODE_HINT[message.mode]}
+          >
+            <option value="reactions">{MODE_LABEL.reactions}</option>
+            <option value="buttons">{MODE_LABEL.buttons}</option>
+            <option value="select_menu">{MODE_LABEL.select_menu}</option>
+          </select>
+          <button
+            type="button"
+            onClick={onDeleteMessage}
+            disabled={pending}
+            className="text-[11px] text-subtle hover:text-rose-500 px-2 py-1 transition-colors"
+          >
+            Löschen
+          </button>
+        </div>
       </div>
 
       {/* Mappings */}

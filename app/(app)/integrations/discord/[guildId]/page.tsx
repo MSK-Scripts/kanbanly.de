@@ -47,11 +47,20 @@ type LoadResult =
         enabled: boolean;
         channelId: string | null;
         message: string | null;
+        useEmbed: boolean;
+        embedColor: number | null;
         dmEnabled: boolean;
         dmMessage: string | null;
+        dmUseEmbed: boolean;
       };
-      booster: { enabled: boolean; channelId: string | null; message: string | null };
-      stickyMessages: Array<{ channelId: string; content: string }>;
+      booster: {
+        enabled: boolean;
+        channelId: string | null;
+        message: string | null;
+        useEmbed: boolean;
+        embedColor: number | null;
+      };
+      stickyMessages: Array<{ channelId: string; content: string; useEmbed: boolean }>;
       channelModes: Array<{
         channelId: string;
         mode: 'images_only' | 'text_only';
@@ -62,6 +71,7 @@ type LoadResult =
         channelId: string;
         title: string | null;
         description: string | null;
+        mode: 'reactions' | 'buttons' | 'select_menu';
         roles: Array<{
           emojiKey: string;
           emojiDisplay: string;
@@ -115,7 +125,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, welcome_dm_enabled, welcome_dm_message, booster_enabled, booster_channel_id, booster_message, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -162,11 +172,12 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
 
   const { data: stickyRaw } = await admin
     .from('bot_sticky_messages')
-    .select('channel_id, content')
+    .select('channel_id, content, use_embed')
     .eq('guild_id', guildId);
   const stickyMessages = (stickyRaw ?? []).map((r) => ({
     channelId: r.channel_id as string,
     content: r.content as string,
+    useEmbed: Boolean(r.use_embed),
   }));
 
   const { data: modesRaw } = await admin
@@ -181,7 +192,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
 
   const { data: rrMsgRaw } = await admin
     .from('bot_reaction_role_messages')
-    .select('message_id, channel_id, title, description, created_at')
+    .select('message_id, channel_id, title, description, mode, created_at')
     .eq('guild_id', guildId)
     .order('created_at', { ascending: false });
   const rrMessageIds = (rrMsgRaw ?? []).map((m) => m.message_id as string);
@@ -210,6 +221,10 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     channelId: m.channel_id as string,
     title: (m.title as string | null) ?? null,
     description: (m.description as string | null) ?? null,
+    mode: ((m.mode as string | null) ?? 'reactions') as
+      | 'reactions'
+      | 'buttons'
+      | 'select_menu',
     roles: rolesByMessage.get(m.message_id as string) ?? [],
   }));
 
@@ -222,13 +237,18 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       enabled: guildRow.welcome_enabled,
       channelId: guildRow.welcome_channel_id,
       message: guildRow.welcome_message,
+      useEmbed: Boolean(guildRow.welcome_use_embed),
+      embedColor: (guildRow.welcome_embed_color as number | null) ?? null,
       dmEnabled: Boolean(guildRow.welcome_dm_enabled),
       dmMessage: (guildRow.welcome_dm_message as string | null) ?? null,
+      dmUseEmbed: Boolean(guildRow.welcome_dm_use_embed),
     },
     booster: {
       enabled: Boolean(guildRow.booster_enabled),
       channelId: (guildRow.booster_channel_id as string | null) ?? null,
       message: (guildRow.booster_message as string | null) ?? null,
+      useEmbed: Boolean(guildRow.booster_use_embed),
+      embedColor: (guildRow.booster_embed_color as number | null) ?? null,
     },
     stickyMessages,
     channelModes,
@@ -390,11 +410,20 @@ function GuildSettingsView({
     enabled: boolean;
     channelId: string | null;
     message: string | null;
+    useEmbed: boolean;
+    embedColor: number | null;
     dmEnabled: boolean;
     dmMessage: string | null;
+    dmUseEmbed: boolean;
   };
-  booster: { enabled: boolean; channelId: string | null; message: string | null };
-  stickyMessages: Array<{ channelId: string; content: string }>;
+  booster: {
+    enabled: boolean;
+    channelId: string | null;
+    message: string | null;
+    useEmbed: boolean;
+    embedColor: number | null;
+  };
+  stickyMessages: Array<{ channelId: string; content: string; useEmbed: boolean }>;
   channelModes: Array<{
     channelId: string;
     mode: 'images_only' | 'text_only';
@@ -405,6 +434,7 @@ function GuildSettingsView({
     channelId: string;
     title: string | null;
     description: string | null;
+    mode: 'reactions' | 'buttons' | 'select_menu';
     roles: Array<{
       emojiKey: string;
       emojiDisplay: string;

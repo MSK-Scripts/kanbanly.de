@@ -5,6 +5,7 @@ import {
   getWelcomeConfig,
   renderWelcomeTemplate,
 } from '../db/guilds.js';
+import { sendStyled, buildStyledPayload } from '../lib/sendStyled.js';
 
 async function applyAutoRoles(member: GuildMember): Promise<void> {
   try {
@@ -48,19 +49,19 @@ async function sendWelcome(member: GuildMember): Promise<void> {
       const channel = await member.guild.channels.fetch(cfg.channelId).catch(() => null);
       if (channel && channel.isTextBased()) {
         const text = renderWelcomeTemplate(cfg.message, tplCtx);
-        await (channel as TextChannel)
-          .send({
-            content: text,
-            allowedMentions: { users: [member.id] },
-          })
-          .catch((err) => console.error('[welcome] channel-send:', err));
+        await sendStyled(channel as TextChannel, text, {
+          useEmbed: cfg.useEmbed,
+          embedColor: cfg.embedColor,
+          allowedMentions: { users: [member.id] },
+        }).catch((err) => console.error('[welcome] channel-send:', err));
       }
     }
 
     if (cfg.dmEnabled && cfg.dmMessage) {
       const dmText = renderWelcomeTemplate(cfg.dmMessage, tplCtx);
       // DMs können fehlschlagen, wenn der User sie blockiert hat — schlucken.
-      await member.send({ content: dmText }).catch(() => {});
+      const payload = buildStyledPayload(dmText, { useEmbed: cfg.dmUseEmbed });
+      await member.send(payload).catch(() => {});
     }
   } catch (err) {
     console.error('[welcome] Fehler beim Begrüßen:', err);

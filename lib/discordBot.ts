@@ -30,17 +30,46 @@ export type EmbedPayload = {
   image?: { url: string };
 };
 
-export async function postEmbed(
+// Discord-Component-Strukturen (REST-API-Form)
+export type DiscordComponent = Record<string, unknown>;
+
+export type MessagePayload = {
+  content?: string;
+  embeds?: EmbedPayload[];
+  components?: DiscordComponent[];
+};
+
+export async function postMessage(
   channelId: string,
-  embed: EmbedPayload,
+  payload: MessagePayload,
 ): Promise<{ id: string }> {
   const res = await call(`/channels/${channelId}/messages`, {
     method: 'POST',
-    body: { embeds: [embed] },
+    body: payload,
   });
   if (!res.ok) throw new Error(`Discord POST: ${res.status} ${await res.text()}`);
   const data = (await res.json()) as { id: string };
   return { id: data.id };
+}
+
+export async function editMessage(
+  channelId: string,
+  messageId: string,
+  payload: MessagePayload,
+): Promise<void> {
+  const res = await call(`/channels/${channelId}/messages/${messageId}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+  if (!res.ok) throw new Error(`Discord PATCH: ${res.status} ${await res.text()}`);
+}
+
+// Kompatibilitäts-Wrapper für bestehenden Code
+export async function postEmbed(
+  channelId: string,
+  embed: EmbedPayload,
+): Promise<{ id: string }> {
+  return postMessage(channelId, { embeds: [embed] });
 }
 
 export async function editEmbed(
@@ -48,11 +77,7 @@ export async function editEmbed(
   messageId: string,
   embed: EmbedPayload,
 ): Promise<void> {
-  const res = await call(`/channels/${channelId}/messages/${messageId}`, {
-    method: 'PATCH',
-    body: { embeds: [embed] },
-  });
-  if (!res.ok) throw new Error(`Discord PATCH: ${res.status} ${await res.text()}`);
+  return editMessage(channelId, messageId, { embeds: [embed] });
 }
 
 export async function deleteMessage(
