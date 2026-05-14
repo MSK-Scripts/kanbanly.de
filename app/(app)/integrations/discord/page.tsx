@@ -164,9 +164,6 @@ export default async function DiscordIntegrationPage({
           <>
             <div className="rounded-lg bg-surface border border-line px-4 py-3 mb-6 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="h-8 w-8 rounded-full bg-elev border border-line grid place-items-center text-fg-soft text-[11px] font-semibold shrink-0">
-                  {data.discordUsername.slice(0, 2).toUpperCase()}
-                </div>
                 <div className="min-w-0 flex items-baseline gap-2">
                   <span className="text-[11px] text-subtle uppercase tracking-wider">
                     Verbunden als
