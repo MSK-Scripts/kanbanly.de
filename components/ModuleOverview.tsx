@@ -17,7 +17,10 @@ export type ModuleKey =
   | 'booster'
   | 'sticky'
   | 'channelmodes'
-  | 'embed';
+  | 'embed'
+  | 'verify'
+  | 'antiraid'
+  | 'giveaways';
 
 type ModuleDef = {
   key: ModuleKey;
