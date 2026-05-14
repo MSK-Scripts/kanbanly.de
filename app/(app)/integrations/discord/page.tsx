@@ -212,41 +212,6 @@ export default async function DiscordIntegrationPage({
   );
 }
 
-function Stat({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-lg px-4 py-2.5 border min-w-[100px] ${
-        accent
-          ? 'bg-[var(--success-soft)] border-[var(--success-line)]'
-          : 'bg-elev/50 border-line backdrop-blur-sm'
-      }`}
-    >
-      <div
-        className={`text-[10px] uppercase tracking-[0.15em] font-semibold ${
-          accent ? 'text-[var(--success)]' : 'text-subtle'
-        }`}
-      >
-        {label}
-      </div>
-      <div
-        className={`text-2xl font-bold font-mono tabular-nums mt-0.5 ${
-          accent ? 'text-[var(--success)]' : 'text-fg'
-        }`}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
 function ServerList({ servers }: { servers: GuildRow[] }) {
   const active = servers.filter((s) => s.botPresent);
   const inactive = servers.filter((s) => !s.botPresent);

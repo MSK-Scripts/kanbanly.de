@@ -379,18 +379,24 @@ export function InviteTrackerForm({
 }) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [rows, setRows] = useState<InviteLeaderRow[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [fetched, setFetched] = useState(false);
+  const [, startTransition] = useTransition();
+
+  // loading wird abgeleitet — kein synchrones setState im Effect.
+  const loading = enabled && !fetched;
 
   useEffect(() => {
-    if (!enabled || rows !== null) return;
-    setLoading(true);
-    listInviteLeaderboard(guildId)
-      .then((r) => {
-        if (r.ok && r.rows) setRows(r.rows);
-      })
-      .finally(() => setLoading(false));
-  }, [enabled, rows, guildId]);
+    if (!enabled || fetched) return;
+    let active = true;
+    listInviteLeaderboard(guildId).then((r) => {
+      if (!active) return;
+      if (r.ok && r.rows) setRows(r.rows);
+      setFetched(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [enabled, fetched, guildId]);
 
   const toggle = (next: boolean) => {
     setEnabled(next);

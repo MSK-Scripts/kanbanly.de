@@ -79,7 +79,6 @@ export function AutoModForm({ guildId, initial }: Props) {
         >
           <FilterCard
             title="Link-Filter"
-            icon=""
             active={blockLinks}
             summary={blockLinks ? 'Links blockiert (außer Whitelist)' : 'Aus'}
           >
@@ -115,7 +114,6 @@ export function AutoModForm({ guildId, initial }: Props) {
 
           <FilterCard
             title="Caps-Filter"
-            icon=""
             active={capsEnabled}
             summary={capsEnabled ? 'Großbuchstaben begrenzt' : 'Aus'}
           >
@@ -147,7 +145,6 @@ export function AutoModForm({ guildId, initial }: Props) {
 
           <FilterCard
             title="Mention-Spam"
-            icon=""
             active={mentionsEnabled}
             summary={mentionsEnabled ? 'Mention-Limit aktiv' : 'Aus'}
           >
@@ -179,7 +176,6 @@ export function AutoModForm({ guildId, initial }: Props) {
 
           <FilterCard
             title="Verbotene Wörter"
-            icon=""
             active={bannedWordsCount > 0}
             summary={
               bannedWordsCount > 0
@@ -218,13 +214,11 @@ export function AutoModForm({ guildId, initial }: Props) {
 
 function FilterCard({
   title,
-  icon,
   active,
   summary,
   children,
 }: {
   title: string;
-  icon: string;
   active: boolean;
   summary: string;
   children: React.ReactNode;
