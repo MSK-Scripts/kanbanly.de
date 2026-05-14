@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useConfirmStore } from '@/store/confirmStore';
+import { Button } from './ui/Button';
 
 export function ConfirmDialog() {
   const open = useConfirmStore((s) => s.open);
@@ -25,43 +26,54 @@ export function ConfirmDialog() {
 
   return (
     <div
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-toast-in"
       onClick={() => close(false)}
     >
       <div
-        className="w-full max-w-sm rounded-md bg-surface border border-line shadow-md overflow-hidden"
+        className="w-full max-w-md rounded-xl bg-surface border border-line shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="p-5">
-          <h2 className="text-base font-semibold text-fg">{title}</h2>
-          {description && (
-            <p className="text-sm text-muted mt-2 leading-relaxed">
-              {description}
-            </p>
-          )}
+        <div className="px-5 py-5 flex items-start gap-3">
+          <div
+            className={`h-10 w-10 shrink-0 rounded-full grid place-items-center text-base font-bold border ${
+              danger
+                ? 'bg-[var(--danger-soft)] border-[var(--danger-line)] text-[var(--danger)]'
+                : 'bg-[var(--info-soft)] border-[var(--info-line)] text-[var(--info)]'
+            }`}
+            aria-hidden
+          >
+            {danger ? '!' : '?'}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[15px] font-semibold text-fg leading-tight">
+              {title}
+            </h2>
+            {description && (
+              <p className="text-[13px] text-muted mt-1.5 leading-relaxed">
+                {description}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="px-5 py-3 bg-bg border-t border-line flex justify-end gap-2">
-          <button
+        <div className="px-5 py-3 bg-elev/40 border-t border-line flex justify-end gap-2">
+          <Button
             type="button"
             onClick={() => close(false)}
-            className="rounded-md px-4 py-1.5 text-sm text-fg-soft hover:text-fg hover:bg-elev transition-colors"
-            autoFocus
+            variant="ghost"
+            size="sm"
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => close(true)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium text-white transition-colors ${
-              danger
-                ? 'bg-rose-500/90 hover:bg-rose-500'
-                : 'bg-accent hover:bg-accent-hover'
-            }`}
+            variant={danger ? 'danger' : 'primary'}
+            size="sm"
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
