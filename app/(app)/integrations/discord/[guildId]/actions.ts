@@ -3679,7 +3679,16 @@ export async function createSuggestionPanelWeb(
       .insert({ guild_id: guildId, created_by: userId, ...patch })
       .select('id')
       .single();
-    if (insErr || !panel) throw insErr ?? new Error('Insert fehlgeschlagen.');
+    if (insErr) {
+      console.error('[sug-panel] insert failed:', insErr);
+      return {
+        ok: false,
+        error: `DB-Insert fehlgeschlagen: ${insErr.message ?? insErr.code ?? 'unknown'}`,
+      };
+    }
+    if (!panel) {
+      return { ok: false, error: 'Insert lieferte keine Daten.' };
+    }
 
     const payload = buildSugPanelPayload({
       id: panel.id as string,
@@ -3706,7 +3715,14 @@ export async function createSuggestionPanelWeb(
     revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true, id: panel.id as string };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+    console.error('[createSuggestionPanelWeb]', e);
+    const msg =
+      e instanceof Error
+        ? e.message
+        : typeof e === 'object' && e !== null && 'message' in e
+        ? String((e as { message: unknown }).message)
+        : JSON.stringify(e);
+    return { ok: false, error: `Unerwarteter Fehler: ${msg}` };
   }
 }
 
@@ -3726,7 +3742,13 @@ export async function updateSuggestionPanelWeb(
       .eq('guild_id', guildId)
       .select('id, channel_id, message_id, button_style')
       .maybeSingle();
-    if (error) throw error;
+    if (error) {
+      console.error('[sug-panel] update failed:', error);
+      return {
+        ok: false,
+        error: `DB-Update fehlgeschlagen: ${error.message ?? error.code ?? 'unknown'}`,
+      };
+    }
     if (!updated) return { ok: false, error: 'Panel nicht gefunden.' };
 
     if (updated.message_id) {
@@ -3748,7 +3770,14 @@ export async function updateSuggestionPanelWeb(
     revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+    console.error('[updateSuggestionPanelWeb]', e);
+    const msg =
+      e instanceof Error
+        ? e.message
+        : typeof e === 'object' && e !== null && 'message' in e
+        ? String((e as { message: unknown }).message)
+        : JSON.stringify(e);
+    return { ok: false, error: `Unerwarteter Fehler: ${msg}` };
   }
 }
 
