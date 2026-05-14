@@ -92,6 +92,8 @@ type LoadResult =
         enabled: boolean;
         announce: boolean;
         upChannelId: string | null;
+        useEmbed: boolean;
+        embedColor: number | null;
       };
       levelRewards: Array<{ level: number; roleId: string }>;
       automod: {
@@ -125,7 +127,7 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   const { data: guildRow } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
@@ -269,6 +271,8 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       enabled: Boolean(guildRow.level_enabled),
       announce: Boolean(guildRow.level_announce),
       upChannelId: guildRow.level_up_channel_id ?? null,
+      useEmbed: Boolean(guildRow.level_use_embed),
+      embedColor: (guildRow.level_embed_color as number | null) ?? null,
     },
     levelRewards,
     automod: {
@@ -451,7 +455,13 @@ function GuildSettingsView({
     messageDeletes: boolean;
     roleChanges: boolean;
   };
-  level: { enabled: boolean; announce: boolean; upChannelId: string | null };
+  level: {
+    enabled: boolean;
+    announce: boolean;
+    upChannelId: string | null;
+    useEmbed: boolean;
+    embedColor: number | null;
+  };
   levelRewards: Array<{ level: number; roleId: string }>;
   automod: {
     enabled: boolean;

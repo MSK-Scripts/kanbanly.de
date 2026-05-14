@@ -105,6 +105,11 @@ export async function updateLevelConfig(
     const enabled = formData.get('enabled') === 'on';
     const announce = formData.get('announce') === 'on';
     const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const useEmbed = formData.get('use_embed') === 'on';
+    const embedColorRaw = (formData.get('embed_color') as string | null)?.trim() || null;
+    const embedColor = embedColorRaw && /^#?[0-9a-f]{6}$/i.test(embedColorRaw)
+      ? parseInt(embedColorRaw.replace('#', ''), 16)
+      : null;
 
     const admin = createAdminClient();
     const { error } = await admin
@@ -113,6 +118,8 @@ export async function updateLevelConfig(
         level_enabled: enabled,
         level_announce: announce,
         level_up_channel_id: channelId,
+        level_use_embed: useEmbed,
+        level_embed_color: embedColor,
         updated_at: new Date().toISOString(),
       })
       .eq('guild_id', guildId);

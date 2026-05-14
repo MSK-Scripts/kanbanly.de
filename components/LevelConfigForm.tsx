@@ -18,6 +18,8 @@ type Props = {
     enabled: boolean;
     announce: boolean;
     upChannelId: string | null;
+    useEmbed: boolean;
+    embedColor: number | null;
   };
   rewards: Array<{ level: number; roleId: string }>;
 };
@@ -36,6 +38,12 @@ export function LevelConfigForm({
 }: Props) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [announce, setAnnounce] = useState(initial.announce);
+  const [useEmbed, setUseEmbed] = useState(initial.useEmbed);
+  const [embedColor, setEmbedColor] = useState(
+    initial.embedColor !== null
+      ? '#' + initial.embedColor.toString(16).padStart(6, '0')
+      : '#eab308',
+  );
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const roleById = new Map(roles.map((r) => [r.id, r]));
@@ -110,6 +118,31 @@ export function LevelConfigForm({
               Leer = die Nachricht erscheint dort, wo der User gerade aktiv ist.
             </p>
           </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-elev/40 px-3 py-2">
+            <div className="text-xs text-fg-soft">
+              Level-Up als <strong>{useEmbed ? 'Embed' : 'Plain-Text'}</strong> senden
+            </div>
+            <div className="flex items-center gap-2">
+              {useEmbed && (
+                <input
+                  type="color"
+                  value={embedColor}
+                  onChange={(e) => setEmbedColor(e.target.value)}
+                  className="h-6 w-8 rounded border border-line-strong bg-elev cursor-pointer"
+                  title="Embed-Farbe"
+                />
+              )}
+              <Switch
+                checked={useEmbed}
+                onChange={setUseEmbed}
+                size="sm"
+                ariaLabel="Level-Up als Embed"
+              />
+            </div>
+          </div>
+          <input type="hidden" name="use_embed" value={useEmbed ? 'on' : ''} />
+          <input type="hidden" name="embed_color" value={embedColor} />
         </div>
 
         <button

@@ -10,6 +10,7 @@ import {
   getLevelConfig,
   getLevelRewards,
 } from '../db/xp.js';
+import { sendStyled } from '../lib/sendStyled.js';
 
 async function applyLevelRewards(
   message: Message,
@@ -38,6 +39,8 @@ async function announceLevelUp(
   message: Message,
   newLevel: number,
   upChannelId: string | null,
+  useEmbed: boolean,
+  embedColor: number | null,
 ): Promise<void> {
   if (!message.guild) return;
   let channel: TextChannel | null = null;
@@ -57,12 +60,13 @@ async function announceLevelUp(
     channel = message.channel as TextChannel;
   }
   if (!channel) return;
-  await channel
-    .send({
-      content: `🎉 <@${message.author.id}>, Level **${newLevel}** erreicht!`,
-      allowedMentions: { users: [message.author.id] },
-    })
-    .catch(() => {});
+  const text = `🎉 <@${message.author.id}>, Level **${newLevel}** erreicht!`;
+  await sendStyled(channel, text, {
+    useEmbed,
+    embedColor,
+    embedTitle: useEmbed ? `Level ${newLevel}` : null,
+    allowedMentions: { users: [message.author.id] },
+  }).catch(() => {});
 }
 
 export function registerXp(client: Client): void {
@@ -82,7 +86,13 @@ export function registerXp(client: Client): void {
 
       if (result.leveledUp) {
         if (cfg.announce) {
-          await announceLevelUp(message, result.row.level, cfg.upChannelId);
+          await announceLevelUp(
+            message,
+            result.row.level,
+            cfg.upChannelId,
+            cfg.useEmbed,
+            cfg.embedColor,
+          );
         }
         await applyLevelRewards(message, result.row.level);
       }
