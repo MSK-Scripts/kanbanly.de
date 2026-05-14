@@ -5,6 +5,23 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getFreshAccessToken } from '@/lib/discordConnection';
 import { canManageGuild, fetchCurrentUserGuilds } from '@/lib/discord';
+import {
+  addReaction,
+  deleteMessage,
+  editMessage,
+  postMessage,
+  removeOwnReaction,
+} from '@/lib/discordBot';
+import {
+  buildReactionRoleEmbed,
+  buildRrComponents,
+  parseEmoji,
+  type RrMode,
+} from '@/lib/reactionRoles';
+
+// Cache pro User+Guild: 60s. Verhindert dass jeder Toggle-Click eine Discord-API-Roundtrip braucht.
+const manageCheckCache = new Map<string, { ok: boolean; expires: number }>();
+const MANAGE_CACHE_TTL_MS = 60_000;
 
 async function assertCanManage(guildId: string): Promise<{ userId: string }> {
   const supabase = await createClient();
@@ -13,15 +30,28 @@ async function assertCanManage(guildId: string): Promise<{ userId: string }> {
   } = await supabase.auth.getUser();
   if (!user) throw new Error('Nicht eingeloggt.');
 
+  const cacheKey = `${user.id}:${guildId}`;
+  const now = Date.now();
+  const cached = manageCheckCache.get(cacheKey);
+  if (cached && cached.expires > now) {
+    if (!cached.ok) throw new Error('Keine Berechtigung.');
+    return { userId: user.id };
+  }
+
   const token = await getFreshAccessToken(user.id);
   if (!token) throw new Error('Discord-Verbindung abgelaufen.');
 
   const guilds = await fetchCurrentUserGuilds(token);
   const g = guilds.find((x) => x.id === guildId);
-  if (!g) throw new Error('Server nicht gefunden.');
+  if (!g) {
+    manageCheckCache.set(cacheKey, { ok: false, expires: now + MANAGE_CACHE_TTL_MS });
+    throw new Error('Server nicht gefunden.');
+  }
   if (!g.owner && !canManageGuild(g.permissions)) {
+    manageCheckCache.set(cacheKey, { ok: false, expires: now + MANAGE_CACHE_TTL_MS });
     throw new Error('Keine Berechtigung.');
   }
+  manageCheckCache.set(cacheKey, { ok: true, expires: now + MANAGE_CACHE_TTL_MS });
   return { userId: user.id };
 }
 
@@ -92,6 +122,11 @@ export async function updateLevelConfig(
     const enabled = formData.get('enabled') === 'on';
     const announce = formData.get('announce') === 'on';
     const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const useEmbed = formData.get('use_embed') === 'on';
+    const embedColorRaw = (formData.get('embed_color') as string | null)?.trim() || null;
+    const embedColor = embedColorRaw && /^#?[0-9a-f]{6}$/i.test(embedColorRaw)
+      ? parseInt(embedColorRaw.replace('#', ''), 16)
+      : null;
 
     const admin = createAdminClient();
     const { error } = await admin
@@ -100,6 +135,8 @@ export async function updateLevelConfig(
         level_enabled: enabled,
         level_announce: announce,
         level_up_channel_id: channelId,
+        level_use_embed: useEmbed,
+        level_embed_color: embedColor,
         updated_at: new Date().toISOString(),
       })
       .eq('guild_id', guildId);
@@ -231,9 +268,20 @@ export async function updateWelcomeConfig(
     const enabled = formData.get('enabled') === 'on';
     const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
     const message = (formData.get('message') as string | null)?.trim() || null;
+    const useEmbed = formData.get('use_embed') === 'on';
+    const embedColorRaw = (formData.get('embed_color') as string | null)?.trim() || null;
+    const embedColor = embedColorRaw && /^#?[0-9a-f]{6}$/i.test(embedColorRaw)
+      ? parseInt(embedColorRaw.replace('#', ''), 16)
+      : null;
+    const dmEnabled = formData.get('dm_enabled') === 'on';
+    const dmMessage = (formData.get('dm_message') as string | null)?.trim() || null;
+    const dmUseEmbed = formData.get('dm_use_embed') === 'on';
 
     if (enabled && (!channelId || !message)) {
       return { ok: false, error: 'Channel und Nachricht sind nötig, wenn Welcome aktiv ist.' };
+    }
+    if (dmEnabled && !dmMessage) {
+      return { ok: false, error: 'DM-Nachricht fehlt.' };
     }
 
     const admin = createAdminClient();
@@ -243,10 +291,494 @@ export async function updateWelcomeConfig(
         welcome_enabled: enabled,
         welcome_channel_id: channelId,
         welcome_message: message,
+        welcome_use_embed: useEmbed,
+        welcome_embed_color: embedColor,
+        welcome_dm_enabled: dmEnabled,
+        welcome_dm_message: dmMessage,
+        welcome_dm_use_embed: dmUseEmbed,
         updated_at: new Date().toISOString(),
       })
       .eq('guild_id', guildId);
     if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updateBoosterConfig(
+  guildId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const enabled = formData.get('enabled') === 'on';
+    const channelId = (formData.get('channel_id') as string | null)?.trim() || null;
+    const message = (formData.get('message') as string | null)?.trim() || null;
+    const useEmbed = formData.get('use_embed') === 'on';
+    const embedColorRaw = (formData.get('embed_color') as string | null)?.trim() || null;
+    const embedColor = embedColorRaw && /^#?[0-9a-f]{6}$/i.test(embedColorRaw)
+      ? parseInt(embedColorRaw.replace('#', ''), 16)
+      : null;
+    if (enabled && (!channelId || !message)) {
+      return { ok: false, error: 'Channel und Nachricht sind nötig, wenn Booster-Message aktiv ist.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_guilds')
+      .update({
+        booster_enabled: enabled,
+        booster_channel_id: channelId,
+        booster_message: message,
+        booster_use_embed: useEmbed,
+        booster_embed_color: embedColor,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function upsertStickyMessage(
+  guildId: string,
+  channelId: string,
+  content: string,
+  useEmbed: boolean = false,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const trimmed = content.trim();
+    if (!trimmed || trimmed.length > 1500) {
+      return { ok: false, error: 'Inhalt fehlt oder ist länger als 1500 Zeichen.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_sticky_messages')
+      .upsert(
+        {
+          guild_id: guildId,
+          channel_id: channelId,
+          content: trimmed,
+          use_embed: useEmbed,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'guild_id,channel_id' },
+      );
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteStickyMessage(
+  guildId: string,
+  channelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_sticky_messages')
+      .delete()
+      .eq('guild_id', guildId)
+      .eq('channel_id', channelId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function upsertChannelMode(
+  guildId: string,
+  channelId: string,
+  mode: 'images_only' | 'text_only',
+  allowVideos: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (mode !== 'images_only' && mode !== 'text_only') {
+      return { ok: false, error: 'Ungültiger Modus.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_channel_modes')
+      .upsert(
+        {
+          guild_id: guildId,
+          channel_id: channelId,
+          mode,
+          allow_videos: allowVideos,
+        },
+        { onConflict: 'guild_id,channel_id' },
+      );
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteChannelMode(
+  guildId: string,
+  channelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_channel_modes')
+      .delete()
+      .eq('guild_id', guildId)
+      .eq('channel_id', channelId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function sendBotEmbed(
+  guildId: string,
+  channelId: string,
+  embed: {
+    title?: string;
+    description?: string;
+    color?: number;
+    footer?: string;
+    image?: string;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const token = process.env.DISCORD_BOT_TOKEN;
+    if (!token) {
+      return { ok: false, error: 'DISCORD_BOT_TOKEN ist nicht gesetzt.' };
+    }
+    const payload = {
+      embeds: [
+        {
+          title: embed.title?.slice(0, 256) || undefined,
+          description: embed.description?.slice(0, 4000) || undefined,
+          color: embed.color,
+          footer: embed.footer ? { text: embed.footer.slice(0, 2048) } : undefined,
+          image: embed.image ? { url: embed.image } : undefined,
+        },
+      ],
+    };
+    const res = await fetch(
+      `https://discord.com/api/v10/channels/${channelId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+    if (!res.ok) {
+      const txt = await res.text();
+      return { ok: false, error: `Discord ${res.status}: ${txt.slice(0, 200)}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Modul-Toggle (Übersicht) ==============
+
+type ModuleKey =
+  | 'welcome'
+  | 'autoroles'
+  | 'logging'
+  | 'levels'
+  | 'automod'
+  | 'reactionroles'
+  | 'booster'
+  | 'sticky'
+  | 'channelmodes'
+  | 'embed';
+
+export async function toggleBotModule(
+  guildId: string,
+  key: ModuleKey,
+  enabled: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+    switch (key) {
+      case 'welcome':
+        patch.welcome_enabled = enabled;
+        break;
+      case 'autoroles':
+        patch.auto_roles_enabled = enabled;
+        break;
+      case 'levels':
+        patch.level_enabled = enabled;
+        break;
+      case 'automod':
+        patch.automod_enabled = enabled;
+        break;
+      case 'booster':
+        patch.booster_enabled = enabled;
+        break;
+      default:
+        return {
+          ok: false,
+          error: 'Dieses Modul hat keinen einfachen An/Aus-Schalter — bitte im Tab konfigurieren.',
+        };
+    }
+
+    const { error } = await admin
+      .from('bot_guilds')
+      .update(patch)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+// ============== Reaction-Roles ==============
+
+async function refreshRrEmbed(
+  messageId: string,
+  roleNameById?: Map<string, string>,
+): Promise<void> {
+  const admin = createAdminClient();
+  const { data: msg } = await admin
+    .from('bot_reaction_role_messages')
+    .select('channel_id, title, description, mode')
+    .eq('message_id', messageId)
+    .maybeSingle();
+  if (!msg) return;
+  const { data: rolesData } = await admin
+    .from('bot_reaction_roles')
+    .select('emoji_key, emoji_display, role_id, label')
+    .eq('message_id', messageId);
+  const rows = (rolesData ?? []).map((r) => ({
+    emojiKey: r.emoji_key as string,
+    emojiDisplay: r.emoji_display as string,
+    roleId: r.role_id as string,
+    label: (r.label as string | null) ?? null,
+  }));
+  const embed = buildReactionRoleEmbed(
+    (msg.title as string | null) ?? null,
+    (msg.description as string | null) ?? null,
+    rows,
+  );
+  const mode = ((msg.mode as RrMode | null) ?? 'reactions') as RrMode;
+  const components = buildRrComponents(
+    mode,
+    messageId,
+    rows,
+    roleNameById ?? new Map(),
+  );
+  await editMessage(msg.channel_id as string, messageId, {
+    embeds: [embed],
+    components,
+  }).catch((err) => console.error('[rr] editMessage:', err));
+}
+
+export async function createReactionRoleMessage(
+  guildId: string,
+  channelId: string,
+  title: string,
+  description: string | null,
+  mode: RrMode = 'reactions',
+): Promise<{ ok: boolean; error?: string; messageId?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (!title.trim()) return { ok: false, error: 'Titel fehlt.' };
+    if (!['reactions', 'buttons', 'select_menu'].includes(mode)) {
+      return { ok: false, error: 'Ungültiger Modus.' };
+    }
+    const embed = buildReactionRoleEmbed(title.trim(), description?.trim() || null, []);
+    const posted = await postMessage(channelId, { embeds: [embed] });
+    const admin = createAdminClient();
+    const { error } = await admin.from('bot_reaction_role_messages').insert({
+      message_id: posted.id,
+      guild_id: guildId,
+      channel_id: channelId,
+      title: title.trim(),
+      description: description?.trim() || null,
+      mode,
+    });
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true, messageId: posted.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function updateReactionRoleMode(
+  guildId: string,
+  messageId: string,
+  mode: RrMode,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    if (!['reactions', 'buttons', 'select_menu'].includes(mode)) {
+      return { ok: false, error: 'Ungültiger Modus.' };
+    }
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('bot_reaction_role_messages')
+      .update({ mode })
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    await refreshRrEmbed(messageId);
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function deleteReactionRoleMessage(
+  guildId: string,
+  messageId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: msg } = await admin
+      .from('bot_reaction_role_messages')
+      .select('channel_id')
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (msg) {
+      await deleteMessage(msg.channel_id as string, messageId).catch((err) =>
+        console.error('[rr] deleteMessage:', err),
+      );
+    }
+    const { error } = await admin
+      .from('bot_reaction_role_messages')
+      .delete()
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId);
+    if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function addReactionRoleMapping(
+  guildId: string,
+  messageId: string,
+  emojiInput: string,
+  roleId: string,
+  label: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const parsed = parseEmoji(emojiInput);
+    if (!parsed) return { ok: false, error: 'Emoji konnte nicht geparst werden.' };
+
+    const admin = createAdminClient();
+    const { data: msg } = await admin
+      .from('bot_reaction_role_messages')
+      .select('channel_id, mode')
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (!msg) return { ok: false, error: 'RR-Nachricht nicht gefunden.' };
+
+    const mode = ((msg.mode as RrMode | null) ?? 'reactions') as RrMode;
+    if (mode === 'reactions') {
+      try {
+        await addReaction(msg.channel_id as string, messageId, parsed.urlForm);
+      } catch (err) {
+        return {
+          ok: false,
+          error: `Reaction konnte nicht hinzugefügt werden — ungültiges Emoji oder kein Zugriff. (${
+            err instanceof Error ? err.message : 'unbekannt'
+          })`,
+        };
+      }
+    }
+
+    const { error } = await admin.from('bot_reaction_roles').upsert(
+      {
+        message_id: messageId,
+        emoji_key: parsed.key,
+        emoji_display: parsed.display,
+        role_id: roleId,
+        label: label?.trim() || null,
+      },
+      { onConflict: 'message_id,emoji_key' },
+    );
+    if (error) throw error;
+
+    await refreshRrEmbed(messageId);
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function removeReactionRoleMapping(
+  guildId: string,
+  messageId: string,
+  emojiKey: string,
+  emojiDisplay: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: msg } = await admin
+      .from('bot_reaction_role_messages')
+      .select('channel_id, mode')
+      .eq('message_id', messageId)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+
+    const { error } = await admin
+      .from('bot_reaction_roles')
+      .delete()
+      .eq('message_id', messageId)
+      .eq('emoji_key', emojiKey);
+    if (error) throw error;
+
+    if (msg) {
+      const mode = ((msg.mode as RrMode | null) ?? 'reactions') as RrMode;
+      if (mode === 'reactions') {
+        const parsed = parseEmoji(emojiDisplay);
+        if (parsed) {
+          await removeOwnReaction(
+            msg.channel_id as string,
+            messageId,
+            parsed.urlForm,
+          ).catch((err) => console.error('[rr] removeOwnReaction:', err));
+        }
+      }
+      await refreshRrEmbed(messageId);
+    }
+
     revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true };
   } catch (e) {

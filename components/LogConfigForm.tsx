@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateLogConfig } from '@/app/(app)/integrations/discord/[guildId]/actions';
+import { Switch } from './Switch';
 
 type Channel = { id: string; name: string };
 
@@ -18,6 +19,12 @@ type Props = {
 };
 
 export function LogConfigForm({ guildId, channels, initial }: Props) {
+  const [channelId, setChannelId] = useState(initial.channelId ?? '');
+  const [joins, setJoins] = useState(initial.joins);
+  const [leaves, setLeaves] = useState(initial.leaves);
+  const [messageEdits, setMessageEdits] = useState(initial.messageEdits);
+  const [messageDeletes, setMessageDeletes] = useState(initial.messageDeletes);
+  const [roleChanges, setRoleChanges] = useState(initial.roleChanges);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -30,51 +37,85 @@ export function LogConfigForm({ guildId, channels, initial }: Props) {
     });
   };
 
+  const enabledCount = [joins, leaves, messageEdits, messageDeletes, roleChanges].filter(Boolean).length;
+  const active = channelId !== '';
+
   return (
-    <form action={submit} className="space-y-4">
-      <div>
-        <label className="block text-xs text-muted mb-1" htmlFor="log-channel">
+    <form action={submit} className="space-y-5">
+      <div className="rounded-md border border-line bg-elev/40 p-4">
+        <label className="block text-xs font-medium text-muted mb-1.5" htmlFor="log-channel">
           Log-Channel
         </label>
         <select
           id="log-channel"
           name="channel_id"
-          defaultValue={initial.channelId ?? ''}
-          className="w-full rounded-md bg-elev border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-accent"
+          value={channelId}
+          onChange={(e) => setChannelId(e.target.value)}
+          className="w-full rounded-md bg-surface border border-line-strong px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-accent"
         >
-          <option value="">— deaktiviert —</option>
+          <option value="">— Logging deaktiviert —</option>
           {channels.map((c) => (
             <option key={c.id} value={c.id}>
               #{c.name}
             </option>
           ))}
         </select>
+        {active && (
+          <p className="text-[11px] text-subtle mt-2">
+            {enabledCount === 0
+              ? 'Channel gesetzt, aber kein Event aktiv — wähle unten was geloggt werden soll.'
+              : `${enabledCount} Event-Typ${enabledCount === 1 ? '' : 'en'} aktiv.`}
+          </p>
+        )}
       </div>
 
-      <fieldset>
-        <legend className="text-xs text-muted mb-2">Was loggen?</legend>
-        <div className="space-y-1.5">
-          <Toggle name="log_joins" label="Server-Beitritte" defaultChecked={initial.joins} />
-          <Toggle name="log_leaves" label="Server-Austritte" defaultChecked={initial.leaves} />
+      <div className={active ? '' : 'opacity-60 pointer-events-none'}>
+        <Section title="Member-Events" hint="Wer kommt, wer geht">
+          <Toggle
+            name="log_joins"
+            label="Beitritte"
+            description="Wenn jemand dem Server beitritt."
+            checked={joins}
+            onChange={setJoins}
+          />
+          <Toggle
+            name="log_leaves"
+            label="Austritte"
+            description="Beim Verlassen oder Kick/Ban."
+            checked={leaves}
+            onChange={setLeaves}
+          />
+        </Section>
+
+        <Section title="Message-Events" hint="Braucht MESSAGE CONTENT INTENT">
           <Toggle
             name="log_message_deletes"
             label="Gelöschte Nachrichten"
-            defaultChecked={initial.messageDeletes}
+            description="Inhalt + Autor wird mitgeloggt."
+            checked={messageDeletes}
+            onChange={setMessageDeletes}
           />
           <Toggle
             name="log_message_edits"
             label="Bearbeitete Nachrichten"
-            defaultChecked={initial.messageEdits}
+            description="Vorher/Nachher-Vergleich."
+            checked={messageEdits}
+            onChange={setMessageEdits}
           />
+        </Section>
+
+        <Section title="Rollen-Events" hint="">
           <Toggle
             name="log_role_changes"
             label="Rollen-Änderungen"
-            defaultChecked={initial.roleChanges}
+            description="Wer welche Rolle bekommen/verloren hat."
+            checked={roleChanges}
+            onChange={setRoleChanges}
           />
-        </div>
-      </fieldset>
+        </Section>
+      </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 border-t border-line pt-4">
         <button
           type="submit"
           disabled={pending}
@@ -104,24 +145,57 @@ export function LogConfigForm({ guildId, channels, initial }: Props) {
   );
 }
 
+function Section({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mb-4 last:mb-0">
+      <div className="flex items-baseline justify-between mb-2">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+          {title}
+        </div>
+        {hint && <div className="text-[10px] text-subtle">{hint}</div>}
+      </div>
+      <div className="rounded-md border border-line bg-elev/40 divide-y divide-line">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function Toggle({
   name,
   label,
-  defaultChecked,
+  description,
+  checked,
+  onChange,
 }: {
   name: string;
   label: string;
-  defaultChecked: boolean;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm text-fg-soft cursor-pointer">
+    <label className="flex items-center justify-between gap-3 px-4 py-2.5 cursor-pointer hover:bg-elev/60 transition-colors">
+      <div className="min-w-0">
+        <div className="text-sm text-fg">{label}</div>
+        <div className="text-[11px] text-subtle">{description}</div>
+      </div>
       <input
         type="checkbox"
         name={name}
-        defaultChecked={defaultChecked}
-        className="h-4 w-4 accent-accent"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="sr-only"
       />
-      {label}
+      <Switch checked={checked} onChange={onChange} size="sm" ariaLabel={label} />
     </label>
   );
 }

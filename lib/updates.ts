@@ -7,6 +7,30 @@ export type Update = {
 export const updates: Update[] = [
   {
     date: '2026-05-14',
+    title: 'Reaction-Rollen: Buttons + Dropdown + Plain/Embed-Toggle',
+    description:
+      'Reaction-Roles können jetzt in drei Modi laufen: klassische Reaktionen, Buttons (bis 25), Dropdown-Menü. Modus pro Nachricht umschaltbar. Klicks auf Buttons/Dropdown werden im Log-Channel mitgeloggt. Welcome, DM, Booster, Sticky bekommen einen Toggle „als Embed senden" mit Farb-Picker.',
+  },
+  {
+    date: '2026-05-14',
+    title: 'Reaction-Rollen: Web-UI',
+    description:
+      'Reaction-Roles komplett über das Dashboard verwalten — Embed-Nachricht posten, Emoji↔Rolle-Zuordnungen hinzufügen/entfernen, alles mit Live-Discord-Aktionen. Slash-Command bleibt parallel verfügbar.',
+  },
+  {
+    date: '2026-05-14',
+    title: 'Discord-Bot: Phase 1 — 7 neue Module',
+    description:
+      'Booster-Message, DM-bei-Join (im Welcome-Tab), Sticky-Messages, Channel-Modes (Bilder-/Text-Only), Embed-Creator mit Live-Preview, sowie zwei neue Slash-Commands /slowmode und /roleall.',
+  },
+  {
+    date: '2026-05-14',
+    title: 'Bot-Landing-Page /bot',
+    description:
+      'Öffentliche Landing-Page für den Bot — Modul-Marketplace mit 13 Cards, Slash-Command-Liste, Bot-Invite-CTA. Ohne Login erreichbar.',
+  },
+  {
+    date: '2026-05-14',
     title: 'Discord-Bot: Ticket-System',
     description:
       '/ticket panel create postet einen Button — User klicken und bekommen einen privaten Channel mit Staff. /ticket close oder Schließen-Button beendet das Ticket (Channel wird gelöscht).',

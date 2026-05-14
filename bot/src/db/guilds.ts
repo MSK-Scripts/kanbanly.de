@@ -5,6 +5,19 @@ export type WelcomeConfig = {
   enabled: boolean;
   channelId: string | null;
   message: string | null;
+  useEmbed: boolean;
+  embedColor: number | null;
+  dmEnabled: boolean;
+  dmMessage: string | null;
+  dmUseEmbed: boolean;
+};
+
+export type BoosterConfig = {
+  enabled: boolean;
+  channelId: string | null;
+  message: string | null;
+  useEmbed: boolean;
+  embedColor: number | null;
 };
 
 export type AutoRolesConfig = {
@@ -41,7 +54,9 @@ export async function getWelcomeConfig(guildId: string): Promise<WelcomeConfig |
   const db = getDb();
   const { data, error } = await db
     .from('bot_guilds')
-    .select('welcome_enabled, welcome_channel_id, welcome_message')
+    .select(
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed',
+    )
     .eq('guild_id', guildId)
     .maybeSingle();
   if (error) throw error;
@@ -50,6 +65,31 @@ export async function getWelcomeConfig(guildId: string): Promise<WelcomeConfig |
     enabled: data.welcome_enabled,
     channelId: data.welcome_channel_id,
     message: data.welcome_message,
+    useEmbed: Boolean(data.welcome_use_embed),
+    embedColor: (data.welcome_embed_color as number | null) ?? null,
+    dmEnabled: Boolean(data.welcome_dm_enabled),
+    dmMessage: data.welcome_dm_message ?? null,
+    dmUseEmbed: Boolean(data.welcome_dm_use_embed),
+  };
+}
+
+export async function getBoosterConfig(guildId: string): Promise<BoosterConfig | null> {
+  const db = getDb();
+  const { data, error } = await db
+    .from('bot_guilds')
+    .select(
+      'booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color',
+    )
+    .eq('guild_id', guildId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    enabled: Boolean(data.booster_enabled),
+    channelId: data.booster_channel_id ?? null,
+    message: data.booster_message ?? null,
+    useEmbed: Boolean(data.booster_use_embed),
+    embedColor: (data.booster_embed_color as number | null) ?? null,
   };
 }
 

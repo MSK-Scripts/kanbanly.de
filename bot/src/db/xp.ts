@@ -183,21 +183,34 @@ export type LevelConfig = {
   enabled: boolean;
   announce: boolean;
   upChannelId: string | null;
+  useEmbed: boolean;
+  embedColor: number | null;
 };
 
 export async function getLevelConfig(guildId: string): Promise<LevelConfig> {
   const db = getDb();
   const { data, error } = await db
     .from('bot_guilds')
-    .select('level_enabled, level_announce, level_up_channel_id')
+    .select(
+      'level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color',
+    )
     .eq('guild_id', guildId)
     .maybeSingle();
   if (error) throw error;
-  if (!data) return { enabled: false, announce: true, upChannelId: null };
+  if (!data)
+    return {
+      enabled: false,
+      announce: true,
+      upChannelId: null,
+      useEmbed: false,
+      embedColor: null,
+    };
   return {
     enabled: Boolean(data.level_enabled),
     announce: Boolean(data.level_announce),
     upChannelId: data.level_up_channel_id ?? null,
+    useEmbed: Boolean(data.level_use_embed),
+    embedColor: (data.level_embed_color as number | null) ?? null,
   };
 }
 

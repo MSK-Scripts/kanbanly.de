@@ -6,6 +6,7 @@ export type ReactionRoleMessage = {
   channelId: string;
   title: string | null;
   description: string | null;
+  mode: 'reactions' | 'buttons' | 'select_menu';
 };
 
 export type ReactionRole = {
@@ -56,7 +57,7 @@ export async function getReactionRoleMessage(
   const db = getDb();
   const { data, error } = await db
     .from('bot_reaction_role_messages')
-    .select('message_id, guild_id, channel_id, title, description')
+    .select('message_id, guild_id, channel_id, title, description, mode')
     .eq('message_id', messageId)
     .maybeSingle();
   if (error) throw error;
@@ -67,6 +68,7 @@ export async function getReactionRoleMessage(
     channelId: data.channel_id,
     title: data.title,
     description: data.description,
+    mode: (data.mode as 'reactions' | 'buttons' | 'select_menu') ?? 'reactions',
   };
 }
 
@@ -74,7 +76,7 @@ export async function listReactionRoleMessages(guildId: string): Promise<Reactio
   const db = getDb();
   const { data, error } = await db
     .from('bot_reaction_role_messages')
-    .select('message_id, guild_id, channel_id, title, description')
+    .select('message_id, guild_id, channel_id, title, description, mode')
     .eq('guild_id', guildId)
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -84,6 +86,7 @@ export async function listReactionRoleMessages(guildId: string): Promise<Reactio
     channelId: d.channel_id,
     title: d.title,
     description: d.description,
+    mode: (d.mode as 'reactions' | 'buttons' | 'select_menu') ?? 'reactions',
   }));
 }
 

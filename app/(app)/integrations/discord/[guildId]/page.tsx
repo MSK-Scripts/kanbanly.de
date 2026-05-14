@@ -20,6 +20,12 @@ import { AutoRolesForm } from '@/components/AutoRolesForm';
 import { LogConfigForm } from '@/components/LogConfigForm';
 import { LevelConfigForm } from '@/components/LevelConfigForm';
 import { AutoModForm } from '@/components/AutoModForm';
+import { BoosterForm } from '@/components/BoosterForm';
+import { StickyMessagesForm } from '@/components/StickyMessagesForm';
+import { ChannelModesForm } from '@/components/ChannelModesForm';
+import { EmbedCreatorForm } from '@/components/EmbedCreatorForm';
+import { ReactionRolesManager } from '@/components/ReactionRolesManager';
+import { ModuleOverview } from '@/components/ModuleOverview';
 import { GuildSettingsTabs, type Tab } from '@/components/GuildSettingsTabs';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +44,42 @@ type LoadResult =
       guild: DiscordGuild;
       channels: DiscordChannel[];
       roles: DiscordRole[];
-      welcome: { enabled: boolean; channelId: string | null; message: string | null };
+      welcome: {
+        enabled: boolean;
+        channelId: string | null;
+        message: string | null;
+        useEmbed: boolean;
+        embedColor: number | null;
+        dmEnabled: boolean;
+        dmMessage: string | null;
+        dmUseEmbed: boolean;
+      };
+      booster: {
+        enabled: boolean;
+        channelId: string | null;
+        message: string | null;
+        useEmbed: boolean;
+        embedColor: number | null;
+      };
+      stickyMessages: Array<{ channelId: string; content: string; useEmbed: boolean }>;
+      channelModes: Array<{
+        channelId: string;
+        mode: 'images_only' | 'text_only';
+        allowVideos: boolean;
+      }>;
+      reactionRoleMessages: Array<{
+        messageId: string;
+        channelId: string;
+        title: string | null;
+        description: string | null;
+        mode: 'reactions' | 'buttons' | 'select_menu';
+        roles: Array<{
+          emojiKey: string;
+          emojiDisplay: string;
+          roleId: string;
+          label: string | null;
+        }>;
+      }>;
       autoRoles: { enabled: boolean; roleIds: string[] };
       log: {
         channelId: string | null;
@@ -52,6 +93,8 @@ type LoadResult =
         enabled: boolean;
         announce: boolean;
         upChannelId: string | null;
+        useEmbed: boolean;
+        embedColor: number | null;
       };
       levelRewards: Array<{ level: number; roleId: string }>;
       automod: {
@@ -82,13 +125,20 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
   if (!guild.owner && !canManageGuild(guild.permissions)) return { kind: 'forbidden' };
 
   const admin = createAdminClient();
-  const { data: guildRow } = await admin
+  const { data: guildRow, error: guildRowError } = await admin
     .from('bot_guilds')
     .select(
-      'welcome_enabled, welcome_channel_id, welcome_message, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
+      'welcome_enabled, welcome_channel_id, welcome_message, welcome_use_embed, welcome_embed_color, welcome_dm_enabled, welcome_dm_message, welcome_dm_use_embed, booster_enabled, booster_channel_id, booster_message, booster_use_embed, booster_embed_color, auto_roles_enabled, auto_role_ids, log_channel_id, log_joins, log_leaves, log_message_edits, log_message_deletes, log_role_changes, level_enabled, level_announce, level_up_channel_id, level_use_embed, level_embed_color, automod_enabled, automod_block_links, automod_link_allowlist, automod_max_caps_pct, automod_max_mentions, automod_banned_words',
     )
     .eq('guild_id', guildId)
     .maybeSingle();
+  if (guildRowError) {
+    console.error('[guild-settings] bot_guilds select failed:', guildRowError);
+    throw new Error(
+      `Datenbank-Schema unvollständig — vermutlich fehlende Migration. ` +
+        `(${guildRowError.message})`,
+    );
+  }
   if (!guildRow) return { kind: 'no-bot' };
 
   let channels: DiscordChannel[] = [];
@@ -130,6 +180,64 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
     roleId: r.role_id as string,
   }));
 
+  const { data: stickyRaw } = await admin
+    .from('bot_sticky_messages')
+    .select('channel_id, content, use_embed')
+    .eq('guild_id', guildId);
+  const stickyMessages = (stickyRaw ?? []).map((r) => ({
+    channelId: r.channel_id as string,
+    content: r.content as string,
+    useEmbed: Boolean(r.use_embed),
+  }));
+
+  const { data: modesRaw } = await admin
+    .from('bot_channel_modes')
+    .select('channel_id, mode, allow_videos')
+    .eq('guild_id', guildId);
+  const channelModes = (modesRaw ?? []).map((r) => ({
+    channelId: r.channel_id as string,
+    mode: r.mode as 'images_only' | 'text_only',
+    allowVideos: Boolean(r.allow_videos),
+  }));
+
+  const { data: rrMsgRaw } = await admin
+    .from('bot_reaction_role_messages')
+    .select('message_id, channel_id, title, description, mode, created_at')
+    .eq('guild_id', guildId)
+    .order('created_at', { ascending: false });
+  const rrMessageIds = (rrMsgRaw ?? []).map((m) => m.message_id as string);
+  const { data: rrRolesRaw } = rrMessageIds.length
+    ? await admin
+        .from('bot_reaction_roles')
+        .select('message_id, emoji_key, emoji_display, role_id, label')
+        .in('message_id', rrMessageIds)
+    : { data: [] as Array<Record<string, unknown>> };
+  const rolesByMessage = new Map<
+    string,
+    Array<{ emojiKey: string; emojiDisplay: string; roleId: string; label: string | null }>
+  >();
+  for (const r of rrRolesRaw ?? []) {
+    const mid = r.message_id as string;
+    if (!rolesByMessage.has(mid)) rolesByMessage.set(mid, []);
+    rolesByMessage.get(mid)!.push({
+      emojiKey: r.emoji_key as string,
+      emojiDisplay: r.emoji_display as string,
+      roleId: r.role_id as string,
+      label: (r.label as string | null) ?? null,
+    });
+  }
+  const reactionRoleMessages = (rrMsgRaw ?? []).map((m) => ({
+    messageId: m.message_id as string,
+    channelId: m.channel_id as string,
+    title: (m.title as string | null) ?? null,
+    description: (m.description as string | null) ?? null,
+    mode: ((m.mode as string | null) ?? 'reactions') as
+      | 'reactions'
+      | 'buttons'
+      | 'select_menu',
+    roles: rolesByMessage.get(m.message_id as string) ?? [],
+  }));
+
   return {
     kind: 'ok',
     guild,
@@ -139,7 +247,22 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       enabled: guildRow.welcome_enabled,
       channelId: guildRow.welcome_channel_id,
       message: guildRow.welcome_message,
+      useEmbed: Boolean(guildRow.welcome_use_embed),
+      embedColor: (guildRow.welcome_embed_color as number | null) ?? null,
+      dmEnabled: Boolean(guildRow.welcome_dm_enabled),
+      dmMessage: (guildRow.welcome_dm_message as string | null) ?? null,
+      dmUseEmbed: Boolean(guildRow.welcome_dm_use_embed),
     },
+    booster: {
+      enabled: Boolean(guildRow.booster_enabled),
+      channelId: (guildRow.booster_channel_id as string | null) ?? null,
+      message: (guildRow.booster_message as string | null) ?? null,
+      useEmbed: Boolean(guildRow.booster_use_embed),
+      embedColor: (guildRow.booster_embed_color as number | null) ?? null,
+    },
+    stickyMessages,
+    channelModes,
+    reactionRoleMessages,
     autoRoles: {
       enabled: Boolean(guildRow.auto_roles_enabled),
       roleIds: autoRoleIds,
@@ -156,6 +279,8 @@ async function load(userId: string, guildId: string): Promise<LoadResult> {
       enabled: Boolean(guildRow.level_enabled),
       announce: Boolean(guildRow.level_announce),
       upChannelId: guildRow.level_up_channel_id ?? null,
+      useEmbed: Boolean(guildRow.level_use_embed),
+      embedColor: (guildRow.level_embed_color as number | null) ?? null,
     },
     levelRewards,
     automod: {
@@ -257,6 +382,10 @@ export default async function GuildSettingsPage({
               color: r.color,
             }))}
             welcome={result.welcome}
+            booster={result.booster}
+            stickyMessages={result.stickyMessages}
+            channelModes={result.channelModes}
+            reactionRoleMessages={result.reactionRoleMessages}
             autoRoles={result.autoRoles}
             log={result.log}
             level={result.level}
@@ -275,6 +404,10 @@ function GuildSettingsView({
   channels,
   roles,
   welcome,
+  booster,
+  stickyMessages,
+  channelModes,
+  reactionRoleMessages,
   autoRoles,
   log,
   level,
@@ -285,7 +418,42 @@ function GuildSettingsView({
   guildId: string;
   channels: Array<{ id: string; name: string }>;
   roles: Array<{ id: string; name: string; color: number }>;
-  welcome: { enabled: boolean; channelId: string | null; message: string | null };
+  welcome: {
+    enabled: boolean;
+    channelId: string | null;
+    message: string | null;
+    useEmbed: boolean;
+    embedColor: number | null;
+    dmEnabled: boolean;
+    dmMessage: string | null;
+    dmUseEmbed: boolean;
+  };
+  booster: {
+    enabled: boolean;
+    channelId: string | null;
+    message: string | null;
+    useEmbed: boolean;
+    embedColor: number | null;
+  };
+  stickyMessages: Array<{ channelId: string; content: string; useEmbed: boolean }>;
+  channelModes: Array<{
+    channelId: string;
+    mode: 'images_only' | 'text_only';
+    allowVideos: boolean;
+  }>;
+  reactionRoleMessages: Array<{
+    messageId: string;
+    channelId: string;
+    title: string | null;
+    description: string | null;
+    mode: 'reactions' | 'buttons' | 'select_menu';
+    roles: Array<{
+      emojiKey: string;
+      emojiDisplay: string;
+      roleId: string;
+      label: string | null;
+    }>;
+  }>;
   autoRoles: { enabled: boolean; roleIds: string[] };
   log: {
     channelId: string | null;
@@ -295,7 +463,13 @@ function GuildSettingsView({
     messageDeletes: boolean;
     roleChanges: boolean;
   };
-  level: { enabled: boolean; announce: boolean; upChannelId: string | null };
+  level: {
+    enabled: boolean;
+    announce: boolean;
+    upChannelId: string | null;
+    useEmbed: boolean;
+    embedColor: number | null;
+  };
   levelRewards: Array<{ level: number; roleId: string }>;
   automod: {
     enabled: boolean;
@@ -306,177 +480,103 @@ function GuildSettingsView({
     bannedWords: string[];
   };
 }) {
-  const overviewItems: Array<{
-    label: string;
-    icon: string;
-    enabled: boolean;
-    hint: string;
-    target: string;
-    accent: string;
-    summary: string;
-  }> = [
+  const moduleDefs = [
     {
-      label: 'Welcome',
-      icon: '👋',
+      key: 'welcome' as const,
+      name: 'Welcome',
+      description: 'Begrüßt neue Mitglieder mit personalisierter Nachricht und optionaler DM.',
+      tab: 'welcome',
       enabled: welcome.enabled,
-      hint: welcome.enabled
-        ? welcome.channelId
-          ? 'Channel gesetzt'
-          : 'Channel fehlt'
-        : 'Begrüße neue Mitglieder',
-      target: 'welcome',
-      accent: 'from-amber-500/25 to-orange-500/10 text-amber-500',
-      summary: 'Begrüßungs-Message mit Platzhaltern & Live-Preview.',
+      toggleable: true,
     },
     {
-      label: 'Auto-Roles',
-      icon: '🎭',
+      key: 'autoroles' as const,
+      name: 'Auto-Roles',
+      description: 'Vergibt jedem neuen Mitglied automatisch eine oder mehrere Rollen.',
+      tab: 'autoroles',
       enabled: autoRoles.enabled,
-      hint: autoRoles.enabled
-        ? `${autoRoles.roleIds.length} Rolle${autoRoles.roleIds.length === 1 ? '' : 'n'} bei Join`
-        : 'Rolle automatisch vergeben',
-      target: 'autoroles',
-      accent: 'from-fuchsia-500/25 to-pink-500/10 text-fuchsia-500',
-      summary: 'Rollen, die jedem neuen Mitglied vergeben werden.',
+      toggleable: true,
     },
     {
-      label: 'Logging',
-      icon: '📋',
+      key: 'logging' as const,
+      name: 'Logging',
+      description: 'Audit-Trail mit Joins, Leaves, Message-Edits/Deletes und Rollen-Änderungen.',
+      tab: 'logging',
       enabled: log.channelId !== null,
-      hint:
-        log.channelId !== null
-          ? [
-              log.joins && 'Joins',
-              log.leaves && 'Leaves',
-              log.messageEdits && 'Edits',
-              log.messageDeletes && 'Deletes',
-              log.roleChanges && 'Rollen',
-            ]
-              .filter(Boolean)
-              .join(' · ') || 'kein Event aktiv'
-          : 'Events in Audit-Channel',
-      target: 'logging',
-      accent: 'from-sky-500/25 to-cyan-500/10 text-sky-500',
-      summary: 'Audit-Trail: Joins, Leaves, Message-Edits, Rollen.',
+      toggleable: false,
     },
     {
-      label: 'Leveling',
-      icon: '🏆',
+      key: 'levels' as const,
+      name: 'Leveling',
+      description: 'XP-System mit Level-Up-Nachrichten und automatischen Rollen-Rewards.',
+      tab: 'levels',
       enabled: level.enabled,
-      hint: level.enabled
-        ? `${levelRewards.length} Reward${levelRewards.length === 1 ? '' : 's'}`
-        : 'XP-System für Engagement',
-      target: 'levels',
-      accent: 'from-yellow-400/25 to-amber-500/10 text-yellow-500',
-      summary: 'XP pro Message, Level-Up-Nachrichten, Rollen-Rewards.',
+      toggleable: true,
     },
     {
-      label: 'AutoMod',
-      icon: '🛡️',
+      key: 'automod' as const,
+      name: 'AutoMod',
+      description: 'Spam-, Link-, Caps- und Mention-Filter sowie Wort-Blacklist.',
+      tab: 'automod',
       enabled: automod.enabled,
-      hint: automod.enabled
-        ? [
-            automod.blockLinks && 'Links',
-            automod.maxCapsPct !== null && 'Caps',
-            automod.maxMentions !== null && 'Mentions',
-            automod.bannedWords.length > 0 && 'Wörter',
-          ]
-            .filter(Boolean)
-            .join(' · ') || 'an'
-        : 'Spam, Links, Caps filtern',
-      target: 'automod',
-      accent: 'from-rose-500/25 to-red-500/10 text-rose-500',
-      summary: 'Spam-, Link-, Caps- und Mention-Filter, Wort-Blacklist.',
+      toggleable: true,
     },
     {
-      label: 'Reaction-Rollen',
-      icon: '✨',
+      key: 'reactionroles' as const,
+      name: 'Reaction-Rollen',
+      description: 'Self-Service-Rollen via Reaktion, Button oder Dropdown.',
+      tab: 'reactionroles',
+      enabled: reactionRoleMessages.length > 0,
+      toggleable: false,
+      isNew: true,
+    },
+    {
+      key: 'booster' as const,
+      name: 'Booster-Message',
+      description: 'Bedankt sich automatisch wenn jemand den Server boostet.',
+      tab: 'booster',
+      enabled: booster.enabled,
+      toggleable: true,
+      isNew: true,
+    },
+    {
+      key: 'sticky' as const,
+      name: 'Sticky Messages',
+      description: 'Re-postet wichtige Nachrichten am Channel-Ende.',
+      tab: 'sticky',
+      enabled: stickyMessages.length > 0,
+      toggleable: false,
+      isNew: true,
+    },
+    {
+      key: 'channelmodes' as const,
+      name: 'Channel-Modes',
+      description: 'Beschränkt Channels auf nur Bilder oder nur Text.',
+      tab: 'channelmodes',
+      enabled: channelModes.length > 0,
+      toggleable: false,
+      isNew: true,
+    },
+    {
+      key: 'embed' as const,
+      name: 'Embed-Creator',
+      description: 'Baue benutzerdefinierte Embed-Nachrichten und sende sie als Bot.',
+      tab: 'embed',
       enabled: false,
-      hint: 'Via Slash-Command verwaltet',
-      target: 'reactionroles',
-      accent: 'from-violet-500/25 to-purple-500/10 text-violet-500',
-      summary: 'Self-Service: Rolle per Emoji-Reaktion.',
+      toggleable: false,
+      isNew: true,
     },
   ];
-
-  const activeModuleCount = overviewItems.filter((i) => i.enabled).length;
 
   const tabs: Tab[] = [
     {
       id: 'overview',
       label: 'Übersicht',
       icon: '🏠',
-      description: 'Status aller Module auf einen Blick — Karte klicken zum Konfigurieren.',
+      description: 'Alle Module — durchsuchen, ein-/ausschalten, konfigurieren.',
       noCardWrapper: true,
       content: (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3 px-1">
-            <div>
-              <h2 className="text-sm font-semibold text-fg">Module</h2>
-              <p className="text-[11px] text-subtle mt-0.5">
-                {activeModuleCount} von {overviewItems.length} aktiv — klick eine Karte zum Konfigurieren.
-              </p>
-            </div>
-            <div className="h-1.5 w-32 rounded-full bg-elev overflow-hidden border border-line">
-              <div
-                className="h-full bg-gradient-to-r from-[#5865F2] to-violet-500 transition-all"
-                style={{
-                  width: `${(activeModuleCount / overviewItems.length) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {overviewItems.map((item) => (
-              <a
-                key={item.target}
-                href={`#${item.target}`}
-                className={`group relative overflow-hidden rounded-lg border bg-surface p-4 flex flex-col gap-3 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg ${
-                  item.enabled
-                    ? 'border-emerald-500/30 hover:border-emerald-500/60 shadow-[0_0_0_1px_rgba(16,185,129,0.05)]'
-                    : 'border-line hover:border-line-strong'
-                }`}
-              >
-                <div
-                  className={`pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${item.accent} opacity-40 blur-2xl transition-opacity group-hover:opacity-70`}
-                  aria-hidden
-                />
-                <div className="relative flex items-start justify-between gap-2">
-                  <div
-                    className={`h-11 w-11 rounded-lg bg-gradient-to-br ${item.accent} grid place-items-center text-2xl leading-none border border-line-strong/40 shadow-inner`}
-                    aria-hidden
-                  >
-                    {item.icon}
-                  </div>
-                  <span
-                    className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border backdrop-blur-sm ${
-                      item.enabled
-                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
-                        : 'bg-elev/60 text-subtle border-line-strong'
-                    }`}
-                  >
-                    {item.enabled ? '● Aktiv' : '○ Aus'}
-                  </span>
-                </div>
-                <div className="relative">
-                  <div className="text-base font-semibold text-fg group-hover:text-accent-hover transition-colors">
-                    {item.label}
-                  </div>
-                  <div className="text-[11px] text-muted mt-1 leading-relaxed">
-                    {item.summary}
-                  </div>
-                </div>
-                <div className="relative flex items-center justify-between text-[11px] mt-auto pt-2 border-t border-line/60">
-                  <span className="text-subtle truncate">{item.hint}</span>
-                  <span className="text-fg-soft/50 group-hover:text-accent-hover group-hover:translate-x-0.5 transition-all">
-                    →
-                  </span>
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
+        <ModuleOverview guildId={guildId} modules={moduleDefs} />
       ),
     },
     {
@@ -515,7 +615,7 @@ function GuildSettingsView({
         <LevelConfigForm
           guildId={guildId}
           channels={channels}
-          roles={roles.map((r) => ({ id: r.id, name: r.name }))}
+          roles={roles}
           initial={level}
           rewards={levelRewards}
         />
@@ -534,14 +634,53 @@ function GuildSettingsView({
       icon: '✨',
       description: 'Self-Service-Rollen über Emoji-Reaktionen.',
       content: (
-        <p className="text-sm text-muted">
-          Reaction-Roles werden aktuell über den Slash-Command{' '}
-          <code className="px-1.5 py-0.5 rounded bg-elev text-fg-soft text-xs">
-            /reactionroles
-          </code>{' '}
-          im Server verwaltet. Eine UI dafür folgt.
-        </p>
+        <ReactionRolesManager
+          guildId={guildId}
+          channels={channels}
+          roles={roles}
+          initial={reactionRoleMessages}
+        />
       ),
+    },
+    {
+      id: 'booster',
+      label: 'Booster',
+      icon: '🚀',
+      description: 'Dankesnachricht für Server-Booster.',
+      content: <BoosterForm guildId={guildId} channels={channels} initial={booster} />,
+    },
+    {
+      id: 'sticky',
+      label: 'Sticky',
+      icon: '📌',
+      description: 'Wichtige Nachrichten am Channel-Ende fixieren.',
+      content: (
+        <StickyMessagesForm
+          guildId={guildId}
+          channels={channels}
+          initial={stickyMessages}
+        />
+      ),
+    },
+    {
+      id: 'channelmodes',
+      label: 'Channel-Modes',
+      icon: '🎯',
+      description: 'Bilder-Only oder Text-Only-Channels.',
+      content: (
+        <ChannelModesForm
+          guildId={guildId}
+          channels={channels}
+          initial={channelModes}
+        />
+      ),
+    },
+    {
+      id: 'embed',
+      label: 'Embed-Creator',
+      icon: '🎨',
+      description: 'Baue custom Embeds und sende sie als Bot.',
+      content: <EmbedCreatorForm guildId={guildId} channels={channels} />,
     },
   ];
 
@@ -557,9 +696,6 @@ function GuildSettingsView({
           aria-hidden
         />
         <div className="relative flex items-center gap-4">
-          <div className="h-14 w-14 rounded-lg bg-gradient-to-br from-[#5865F2] to-violet-600 grid place-items-center text-white text-lg font-bold shrink-0 shadow-lg shadow-[#5865F2]/30 ring-1 ring-white/10">
-            {guildName.slice(0, 2).toUpperCase()}
-          </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-[0.18em] text-[#5865F2] font-mono mb-1 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
