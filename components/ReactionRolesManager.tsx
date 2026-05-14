@@ -6,10 +6,12 @@ import {
   createReactionRoleMessage,
   deleteReactionRoleMessage,
   removeReactionRoleMapping,
+  sendTestReactionRoles,
   updateReactionRoleMode,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { confirm } from '@/store/confirmStore';
 import { toast } from '@/store/toastStore';
+import { TestSendButton } from './ui/TestSendButton';
 
 type RrMode = 'reactions' | 'buttons' | 'select_menu';
 
@@ -231,6 +233,7 @@ export function ReactionRolesManager({ guildId, channels, roles, initial }: Prop
               }
               onChangeMode={(mode) => changeMode(m.messageId, mode)}
               onDeleteMessage={() => removeMessage(m.messageId)}
+              onSendTest={() => sendTestReactionRoles(guildId, m.messageId)}
               pending={pending}
             />
           ))}
@@ -346,6 +349,7 @@ function RrMessageCard({
   onRemoveMapping,
   onChangeMode,
   onDeleteMessage,
+  onSendTest,
   pending,
 }: {
   message: RrMessage;
@@ -357,6 +361,7 @@ function RrMessageCard({
   onRemoveMapping: (emojiKey: string, emojiDisplay: string) => void;
   onChangeMode: (mode: RrMode) => void;
   onDeleteMessage: () => void;
+  onSendTest: () => Promise<{ ok: boolean; error?: string }>;
   pending: boolean;
 }) {
   const [emoji, setEmoji] = useState('');
@@ -397,6 +402,7 @@ function RrMessageCard({
             <option value="buttons">{MODE_LABEL.buttons}</option>
             <option value="select_menu">{MODE_LABEL.select_menu}</option>
           </select>
+          <TestSendButton onSend={onSendTest} label="Test" />
           <button
             type="button"
             onClick={onDeleteMessage}

@@ -6,6 +6,7 @@ import {
   deleteHelpdeskItem,
   deleteHelpdeskPanel,
   publishHelpdeskPanel,
+  sendTestHelpdeskPanel,
   updateHelpdeskPanel,
   upsertHelpdeskItem,
   type HelpdeskItemInput,
@@ -13,6 +14,7 @@ import {
 import { confirm } from '@/store/confirmStore';
 import { toast } from '@/store/toastStore';
 import { Button } from './ui/Button';
+import { TestSendButton } from './ui/TestSendButton';
 import { ColorPicker } from './ui/ColorPicker';
 import { FormSection, FormRow } from './ui/FormSection';
 import { StatusPill, StatusBanner } from './ui/Status';
@@ -354,6 +356,10 @@ function PanelCard({
           >
             {panel.messageId ? 'Neu posten' : 'Posten'}
           </Button>
+          <TestSendButton
+            onSend={() => sendTestHelpdeskPanel(guildId, panel.id)}
+            label="Test"
+          />
           <Button type="button" size="sm" variant="ghost" onClick={onDelete}>
             Löschen
           </Button>
