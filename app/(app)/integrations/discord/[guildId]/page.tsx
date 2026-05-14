@@ -516,6 +516,9 @@ function GuildSettingsView({
       tab: 'logging',
       enabled: log.channelId !== null,
       toggleable: false,
+      count: log.channelId !== null
+        ? [log.joins, log.leaves, log.messageEdits, log.messageDeletes, log.roleChanges].filter(Boolean).length
+        : undefined,
     },
     {
       key: 'levels' as const,
@@ -540,6 +543,7 @@ function GuildSettingsView({
       tab: 'reactionroles',
       enabled: reactionRoleMessages.length > 0,
       toggleable: false,
+      count: reactionRoleMessages.length > 0 ? reactionRoleMessages.length : undefined,
       isNew: true,
     },
     {
@@ -558,6 +562,7 @@ function GuildSettingsView({
       tab: 'sticky',
       enabled: stickyMessages.length > 0,
       toggleable: false,
+      count: stickyMessages.length > 0 ? stickyMessages.length : undefined,
       isNew: true,
     },
     {
@@ -567,6 +572,7 @@ function GuildSettingsView({
       tab: 'channelmodes',
       enabled: channelModes.length > 0,
       toggleable: false,
+      count: channelModes.length > 0 ? channelModes.length : undefined,
       isNew: true,
     },
     {
