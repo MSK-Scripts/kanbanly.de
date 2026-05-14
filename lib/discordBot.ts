@@ -80,6 +80,47 @@ export async function editEmbed(
   return editMessage(channelId, messageId, { embeds: [embed] });
 }
 
+export type GuildMember = {
+  id: string;
+  username: string;
+  displayName: string;
+  roles: string[];
+  bot: boolean;
+};
+
+// Paginated members fetch (Bot-Token, max 1000 per request).
+// Erfordert Server-Members-Intent im Developer-Portal.
+export async function fetchGuildMembers(guildId: string): Promise<GuildMember[]> {
+  const out: GuildMember[] = [];
+  let after = '0';
+  for (let i = 0; i < 100; i++) {
+    const res = await call(`/guilds/${guildId}/members?limit=1000&after=${after}`, {
+      method: 'GET',
+    });
+    if (!res.ok) {
+      throw new Error(`Discord members: ${res.status} ${await res.text()}`);
+    }
+    const batch = (await res.json()) as Array<{
+      user: { id: string; username: string; global_name?: string | null; bot?: boolean };
+      nick?: string | null;
+      roles?: string[];
+    }>;
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    for (const m of batch) {
+      out.push({
+        id: m.user.id,
+        username: m.user.username,
+        displayName: m.nick ?? m.user.global_name ?? m.user.username,
+        roles: m.roles ?? [],
+        bot: Boolean(m.user.bot),
+      });
+    }
+    if (batch.length < 1000) break;
+    after = batch[batch.length - 1].user.id;
+  }
+  return out;
+}
+
 export async function deleteMessage(
   channelId: string,
   messageId: string,

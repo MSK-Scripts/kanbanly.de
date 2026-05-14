@@ -6,6 +6,7 @@ import {
   createTeamlist,
   updateTeamlist,
   deleteTeamlist,
+  refreshTeamlistNow,
   type TeamlistRow,
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { toast } from '@/store/toastStore';
@@ -179,6 +180,7 @@ export function TeamlistsForm({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <RefreshNowButton guildId={guildId} id={l.id} />
                   <Button
                     type="button"
                     size="sm"
@@ -230,6 +232,22 @@ export function TeamlistsForm({
         </button>
       )}
     </div>
+  );
+}
+
+function RefreshNowButton({ guildId, id }: { guildId: string; id: string }) {
+  const [pending, startTransition] = useTransition();
+  const onClick = () => {
+    startTransition(async () => {
+      const r = await refreshTeamlistNow(guildId, id);
+      if (r.ok) toast.success('Teamliste aktualisiert');
+      else toast.error('Fehler', r.error);
+    });
+  };
+  return (
+    <Button type="button" size="sm" variant="secondary" onClick={onClick} loading={pending}>
+      Jetzt posten
+    </Button>
   );
 }
 

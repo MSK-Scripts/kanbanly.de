@@ -9,10 +9,17 @@ import {
   addReaction,
   deleteMessage,
   editMessage,
+  fetchGuildMembers,
   postMessage,
   removeOwnReaction,
+  type EmbedPayload,
 } from '@/lib/discordBot';
-import { invalidateGuildCache, fetchUserBasic, userAvatarUrl } from '@/lib/discord';
+import {
+  fetchGuildRoles,
+  invalidateGuildCache,
+  fetchUserBasic,
+  userAvatarUrl,
+} from '@/lib/discord';
 import {
   createChannelWebhook,
   deleteWebhookViaBot,
@@ -2040,6 +2047,90 @@ export async function updateTeamlist(
       .eq('id', id)
       .eq('guild_id', guildId);
     if (error) throw error;
+    revalidatePath(`/integrations/discord/${guildId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler.' };
+  }
+}
+
+export async function refreshTeamlistNow(
+  guildId: string,
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManage(guildId);
+    const admin = createAdminClient();
+    const { data: row, error } = await admin
+      .from('bot_teamlists')
+      .select('id, channel_id, message_id, title, role_ids, color')
+      .eq('id', id)
+      .eq('guild_id', guildId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!row) return { ok: false, error: 'Teamliste nicht gefunden.' };
+
+    const roleIds = Array.isArray(row.role_ids)
+      ? (row.role_ids as unknown[]).filter((v): v is string => typeof v === 'string')
+      : [];
+
+    const [roles, members] = await Promise.all([
+      fetchGuildRoles(guildId),
+      fetchGuildMembers(guildId),
+    ]);
+    const rolesById = new Map(roles.map((r) => [r.id, r]));
+    const sortedRoles = roleIds
+      .map((rid) => rolesById.get(rid))
+      .filter((r): r is NonNullable<typeof r> => Boolean(r))
+      .sort((a, b) => b.position - a.position);
+
+    const lines: string[] = [];
+    for (const role of sortedRoles) {
+      const inRole = members
+        .filter((m) => !m.bot && m.roles.includes(role.id))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName));
+      lines.push(`**${role.name}** · ${inRole.length}`);
+      if (inRole.length === 0) {
+        lines.push('_— niemand —_');
+      } else {
+        for (const m of inRole) lines.push(`• <@${m.id}>`);
+      }
+      lines.push('');
+    }
+    const description = lines.join('\n').slice(0, 4000) || '_Keine Rollen konfiguriert._';
+
+    const embed: EmbedPayload = {
+      title: (row.title as string | null) ?? 'Team',
+      description,
+    };
+    const color = row.color as number | null;
+    if (typeof color === 'number') embed.color = color;
+
+    const channelId = row.channel_id as string;
+    const messageId = row.message_id as string | null;
+
+    let newMessageId = messageId;
+    if (messageId) {
+      try {
+        await editMessage(channelId, messageId, { embeds: [embed] });
+      } catch {
+        // Message wurde wahrscheinlich gelöscht — neu posten.
+        const posted = await postMessage(channelId, { embeds: [embed] });
+        newMessageId = posted.id;
+      }
+    } else {
+      const posted = await postMessage(channelId, { embeds: [embed] });
+      newMessageId = posted.id;
+    }
+
+    await admin
+      .from('bot_teamlists')
+      .update({
+        message_id: newMessageId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
     revalidatePath(`/integrations/discord/${guildId}`);
     return { ok: true };
   } catch (e) {
