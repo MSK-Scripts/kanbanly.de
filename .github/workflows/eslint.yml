@@ -33,9 +33,19 @@ jobs:
         continue-on-error: true
         run: npx eslint . --format @microsoft/eslint-formatter-sarif --output-file eslint-results.sarif
 
+      # GitHub Code Scanning honoriert `suppressions[]` mit leerer Justification nicht.
+      # Wir filtern in-source-suppressed Results raus, damit `/* eslint-disable-next-line */`
+      # tatsächlich auch in Code Scanning gilt.
+      - name: Strip suppressed results from SARIF
+        if: always()
+        run: |
+          jq '.runs[].results |= map(select((.suppressions // []) | length == 0))' \
+            eslint-results.sarif > eslint-filtered.sarif
+          mv eslint-filtered.sarif eslint-results.sarif
+
       - name: Upload SARIF to Code Scanning
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: eslint-results.sarif
           category: eslint
