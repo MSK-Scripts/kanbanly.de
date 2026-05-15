@@ -203,7 +203,7 @@ export function ModuleOverview({ guildId, modules, premium = false }: Props) {
 
       {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line-strong p-10 text-center text-sm text-subtle">
-          Kein Modul gefunden für „{query}".
+          Kein Modul gefunden für „{query}&quot;.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

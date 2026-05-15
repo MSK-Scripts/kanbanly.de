@@ -107,7 +107,7 @@ export default async function OrderCheckoutPage({ params }: Props) {
   // PaymentIntent — wenn schon vorhanden, müssten wir ihn retrieven; für MVP
   // legen wir bei jedem Page-Load ggf. neu an (idempotent über order_id metadata).
   let clientSecret: string;
-  let stripeAccountId: string = guildRow.stripe_account_id as string;
+  const stripeAccountId: string = guildRow.stripe_account_id as string;
   try {
     const pi = await createConnectPaymentIntent({
       amountCents: order.amount_cents as number,

@@ -820,14 +820,6 @@ function renderInlineMarkdown(text: string): string {
 
 // ============== Components-Editor (Link-Buttons in ActionRows) ==============
 
-const BUTTON_STYLE_CLASSES: Record<NonNullable<LinkButton['style']>, string> = {
-  primary: 'bg-[#5865F2] text-white',
-  secondary: 'bg-[#4E5058] text-white',
-  success: 'bg-[#248046] text-white',
-  danger: 'bg-[#DA373C] text-white',
-  link: 'bg-[#4E5058] text-white',
-};
-
 const ACTION_STYLE_CLASSES: Record<NonNullable<LinkButton['style']>, string> = {
   primary: 'bg-[#5865F2] text-white',
   secondary: 'bg-[#4E5058] text-white',

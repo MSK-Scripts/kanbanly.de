@@ -1182,16 +1182,23 @@ function TicketListView({
   status: 'open' | 'closed';
 }) {
   const [tickets, setTickets] = useState<TicketSummary[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
 
+  const key = `${guildId}:${status}`;
+  const loading = loadedKey !== key;
+
   useEffect(() => {
-    setLoading(true);
+    let active = true;
     listTicketsForGuild(guildId, status).then((r) => {
+      if (!active) return;
       if (r.ok && r.tickets) setTickets(r.tickets);
-      setLoading(false);
+      setLoadedKey(key);
     });
-  }, [guildId, status]);
+    return () => {
+      active = false;
+    };
+  }, [guildId, status, key]);
 
   if (loading) {
     return (
@@ -1273,14 +1280,19 @@ function TicketListView({
 
 function FeedbackView({ guildId }: { guildId: string }) {
   const [data, setData] = useState<{ feedback: TicketFeedbackRow[]; avg: number } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedGuild, setLoadedGuild] = useState<string | null>(null);
+  const loading = loadedGuild !== guildId;
 
   useEffect(() => {
-    setLoading(true);
+    let active = true;
     listTicketFeedbackForGuild(guildId).then((r) => {
+      if (!active) return;
       if (r.ok) setData({ feedback: r.feedback ?? [], avg: r.avgRating ?? 0 });
-      setLoading(false);
+      setLoadedGuild(guildId);
     });
+    return () => {
+      active = false;
+    };
   }, [guildId]);
 
   if (loading) {
@@ -1294,7 +1306,7 @@ function FeedbackView({ guildId }: { guildId: string }) {
     return (
       <div className="rounded-xl border border-dashed border-line-strong p-10 text-center">
         <div className="text-sm text-fg-soft">
-          Noch kein Feedback. Aktiviere es in einem Panel unter „Feedback".
+          Noch kein Feedback. Aktiviere es in einem Panel unter „Feedback&quot;.
         </div>
       </div>
     );
@@ -1352,16 +1364,21 @@ function TranscriptViewer({
     ticket?: TicketSummary;
     messages?: TranscriptMessageAct[];
   } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedId, setLoadedId] = useState<string | null>(null);
+  const loading = loadedId !== ticketId;
 
   useEffect(() => {
-    setLoading(true);
+    let active = true;
     getTicketTranscript(guildId, ticketId).then((r) => {
+      if (!active) return;
       if (r.ok) {
         setData({ ticket: r.ticket, messages: r.messages });
       }
-      setLoading(false);
+      setLoadedId(ticketId);
     });
+    return () => {
+      active = false;
+    };
   }, [guildId, ticketId]);
 
   return (
