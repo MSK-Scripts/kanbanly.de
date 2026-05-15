@@ -3,6 +3,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { useBoard } from '@/store/boardStore';
 import { useMounted } from '@/lib/useMounted';
+import { safeHttpUrl } from '@/lib/safeUrl';
 
 type Props = {
   onClose: () => void;
@@ -55,7 +56,7 @@ export function BackgroundDialog({ onClose }: Props) {
   if (!mounted) return null;
 
   const preview = input.trim();
-  const previewValid = preview && isValidHttpUrl(preview);
+  const previewSrc = safeHttpUrl(preview);
 
   const save = () => {
     setError(null);
@@ -156,13 +157,13 @@ export function BackgroundDialog({ onClose }: Props) {
             </div>
           </div>
 
-          {previewValid && (
+          {previewSrc && (
             <div>
               <p className="text-[11px] text-muted mb-1.5">Vorschau</p>
               <div className="aspect-video rounded-md overflow-hidden border border-line-strong">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={preview}
+                  src={previewSrc}
                   alt="Vorschau"
                   className="h-full w-full object-cover"
                 />

@@ -23,6 +23,7 @@ import {
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { toast } from '@/store/toastStore';
 import { confirm } from '@/store/confirmStore';
+import { safeHttpUrl } from '@/lib/safeUrl';
 import { Button } from './ui/Button';
 import { ColorPicker } from './ui/ColorPicker';
 import { FormRow } from './ui/FormSection';
@@ -775,10 +776,13 @@ function PanelEditor({
                     ))}
                   </div>
                 )}
-                {embedImage && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={embedImage} alt="" className="max-h-48 rounded mt-1" />
-                )}
+                {(() => {
+                  const safe = safeHttpUrl(embedImage);
+                  return safe ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={safe} alt="" className="max-h-48 rounded mt-1" />
+                  ) : null;
+                })()}
                 {embedFooter && (
                   <div className="text-[10.5px] text-subtle mt-2">{embedFooter}</div>
                 )}

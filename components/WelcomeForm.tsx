@@ -44,8 +44,19 @@ function renderPreview(template: string): string {
   return out;
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Wichtig: zuerst HTML-escapen, dann Markdown-Tags einsetzen.
+// Sonst kann User-Input via <img onerror=…> XSS auslösen.
 function renderInlineMarkdown(text: string): string {
-  return text
+  return escapeHtml(text)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code class="rounded bg-elev px-1 text-[0.85em]">$1</code>');

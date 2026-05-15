@@ -8,10 +8,22 @@ function botToken(): string {
   return t;
 }
 
+// Defense-in-Depth: alle Pfade müssen relativ zu DISCORD_API bleiben.
+function assertDiscordPath(path: string): void {
+  if (!path.startsWith('/')) throw new Error(`Invalid Discord path (must start with /): ${path}`);
+  if (path.includes('..')) throw new Error(`Invalid Discord path (..): ${path}`);
+  if (path.startsWith('//')) throw new Error(`Invalid Discord path (//): ${path}`);
+  const u = new URL(path, DISCORD_API);
+  if (u.origin !== new URL(DISCORD_API).origin) {
+    throw new Error(`Invalid Discord path (host escape): ${path}`);
+  }
+}
+
 async function call(
   path: string,
   init: { method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown },
 ): Promise<Response> {
+  assertDiscordPath(path);
   return fetch(`${DISCORD_API}${path}`, {
     method: init.method,
     headers: {

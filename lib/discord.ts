@@ -206,7 +206,23 @@ export class DiscordRateLimitError extends Error {
   }
 }
 
+// Defense-in-Depth: stelle sicher, dass `path` keinen Host-Wechsel auslösen kann.
+// Discord-Snowflakes sind numerisch — wir lassen aber das ganze Discord-Pfad-Schema zu
+// (z. B. `/users/@me/guilds`).
+function assertDiscordPath(path: string): void {
+  if (!path.startsWith('/')) throw new Error(`Invalid Discord path (must start with /): ${path}`);
+  if (path.includes('..')) throw new Error(`Invalid Discord path (..): ${path}`);
+  // Kein Doppel-Slash am Anfang (protokoll-relativ → würde URL-Resolver kippen).
+  if (path.startsWith('//')) throw new Error(`Invalid Discord path (//): ${path}`);
+  // URL-Konstruktor als finale Validierung: muss bei Discord-Host bleiben.
+  const u = new URL(path, DISCORD_API);
+  if (u.origin !== new URL(DISCORD_API).origin) {
+    throw new Error(`Invalid Discord path (host escape): ${path}`);
+  }
+}
+
 async function discordGet<T>(path: string, token: string, tokenKind: 'Bot' | 'Bearer' = 'Bot'): Promise<T> {
+  assertDiscordPath(path);
   const res = await fetch(`${DISCORD_API}${path}`, {
     headers: { Authorization: `${tokenKind} ${token}` },
     cache: 'no-store',

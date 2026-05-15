@@ -17,6 +17,7 @@ import {
 } from '@/app/(app)/integrations/discord/[guildId]/actions';
 import { toast } from '@/store/toastStore';
 import { confirm } from '@/store/confirmStore';
+import { safeHttpUrl } from '@/lib/safeUrl';
 import { Switch } from './Switch';
 import { Button } from './ui/Button';
 import { TestSendButton } from './ui/TestSendButton';
@@ -911,30 +912,36 @@ function EmbedPreview({
               {rendered}
             </div>
           </div>
-          {thumbnailUrl && (
+          {(() => {
+            const safe = safeHttpUrl(thumbnailUrl);
+            return safe ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={safe}
+                alt=""
+                className="h-12 w-12 rounded object-cover shrink-0"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : null;
+          })()}
+        </div>
+        <div className="space-y-1.5">{fieldOrder.map(renderField)}</div>
+        {(() => {
+          const safe = safeHttpUrl(bannerUrl);
+          return safe ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={thumbnailUrl}
+              src={safe}
               alt=""
-              className="h-12 w-12 rounded object-cover shrink-0"
+              className="rounded-md w-full max-h-60 object-cover"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = 'none';
               }}
             />
-          )}
-        </div>
-        <div className="space-y-1.5">{fieldOrder.map(renderField)}</div>
-        {bannerUrl && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={bannerUrl}
-            alt=""
-            className="rounded-md w-full max-h-60 object-cover"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        )}
+          ) : null;
+        })()}
         {ended && (
           <div className="pt-1.5 border-t border-white/5">
             <div className="text-[11px] uppercase tracking-wide text-[#b5bac1]">Hinweis</div>
