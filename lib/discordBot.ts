@@ -1,6 +1,7 @@
 import 'server-only';
 
-const DISCORD_API = 'https://discord.com/api/v10';
+const DISCORD_API_ORIGIN = 'https://discord.com';
+const DISCORD_API_BASE = 'https://discord.com/api/v10/';
 
 function botToken(): string {
   const t = process.env.DISCORD_BOT_TOKEN;
@@ -8,23 +9,26 @@ function botToken(): string {
   return t;
 }
 
-// Defense-in-Depth: alle Pfade müssen relativ zu DISCORD_API bleiben.
-function assertDiscordPath(path: string): void {
-  if (!path.startsWith('/')) throw new Error(`Invalid Discord path (must start with /): ${path}`);
-  if (path.includes('..')) throw new Error(`Invalid Discord path (..): ${path}`);
-  if (path.startsWith('//')) throw new Error(`Invalid Discord path (//): ${path}`);
-  const u = new URL(path, DISCORD_API);
-  if (u.origin !== new URL(DISCORD_API).origin) {
+// Baut eine Discord-API-URL und verhindert Host-Wechsel durch User-Input.
+function buildDiscordUrl(path: string): URL {
+  if (path.length === 0 || path[0] !== '/') {
+    throw new Error(`Invalid Discord path: ${path}`);
+  }
+  if (path.includes(':') || path.includes('..') || path.startsWith('//')) {
+    throw new Error(`Invalid Discord path (unsafe characters): ${path}`);
+  }
+  const url = new URL(path.slice(1), DISCORD_API_BASE);
+  if (url.origin !== DISCORD_API_ORIGIN) {
     throw new Error(`Invalid Discord path (host escape): ${path}`);
   }
+  return url;
 }
 
 async function call(
   path: string,
   init: { method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown },
 ): Promise<Response> {
-  assertDiscordPath(path);
-  return fetch(`${DISCORD_API}${path}`, {
+  return fetch(buildDiscordUrl(path), {
     method: init.method,
     headers: {
       Authorization: `Bot ${botToken()}`,

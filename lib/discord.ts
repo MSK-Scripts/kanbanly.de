@@ -206,24 +206,29 @@ export class DiscordRateLimitError extends Error {
   }
 }
 
-// Defense-in-Depth: stelle sicher, dass `path` keinen Host-Wechsel auslösen kann.
-// Discord-Snowflakes sind numerisch — wir lassen aber das ganze Discord-Pfad-Schema zu
-// (z. B. `/users/@me/guilds`).
-function assertDiscordPath(path: string): void {
-  if (!path.startsWith('/')) throw new Error(`Invalid Discord path (must start with /): ${path}`);
-  if (path.includes('..')) throw new Error(`Invalid Discord path (..): ${path}`);
-  // Kein Doppel-Slash am Anfang (protokoll-relativ → würde URL-Resolver kippen).
-  if (path.startsWith('//')) throw new Error(`Invalid Discord path (//): ${path}`);
-  // URL-Konstruktor als finale Validierung: muss bei Discord-Host bleiben.
-  const u = new URL(path, DISCORD_API);
-  if (u.origin !== new URL(DISCORD_API).origin) {
+// Baut eine vollständige Discord-API-URL und verhindert Host-Wechsel durch User-Input.
+// `:` (Scheme-Separator), `..` (Path-Traversal) und führendes `//` (protokoll-relativ)
+// sind alle verboten — damit kann `new URL(path, base)` den Host nicht überschreiben.
+const DISCORD_API_ORIGIN = 'https://discord.com';
+const DISCORD_API_BASE = 'https://discord.com/api/v10/';
+
+function buildDiscordUrl(path: string): URL {
+  if (path.length === 0 || path[0] !== '/') {
+    throw new Error(`Invalid Discord path: ${path}`);
+  }
+  if (path.includes(':') || path.includes('..') || path.startsWith('//')) {
+    throw new Error(`Invalid Discord path (unsafe characters): ${path}`);
+  }
+  // Slice führendes `/` ab — sonst würde absolute-path den base-Pfad ersetzen.
+  const url = new URL(path.slice(1), DISCORD_API_BASE);
+  if (url.origin !== DISCORD_API_ORIGIN) {
     throw new Error(`Invalid Discord path (host escape): ${path}`);
   }
+  return url;
 }
 
 async function discordGet<T>(path: string, token: string, tokenKind: 'Bot' | 'Bearer' = 'Bot'): Promise<T> {
-  assertDiscordPath(path);
-  const res = await fetch(`${DISCORD_API}${path}`, {
+  const res = await fetch(buildDiscordUrl(path), {
     headers: { Authorization: `${tokenKind} ${token}` },
     cache: 'no-store',
   });
